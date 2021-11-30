@@ -14,7 +14,7 @@ namespace AdventOfCode18
     {
         static void Main(string[] args)
         {
-            using (StreamReader sr = new StreamReader("../../../D15.txt"))
+            using (StreamReader sr = new StreamReader("../../../input15.txt"))
             {
                 Stopwatch sw = new Stopwatch();
                 sw.Start();
