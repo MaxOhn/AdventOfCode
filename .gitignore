@@ -1,0 +1,7 @@
+/*/.gitignore
+/*/target
+/*/Cargo.lock
+/*/*/bin
+/*/*/obj
+/*/.vs
+/*/input*

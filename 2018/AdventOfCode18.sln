@@ -1,0 +1,31 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio 15
+VisualStudioVersion = 15.0.28010.2050
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AdventOfCode18", "AdventOfCode18\AdventOfCode18.csproj", "{D57EC797-EBA7-4D01-9161-7B1F9B28E2DD}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{D57EC797-EBA7-4D01-9161-7B1F9B28E2DD}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{D57EC797-EBA7-4D01-9161-7B1F9B28E2DD}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{D57EC797-EBA7-4D01-9161-7B1F9B28E2DD}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{D57EC797-EBA7-4D01-9161-7B1F9B28E2DD}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {2077A2AF-5EE0-4159-BD0C-0CFD5371C438}
+	EndGlobalSection
+	GlobalSection(Performance) = preSolution
+		HasPerformanceSessions = true
+	EndGlobalSection
+	GlobalSection(Performance) = preSolution
+		HasPerformanceSessions = true
+	EndGlobalSection
+EndGlobal
