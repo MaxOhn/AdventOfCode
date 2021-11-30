@@ -3,7 +3,7 @@ use std::ops::{Index, IndexMut};
 use crate::Pos2;
 
 pub struct Matrix<T> {
-    vec: Vec<T>,
+    entries: Box<[T]>,
     width: usize,
 }
 
@@ -11,7 +11,7 @@ impl<T: Clone + Default> Matrix<T> {
     #[inline]
     pub fn new(columns: usize, rows: usize) -> Self {
         Self {
-            vec: vec![T::default(); columns * rows],
+            entries: vec![T::default(); columns * rows].into_boxed_slice(),
             width: columns,
         }
     }
@@ -20,7 +20,10 @@ impl<T: Clone + Default> Matrix<T> {
 impl<T> Matrix<T> {
     #[inline]
     pub fn from_vec(vec: Vec<T>, width: usize) -> Self {
-        Self { vec, width }
+        Self {
+            entries: vec.into_boxed_slice(),
+            width,
+        }
     }
 
     #[inline]
@@ -30,7 +33,7 @@ impl<T> Matrix<T> {
 
     #[inline]
     pub fn height(&self) -> usize {
-        self.vec.len() / self.width
+        self.entries.len() / self.width
     }
 }
 
@@ -58,14 +61,14 @@ impl<T> Index<(usize, usize)> for Matrix<T> {
 
     #[inline]
     fn index(&self, (x, y): (usize, usize)) -> &Self::Output {
-        self.vec.index(y * self.width + x)
+        self.entries.index(y * self.width + x)
     }
 }
 
 impl<T> IndexMut<(usize, usize)> for Matrix<T> {
     #[inline]
     fn index_mut(&mut self, (x, y): (usize, usize)) -> &mut Self::Output {
-        self.vec.index_mut(y * self.width + x)
+        self.entries.index_mut(y * self.width + x)
     }
 }
 
@@ -74,14 +77,14 @@ impl<T> Index<Pos2<usize>> for Matrix<T> {
 
     #[inline]
     fn index(&self, pos: Pos2<usize>) -> &Self::Output {
-        self.vec.index(pos.y * self.width + pos.x)
+        self.entries.index(pos.y * self.width + pos.x)
     }
 }
 
 impl<T> IndexMut<Pos2<usize>> for Matrix<T> {
     #[inline]
     fn index_mut(&mut self, pos: Pos2<usize>) -> &mut Self::Output {
-        self.vec.index_mut(pos.y * self.width + pos.x)
+        self.entries.index_mut(pos.y * self.width + pos.x)
     }
 }
 
@@ -91,7 +94,7 @@ impl<T> Index<usize> for Matrix<T> {
     #[inline]
     fn index(&self, y: usize) -> &Self::Output {
         let row = y * self.width;
-        self.vec.index(row..row + self.width)
+        self.entries.index(row..row + self.width)
     }
 }
 
@@ -99,7 +102,7 @@ impl<T> IndexMut<usize> for Matrix<T> {
     #[inline]
     fn index_mut(&mut self, y: usize) -> &mut Self::Output {
         let row = y * self.width;
-        self.vec.index_mut(row..row + self.width)
+        self.entries.index_mut(row..row + self.width)
     }
 }
 
