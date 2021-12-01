@@ -54,7 +54,7 @@ fn run() -> Result<(), Box<dyn Error>> {
 
     println!("Part 1: {}", p1.count);
     println!("Part 2: {}", p2.count);
-    println!("Elapsed: {:?}", start.elapsed()); // 700µs
+    println!("Elapsed: {:?}", start.elapsed()); // 650µs
 
     assert_eq!(p1.count, 1559);
     assert_eq!(p2.count, 1600);
@@ -90,14 +90,11 @@ impl Part2 {
         Self { a, b, c, count: 0 }
     }
 
-    fn process(&mut self, next: u16) {
-        let prev = self.a + self.b + self.c;
-        let curr = self.b + self.c + next;
-
-        self.count += (curr > prev) as usize;
+    fn process(&mut self, curr: u16) {
+        self.count += (curr > self.a) as usize;
 
         self.a = self.b;
         self.b = self.c;
-        self.c = next;
+        self.c = curr;
     }
 }
