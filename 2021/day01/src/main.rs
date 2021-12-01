@@ -26,75 +26,41 @@ fn run() -> Result<(), Box<dyn Error>> {
 
     let mut line = String::new();
 
-    input.read_line(&mut line)?;
-    let a = line.as_bytes().parse();
-    line.clear();
-
-    let mut p1 = Part1::new(a);
+    let mut p1 = 0;
+    let mut p2 = 0;
 
     input.read_line(&mut line)?;
-    let b = line.as_bytes().parse();
+    let mut a: u16 = line.as_bytes().parse();
     line.clear();
-
-    p1.process(b);
 
     input.read_line(&mut line)?;
-    let c = line.as_bytes().parse();
+    let mut b: u16 = line.as_bytes().parse();
     line.clear();
 
-    p1.process(c);
-    let mut p2 = Part2::new(a, b, c);
+    p1 += (b > a) as usize;
+
+    input.read_line(&mut line)?;
+    let mut c: u16 = line.as_bytes().parse();
+    line.clear();
+
+    p1 += (c > b) as usize;
 
     while input.read_line(&mut line)? != 0 {
         let curr = line.as_bytes().parse();
-        p1.process(curr);
-        p2.process(curr);
+        p1 += (curr > c) as usize;
+        p2 += (curr > a) as usize;
+        a = b;
+        b = c;
+        c = curr;
         line.clear();
     }
 
-    println!("Part 1: {}", p1.count);
-    println!("Part 2: {}", p2.count);
+    println!("Part 1: {}", p1);
+    println!("Part 2: {}", p2);
     println!("Elapsed: {:?}", start.elapsed()); // 650µs
 
-    assert_eq!(p1.count, 1559);
-    assert_eq!(p2.count, 1600);
+    assert_eq!(p1, 1559);
+    assert_eq!(p2, 1600);
 
     Ok(())
-}
-
-struct Part1 {
-    prev: u16,
-    count: usize,
-}
-
-impl Part1 {
-    fn new(prev: u16) -> Self {
-        Self { prev, count: 0 }
-    }
-
-    fn process(&mut self, curr: u16) {
-        self.count += (curr > self.prev) as usize;
-        self.prev = curr;
-    }
-}
-
-struct Part2 {
-    a: u16,
-    b: u16,
-    c: u16,
-    count: usize,
-}
-
-impl Part2 {
-    fn new(a: u16, b: u16, c: u16) -> Self {
-        Self { a, b, c, count: 0 }
-    }
-
-    fn process(&mut self, curr: u16) {
-        self.count += (curr > self.a) as usize;
-
-        self.a = self.b;
-        self.b = self.c;
-        self.c = curr;
-    }
 }
