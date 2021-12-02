@@ -55,9 +55,11 @@ fn run() -> Result<(), Box<dyn Error>> {
         line.clear();
     }
 
+    let elapsed = start.elapsed();
+
     println!("Part 1: {}", p1);
     println!("Part 2: {}", p2);
-    println!("Elapsed: {:?}", start.elapsed()); // 650µs
+    println!("Elapsed: {:?}", elapsed); // 150µs
 
     assert_eq!(p1, 1559);
     assert_eq!(p2, 1600);
