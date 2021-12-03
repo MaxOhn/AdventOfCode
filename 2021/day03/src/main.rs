@@ -115,8 +115,8 @@ fn run() -> Result<(), Box<dyn Error>> {
     println!("Part 1: {} [{:?}]", p1, p1_elapsed); // 154µs
     println!("Part 2: {} [{:?}]", p2, p2_elapsed); // 181µs
 
-    assert_eq!(p1, 3885894);
-    assert_eq!(p2, 4375225);
+    assert_eq!(p1, 3_885_894);
+    assert_eq!(p2, 4_375_225);
 
     Ok(())
 }
