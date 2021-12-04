@@ -1,66 +1,81 @@
 #![feature(portable_simd)]
 
-use core_simd::{LaneCount, Simd, SupportedLaneCount};
+use core_simd::{u8x16, Simd};
 
 pub fn run(input: &[u8]) -> i64 {
-    let mut first_eight: MySimd<8> = MySimd::new();
-    let mut last_four: MySimd<4> = MySimd::new();
+    let mut simd = MySimd::new();
+    let mut count = 0;
 
     for chunk in ByteChunks::new(input) {
-        first_eight.process(&chunk[..8]);
-        last_four.process(&chunk[8..]);
+        simd.process(chunk);
+        count += 1;
     }
 
     let mut gamma = 0;
-    let mut epsilon = 0;
+    let (count, wraps) = simd.finish(count);
 
-    let (count_a, wraps_a) = first_eight.into_array();
-    let (count_b, wraps_b) = last_four.into_array();
-
-    let iter = count_a
-        .into_iter()
-        .chain(count_b)
-        .zip(wraps_a.into_iter().chain(wraps_b));
-
-    for (count, wrap) in iter {
+    for (count, wrap) in count.into_iter().zip(wraps).take(12) {
         let amount = (wrap as u32 * 256) + count as u32;
         gamma = gamma * 2 + (amount > 500) as i64;
-        epsilon = epsilon * 2 + (amount < 500) as i64;
     }
 
-    gamma * epsilon
+    gamma * (!gamma & 0b1111_1111_1111)
 }
 
-struct MySimd<const LANES: usize>
-where
-    LaneCount<LANES>: SupportedLaneCount,
-{
+struct MySimd {
     /// Amount of '1's at an index
-    count: Simd<u8, LANES>,
+    count: u8x16,
     /// Amount of times the u8 of `count` at the index wrapped around
-    wraps: Simd<u8, LANES>,
+    wraps: u8x16,
+    ones: u8x16,
 }
 
-impl<const LANES: usize> MySimd<LANES>
-where
-    LaneCount<LANES>: SupportedLaneCount,
-{
+impl MySimd {
     fn new() -> Self {
         Self {
             count: Simd::splat(0),
             wraps: Simd::splat(0),
+            ones: Simd::splat(1),
         }
     }
 
-    fn into_array(self) -> ([u8; LANES], [u8; LANES]) {
-        (self.count.to_array(), self.wraps.to_array())
+    fn process(&mut self, slice: &[u8]) {
+        let line = unsafe {
+            u8x16::from_array([
+                *slice.get_unchecked(0),
+                *slice.get_unchecked(1),
+                *slice.get_unchecked(2),
+                *slice.get_unchecked(3),
+                *slice.get_unchecked(4),
+                *slice.get_unchecked(5),
+                *slice.get_unchecked(6),
+                *slice.get_unchecked(7),
+                *slice.get_unchecked(8),
+                *slice.get_unchecked(9),
+                *slice.get_unchecked(10),
+                *slice.get_unchecked(11),
+                0,
+                0,
+                0,
+                0,
+            ])
+        };
+
+        self.count += line;
+        let mask = self.count.lanes_lt(line);
+        self.wraps = mask.select(self.wraps + self.ones, self.wraps);
     }
 
-    fn process(&mut self, slice: &[u8]) {
-        let line = Simd::from_slice(slice) - Simd::splat(b'0');
-        self.wraps = (line.lanes_ne(Simd::splat(0)) & self.count.lanes_eq(Simd::splat(u8::MAX)))
-            .select(self.wraps + Simd::splat(1), self.wraps);
-        self.count += line;
+    fn finish(&mut self, count: usize) -> ([u8; 16], [u8; 16]) {
+        let factor = count * b'0' as usize;
+        let wraps = Simd::splat((factor / 256) as u8);
+        let remaining = Simd::splat((factor % 256) as u8);
+
+        let mask = self.count.lanes_lt(remaining);
+        self.wraps -= mask.select(wraps + self.ones, wraps);
+        self.count -= remaining;
+
+        (self.count.to_array(), self.wraps.to_array())
     }
 }
 
@@ -91,7 +106,7 @@ impl<'a> Iterator for ByteChunks<'a> {
 
     #[inline]
     fn size_hint(&self) -> (usize, Option<usize>) {
-        let size = self.v.len() / 13;
+        let size = (self.v.len() + 1) / 13;
 
         (size, Some(size))
     }
