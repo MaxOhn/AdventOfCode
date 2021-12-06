@@ -1,8 +1,9 @@
 pub fn run(input: &[u8]) -> i64 {
     let mut count = [0; 9];
     let mut n = 0;
+    let trim = (input[input.len() - 1] == b'\n') as usize;
 
-    for &byte in input {
+    for &byte in &input[..input.len() - trim] {
         if byte == b',' {
             unsafe { *count.get_unchecked_mut(n) += 1 };
             n = 0;
