@@ -11,11 +11,19 @@ pub fn run(input: &[u8]) -> i64 {
         }
     }
 
-    unsafe { *count.get_unchecked_mut(n) += 1 };
+    unsafe {
+        *count.get_unchecked_mut(n) += 1;
 
-    for _ in 0..80 {
-        count.rotate_left(1);
-        unsafe { *count.get_unchecked_mut(6) += *count.get_unchecked(8) };
+        for _ in 0..80 {
+            let zero = *count.get_unchecked(0);
+
+            for n in 0..8 {
+                *count.get_unchecked_mut(n) = *count.get_unchecked(n + 1);
+            }
+
+            *count.get_unchecked_mut(6) += zero;
+            *count.get_unchecked_mut(8) = zero;
+        }
     }
 
     count.into_iter().sum()
