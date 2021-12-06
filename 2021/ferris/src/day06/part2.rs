@@ -1,20 +1,13 @@
 pub fn run(input: &[u8]) -> i64 {
     let mut count = [0; 9];
-    let mut n = 0;
-    let trim = (input[input.len() - 1] == b'\n') as usize;
 
-    for &byte in &input[..input.len() - trim] {
-        if byte == b',' {
-            unsafe { *count.get_unchecked_mut(n) += 1 };
-            n = 0;
-        } else {
-            n = n * 10 + (byte & 0x0F) as usize;
+    for i in (0..600).step_by(2) {
+        unsafe {
+            *count.get_unchecked_mut((*input.get_unchecked(i) - b'0') as usize) += 1;
         }
     }
 
     unsafe {
-        *count.get_unchecked_mut(n) += 1;
-
         for _ in 0..256 {
             let zero = *count.get_unchecked(0);
 
