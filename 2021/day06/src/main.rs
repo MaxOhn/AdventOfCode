@@ -52,14 +52,8 @@ fn solve(days: usize, nums: &[u8]) -> usize {
     }
 
     for _ in 0..days {
-        let zero = count[0];
-
-        for n in 0..8 {
-            count[n] = count[n + 1]
-        }
-
-        count[6] += zero;
-        count[8] = zero;
+        count.rotate_left(1);
+        count[6] += count[8];
     }
 
     count.into_iter().sum()
