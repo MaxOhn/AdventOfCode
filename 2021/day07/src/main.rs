@@ -44,11 +44,11 @@ fn run() -> Result<(), Box<dyn Error>> {
 
     let start = Instant::now();
     let p2 = part2(&nums, min, max);
-    println!("Part 2: {} [{:?}]", p2, start.elapsed()); //
+    println!("Part 2: {} [{:?}]", p2, start.elapsed()); // 1ms
 
     let start = Instant::now();
     let p1 = part1(&mut nums);
-    println!("Part 1: {} [{:?}]", p1, start.elapsed()); //
+    println!("Part 1: {} [{:?}]", p1, start.elapsed()); // 31µs
 
     assert_eq!(p1, 336_701);
     assert_eq!(p2, 95_167_302);
@@ -61,11 +61,6 @@ fn part1(input: &mut [i32]) -> i32 {
     let pos = input[input.len() / 2];
 
     input.iter().map(|&n| (n - pos).abs()).sum()
-
-    // (min..=max)
-    //     .map(|pos| input.iter().map(|&n| (n - pos).abs()).sum())
-    //     .min()
-    //     .unwrap_or(0)
 }
 
 fn part2(input: &[i32], min: i32, max: i32) -> i32 {

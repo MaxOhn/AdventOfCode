@@ -29,12 +29,12 @@ pub fn average(input: &[u8]) -> i64 {
         .map(|&n| (n - avg_min).abs())
         .fold(0, |fuel, diff| fuel + (diff * (diff + 1)) / 2);
 
-    let avg_max = numbers
+    let val_max = numbers
         .iter()
         .map(|&n| (n - avg_max).abs())
         .fold(0, |fuel, diff| fuel + (diff * (diff + 1)) / 2);
 
-    val_min.min(avg_max)
+    val_min.min(val_max)
 }
 
 pub fn regular(input: &[u8]) -> i64 {
