@@ -6,7 +6,7 @@ pub fn run(input: &[u8]) -> i64 {
     simd(input)
 }
 
-fn unoptimized(input: &[u8]) -> i64 {
+pub fn unoptimized(input: &[u8]) -> i64 {
     let mut count = [0; 9];
 
     for i in (0..600).step_by(2) {
@@ -20,7 +20,7 @@ fn unoptimized(input: &[u8]) -> i64 {
     count.into_iter().sum()
 }
 
-fn no_simd(input: &[u8]) -> i64 {
+pub fn no_simd(input: &[u8]) -> i64 {
     let mut count = [0; 9];
 
     unsafe {
@@ -418,7 +418,7 @@ fn no_simd(input: &[u8]) -> i64 {
     }
 }
 
-fn simd(input: &[u8]) -> i64 {
+pub fn simd(input: &[u8]) -> i64 {
     let mut count = [0; 9];
 
     unsafe {
