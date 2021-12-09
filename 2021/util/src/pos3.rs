@@ -6,6 +6,7 @@ use std::{
     },
 };
 
+#[derive(Copy, Clone, Hash)]
 pub struct Pos3<T> {
     pub x: T,
     pub y: T,
@@ -97,19 +98,6 @@ impl<T: Default> Default for Pos3<T> {
             x: T::default(),
             y: T::default(),
             z: T::default(),
-        }
-    }
-}
-
-impl<T: Copy> Copy for Pos3<T> {}
-
-impl<T: Clone> Clone for Pos3<T> {
-    #[inline]
-    fn clone(&self) -> Self {
-        Self {
-            x: self.x.clone(),
-            y: self.y.clone(),
-            z: self.z.clone(),
         }
     }
 }
