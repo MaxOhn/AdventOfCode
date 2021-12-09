@@ -160,6 +160,15 @@ fn run() -> Result<(), Box<dyn Error>> {
         //     }
         // }
 
+        // println!("a={:?}", a);
+        // println!("b={:?}", b);
+        // println!("c={:?}", c);
+        // println!("d={:?}", d);
+        // println!("e={:?}", e);
+        // println!("f={:?}", f);
+        // println!("g={:?}", g);
+        // println!("---");
+
         let b = b.into_iter().next().unwrap();
         let c = c.into_iter().next().unwrap();
         let e = e.into_iter().next().unwrap();
@@ -189,6 +198,19 @@ fn run() -> Result<(), Box<dyn Error>> {
                     let c_opt = word.iter().position(|&byte| byte == c);
                     let e_opt = word.iter().position(|&byte| byte == e);
 
+                    // println!(
+                    //     "{:?} => {:?} | {:?} => {}",
+                    //     word,
+                    //     e_opt,
+                    //     c_opt,
+                    //     match (c_opt, e_opt) {
+                    //         (None, None) => unreachable!(),
+                    //         (None, Some(_)) => 6,
+                    //         (Some(_), None) => 9,
+                    //         (Some(_), Some(_)) => 0,
+                    //     }
+                    // );
+
                     match (c_opt, e_opt) {
                         (None, None) => unreachable!(),
                         (None, Some(_)) => n += 6,
@@ -199,6 +221,8 @@ fn run() -> Result<(), Box<dyn Error>> {
                 _ => unreachable!(),
             }
         }
+
+        println!("{}", n);
 
         p2 += n;
 
