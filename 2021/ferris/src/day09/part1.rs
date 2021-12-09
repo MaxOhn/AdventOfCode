@@ -79,16 +79,33 @@ pub fn run(input: &[u8]) -> i64 {
         }
     }
 
+    let limit = w - 1;
+
     for y in 1..h - 1 {
-        for x in 1..w - 1 {
+        let mut x = 1;
+
+        loop {
             let curr = grid[(y * w + x)];
 
-            if !(grid[(y * w + (x - 1))] <= curr
+            if grid[(y * w + (x - 1))] <= curr
                 || grid[(y * w + (x + 1))] <= curr
                 || grid[((y - 1) * w + x)] <= curr
-                || grid[((y + 1) * w + x)] <= curr)
+                || grid[((y + 1) * w + x)] <= curr
             {
+                x += 1;
+
+                if x >= limit {
+                    break;
+                }
+
+                continue;
+            } else {
+                x += 2;
                 sum += curr as i64 + 1;
+
+                if x >= limit {
+                    break;
+                }
             }
         }
     }
