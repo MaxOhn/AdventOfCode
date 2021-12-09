@@ -4,6 +4,80 @@ use bits::Bits;
 use memchr::memchr;
 
 pub fn run(input: &[u8]) -> i64 {
+    short(input)
+}
+
+pub fn short(input: &[u8]) -> i64 {
+    let mut sum = 0;
+
+    for line in Lines::new(input) {
+        let split_idx = memchr(b'|', line).unwrap();
+        let mut left_iter = SplitWhiteSpace::new(&line[..split_idx]);
+
+        let mut words = [
+            left_iter.next().unwrap(),
+            left_iter.next().unwrap(),
+            left_iter.next().unwrap(),
+            left_iter.next().unwrap(),
+            left_iter.next().unwrap(),
+            left_iter.next().unwrap(),
+            left_iter.next().unwrap(),
+            left_iter.next().unwrap(),
+            left_iter.next().unwrap(),
+            left_iter.next().unwrap(),
+        ];
+
+        words.sort_unstable_by_key(|options| options.count_ones());
+        let [one, _, four, ..] = words;
+
+        let mut i = split_idx + 2;
+        let mut n = 0;
+
+        for _ in 0..3 {
+            let mut output = Bits::default();
+
+            while line[i] != b' ' {
+                output.add(line[i]);
+                i += 1;
+            }
+
+            i += 1;
+            n = n * 10 + digit_(output, one, four);
+        }
+
+        let mut output = Bits::default();
+
+        while i < line.len() && line[i] != b'\n' {
+            output.add(line[i]);
+            i += 1;
+        }
+
+        sum += n * 10 + digit_(output, one, four);
+    }
+
+    sum
+}
+
+fn digit_(bits: Bits, one: Bits, four: Bits) -> i64 {
+    match (
+        bits.count_ones(),
+        (one & bits).count_ones(),
+        (four & bits).count_ones(),
+    ) {
+        (2, _, _) => 1,
+        (3, _, _) => 7,
+        (4, _, _) => 4,
+        (5, 2, _) => 3,
+        (5, _, 2) => 2,
+        (5, _, _) => 5,
+        (6, 1, _) => 6,
+        (6, _, 4) => 9,
+        (6, _, _) => 0,
+        _ => 8,
+    }
+}
+
+pub fn long(input: &[u8]) -> i64 {
     let mut sum = 0;
 
     for line in Lines::new(input) {
@@ -183,9 +257,19 @@ mod bits {
         }
     }
 
+    impl BitAnd<Self> for Bits {
+        type Output = u8;
+
+        #[inline]
+        fn bitand(self, rhs: Self) -> Self::Output {
+            self.0 & rhs.0
+        }
+    }
+
     impl BitAnd<u8> for Bits {
         type Output = u8;
 
+        #[inline]
         fn bitand(self, rhs: u8) -> Self::Output {
             self.0 & rhs
         }
@@ -240,7 +324,7 @@ impl Iterator for SplitWhiteSpace<'_> {
 
     #[inline]
     fn next(&mut self) -> Option<Self::Item> {
-        let line = memchr(b' ', self.bytes)?;
+        let line = memchr(b' ', self.bytes).unwrap();
         let options = Bits::from_bytes(&self.bytes[..line]);
         self.bytes = &self.bytes[line + 1..];
 
@@ -261,6 +345,7 @@ impl<'b> Lines<'b> {
 impl<'b> Iterator for Lines<'b> {
     type Item = &'b [u8];
 
+    #[inline]
     fn next(&mut self) -> Option<Self::Item> {
         match memchr(b'\n', self.bytes) {
             Some(idx) => {
