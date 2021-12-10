@@ -144,5 +144,5 @@ pub fn run(input: &[u8]) -> i64 {
     basins.sort_unstable_by_key(|&len| Reverse(len));
     basins.truncate(3);
 
-    basins.iter().fold(1, |prod, &len| prod * len) as i64
+    basins.iter().product::<usize>() as i64
 }

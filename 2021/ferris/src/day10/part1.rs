@@ -1,7 +1,7 @@
 use arrayvec::ArrayVec;
 
 pub fn run(input: &[u8]) -> i64 {
-    with_arrayvec(input)
+    with_vec(input)
 }
 
 pub fn with_arrayvec(input: &[u8]) -> i64 {
@@ -33,8 +33,7 @@ pub fn with_vec(input: &[u8]) -> i64 {
             b']' => answer += (stack.pop() != Some(b'[')) as i64 * 57,
             b'}' => answer += (stack.pop() != Some(b'{')) as i64 * 1197,
             b'>' => answer += (stack.pop() != Some(b'<')) as i64 * 25_137,
-            b'\n' => stack.clear(),
-            _ => unreachable!(),
+            _ => stack.clear(),
         }
     }
 
