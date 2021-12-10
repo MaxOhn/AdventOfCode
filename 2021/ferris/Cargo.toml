@@ -4,6 +4,7 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
+arrayvec = "0.7"
 bytemuck = "1"
 itertools = "0.10"
 rayon = "1"
@@ -15,5 +16,5 @@ core_simd = { git = "https://github.com/rust-lang/portable-simd" }
 criterion = "*"
 
 [[bench]]
-name = "day08"
+name = "day10"
 harness = false
