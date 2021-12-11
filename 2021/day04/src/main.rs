@@ -21,6 +21,26 @@ fn main() {
 
 fn run() -> Result<(), Box<dyn Error>> {
     let start = Instant::now();
+    let (numbers, mut bingos) = parse_input()?;
+    println!("Setup: {:?}", start.elapsed()); // 156µs
+
+    let mut p1_bingos = bingos.clone();
+
+    let start = Instant::now();
+    let p1 = part1(&numbers, &mut p1_bingos);
+    println!("Part 1: {} [{:?}]", p1, start.elapsed()); // 124µs
+
+    let start = Instant::now();
+    let p2 = part2(&numbers, &mut bingos);
+    println!("Part 2: {} [{:?}]", p2, start.elapsed()); // 227µs
+
+    assert_eq!(p1, 39_902);
+    assert_eq!(p2, 26_936);
+
+    Ok(())
+}
+
+fn parse_input() -> Result<(Vec<u8>, Vec<Bingo>), Box<dyn Error>> {
     let file = File::open("./input")?;
     let mut input = BufReader::new(file);
 
@@ -40,22 +60,7 @@ fn run() -> Result<(), Box<dyn Error>> {
         bingos.push(bingo);
     }
 
-    println!("Setup: {:?}", start.elapsed()); // 195µs
-
-    let mut p1_bingos = bingos.clone();
-
-    let start = Instant::now();
-    let p1 = part1(&numbers, &mut p1_bingos);
-    println!("Part 1: {} [{:?}]", p1, start.elapsed()); // 200µs
-
-    let start = Instant::now();
-    let p2 = part2(&numbers, &mut bingos);
-    println!("Part 2: {} [{:?}]", p2, start.elapsed()); // 570µs
-
-    assert_eq!(p1, 39_902);
-    assert_eq!(p2, 26_936);
-
-    Ok(())
+    Ok((numbers, bingos))
 }
 
 fn part1(numbers: &[u8], bingos: &mut [Bingo]) -> u32 {
@@ -81,7 +86,7 @@ fn part2(numbers: &[u8], bingos: &mut Vec<Bingo>) -> u32 {
         }
 
         if marked {
-            bingos.retain(|bingo| !bingo.done());
+            bingos.retain(|bingo| !bingo.is_done());
 
             if bingos.len() == 1 {
                 break;
@@ -102,8 +107,23 @@ fn part2(numbers: &[u8], bingos: &mut Vec<Bingo>) -> u32 {
 
 #[derive(Clone)]
 struct Bingo {
-    field: Box<[Option<u8>]>,
+    field: Box<[u8]>,
+    marked: u32,
 }
+
+#[allow(clippy::unusual_byte_groupings)]
+const DONE: [u32; 10] = [
+    0b11111_00000_00000_00000_00000,
+    0b00000_11111_00000_00000_00000,
+    0b00000_00000_11111_00000_00000,
+    0b00000_00000_00000_11111_00000,
+    0b00000_00000_00000_00000_11111,
+    0b10000_10000_10000_10000_10000,
+    0b01000_01000_01000_01000_01000,
+    0b00100_00100_00100_00100_00100,
+    0b00010_00010_00010_00010_00010,
+    0b00001_00001_00001_00001_00001,
+];
 
 impl Bingo {
     fn parse(
@@ -124,55 +144,35 @@ impl Bingo {
                 .trim_end()
                 .split_whitespace()
                 .map(str::as_bytes)
-                .map(|bytes| bytes.parse())
-                .map(Some);
+                .map(|bytes| <&[u8] as Parse<u8>>::parse(&bytes));
 
             field.extend(row);
         }
 
         let field = field.into_boxed_slice();
 
-        Ok(Some(Self { field }))
+        Ok(Some(Self { field, marked: 0 }))
     }
 
     fn mark(&mut self, n: u8) -> bool {
-        let mut found = false;
+        if let Some(idx) = self.field.iter().position(|&elem| elem == n) {
+            self.marked |= 1 << idx;
 
-        for elem in self.field.iter_mut() {
-            if *elem == Some(n) {
-                elem.take();
-                found = true;
-            }
-        }
-
-        if found {
-            self.done()
+            self.is_done()
         } else {
             false
         }
     }
 
-    fn done(&self) -> bool {
-        for chunk in self.field.chunks_exact(5) {
-            if chunk.iter().all(Option::is_none) {
-                return true;
-            }
-        }
-
-        'outer: for col in 0..5 {
-            for row in 0..5 {
-                if self.field[row * 5 + col].is_some() {
-                    continue 'outer;
-                }
-            }
-
-            return true;
-        }
-
-        false
+    fn is_done(&self) -> bool {
+        DONE.iter().any(|&mask| self.marked & mask == mask)
     }
 
     fn sum(&self) -> u32 {
-        self.field.iter().flatten().map(|&n| n as u32).sum()
+        self.field
+            .iter()
+            .enumerate()
+            .filter_map(|(i, n)| (self.marked & (1 << i) == 0).then(|| *n as u32))
+            .sum()
     }
 }

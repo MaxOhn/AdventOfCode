@@ -2,7 +2,7 @@
 
 use std::intrinsics::unlikely;
 
-use core_simd::{u8x64, Mask, Simd};
+use core_simd::{u8x64, Simd};
 
 pub fn run(input: &[u8]) -> i64 {
     let new_line = memchr::memchr(b'\n', input).unwrap();
@@ -10,7 +10,7 @@ pub fn run(input: &[u8]) -> i64 {
     let mut bingos: Vec<_> = input[new_line..]
         .chunks_exact(76)
         .map(parse_board)
-        .map(|field| Bingo { field })
+        .map(|field| Bingo { field, marked: 0 })
         .collect();
 
     for n in NumberIter::new(&input[..new_line]) {
@@ -24,7 +24,7 @@ pub fn run(input: &[u8]) -> i64 {
     unreachable!()
 }
 
-fn parse_board(slice: &[u8]) -> [Num; 25] {
+fn parse_board(slice: &[u8]) -> [u8; 25] {
     let row = unsafe {
         [
             *slice.get_unchecked(2),
@@ -96,81 +96,63 @@ fn parse_board(slice: &[u8]) -> [Num; 25] {
 
     let simd = u8x64::from_array(row) - Simd::splat(b'0');
 
-    let mask = Mask::from_array([
-        true, false, true, false, true, false, true, false, true, false, true, false, true, false,
-        true, false, true, false, true, false, true, false, true, false, true, false, true, false,
-        true, false, true, false, true, false, true, false, true, false, true, false, true, false,
-        true, false, true, false, true, false, true, false, false, false, false, false, false,
-        false, false, false, false, false, false, false, false, false,
-    ]);
-
-    let simd = mask.select(simd * Simd::splat(10), simd);
     let [a1, a2, b1, b2, c1, c2, d1, d2, e1, e2, f1, f2, g1, g2, h1, h2, i1, i2, j1, j2, k1, k2, l1, l2, m1, m2, n1, n2, o1, o2, p1, p2, q1, q2, r1, r2, s1, s2, t1, t2, u1, u2, v1, v2, w1, w2, x1, x2, y1, y2, ..] =
         simd.to_array();
 
-    // * Note: b' '.wrapping_sub(b'0').wrapping_mul(10) = 96
+    // * Note: b' '.wrapping_sub(b'0') = 240
     [
-        Num((a1 != 96) as u8 * a1 + a2),
-        Num((b1 != 96) as u8 * b1 + b2),
-        Num((c1 != 96) as u8 * c1 + c2),
-        Num((d1 != 96) as u8 * d1 + d2),
-        Num((e1 != 96) as u8 * e1 + e2),
-        Num((f1 != 96) as u8 * f1 + f2),
-        Num((g1 != 96) as u8 * g1 + g2),
-        Num((h1 != 96) as u8 * h1 + h2),
-        Num((i1 != 96) as u8 * i1 + i2),
-        Num((j1 != 96) as u8 * j1 + j2),
-        Num((k1 != 96) as u8 * k1 + k2),
-        Num((l1 != 96) as u8 * l1 + l2),
-        Num((m1 != 96) as u8 * m1 + m2),
-        Num((n1 != 96) as u8 * n1 + n2),
-        Num((o1 != 96) as u8 * o1 + o2),
-        Num((p1 != 96) as u8 * p1 + p2),
-        Num((q1 != 96) as u8 * q1 + q2),
-        Num((r1 != 96) as u8 * r1 + r2),
-        Num((s1 != 96) as u8 * s1 + s2),
-        Num((t1 != 96) as u8 * t1 + t2),
-        Num((u1 != 96) as u8 * u1 + u2),
-        Num((v1 != 96) as u8 * v1 + v2),
-        Num((w1 != 96) as u8 * w1 + w2),
-        Num((x1 != 96) as u8 * x1 + x2),
-        Num((y1 != 96) as u8 * y1 + y2),
+        (a1 != 240) as u8 * a1 * 10 + a2,
+        (b1 != 240) as u8 * b1 * 10 + b2,
+        (c1 != 240) as u8 * c1 * 10 + c2,
+        (d1 != 240) as u8 * d1 * 10 + d2,
+        (e1 != 240) as u8 * e1 * 10 + e2,
+        (f1 != 240) as u8 * f1 * 10 + f2,
+        (g1 != 240) as u8 * g1 * 10 + g2,
+        (h1 != 240) as u8 * h1 * 10 + h2,
+        (i1 != 240) as u8 * i1 * 10 + i2,
+        (j1 != 240) as u8 * j1 * 10 + j2,
+        (k1 != 240) as u8 * k1 * 10 + k2,
+        (l1 != 240) as u8 * l1 * 10 + l2,
+        (m1 != 240) as u8 * m1 * 10 + m2,
+        (n1 != 240) as u8 * n1 * 10 + n2,
+        (o1 != 240) as u8 * o1 * 10 + o2,
+        (p1 != 240) as u8 * p1 * 10 + p2,
+        (q1 != 240) as u8 * q1 * 10 + q2,
+        (r1 != 240) as u8 * r1 * 10 + r2,
+        (s1 != 240) as u8 * s1 * 10 + s2,
+        (t1 != 240) as u8 * t1 * 10 + t2,
+        (u1 != 240) as u8 * u1 * 10 + u2,
+        (v1 != 240) as u8 * v1 * 10 + v2,
+        (w1 != 240) as u8 * w1 * 10 + w2,
+        (x1 != 240) as u8 * x1 * 10 + x2,
+        (y1 != 240) as u8 * y1 * 10 + y2,
     ]
 }
 
-#[derive(Copy, Clone, Debug)]
-struct Num(u8);
-
-impl Num {
-    const MARK: u8 = 0b1000_0000;
-
-    fn is_marked(self) -> bool {
-        self.0 >= Self::MARK
-    }
-
-    /// Returns whether it was newly marked
-    fn mark(&mut self) -> bool {
-        let was_marked = self.is_marked();
-        self.0 |= Self::MARK;
-
-        !was_marked
-    }
-}
-
 struct Bingo {
-    field: [Num; 25],
+    field: [u8; 25],
+    marked: u32,
 }
+
+#[allow(clippy::unusual_byte_groupings)]
+const DONE: [u32; 10] = [
+    0b11111_00000_00000_00000_00000,
+    0b00000_11111_00000_00000_00000,
+    0b00000_00000_11111_00000_00000,
+    0b00000_00000_00000_11111_00000,
+    0b00000_00000_00000_00000_11111,
+    0b10000_10000_10000_10000_10000,
+    0b01000_01000_01000_01000_01000,
+    0b00100_00100_00100_00100_00100,
+    0b00010_00010_00010_00010_00010,
+    0b00001_00001_00001_00001_00001,
+];
 
 impl Bingo {
-    /// Returns whether the board is now done
     fn mark(&mut self, n: u8) -> bool {
-        let marked = self
-            .field
-            .iter_mut()
-            .filter(|num| num.0 == n)
-            .fold(false, |marked, elem| marked | elem.mark());
+        if let Some(idx) = self.field.iter().position(|&elem| elem == n) {
+            self.marked |= 1 << idx;
 
-        if marked {
             self.is_done()
         } else {
             false
@@ -178,30 +160,14 @@ impl Bingo {
     }
 
     fn is_done(&self) -> bool {
-        for row in self.field.chunks_exact(5) {
-            if row.iter().copied().all(Num::is_marked) {
-                return true;
-            }
-        }
-
-        'outer: for col in 0..5 {
-            for row in 0..5 {
-                if !self.field[row * 5 + col].is_marked() {
-                    continue 'outer;
-                }
-            }
-
-            return true;
-        }
-
-        false
+        DONE.iter().any(|&mask| self.marked & mask == mask)
     }
 
     fn sum(&self) -> i64 {
         self.field
             .iter()
-            .filter(|n| !n.is_marked())
-            .map(|n| n.0 as i64)
+            .enumerate()
+            .filter_map(|(i, n)| (self.marked & (1 << i) == 0).then(|| *n as i64))
             .sum()
     }
 }
