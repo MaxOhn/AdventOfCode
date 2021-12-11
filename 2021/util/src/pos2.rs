@@ -1,12 +1,12 @@
 use std::{
     fmt::{Debug, Display, Formatter, Result},
     ops::{
-        Add, AddAssign, Div, DivAssign, Index, IndexMut, Mul, MulAssign, Rem, RemAssign, Sub,
-        SubAssign,
+        Add, AddAssign, Div, DivAssign, Index, IndexMut, Mul, MulAssign, RangeInclusive, Rem,
+        RemAssign, Sub, SubAssign,
     },
 };
 
-#[derive(Copy, Clone, Hash)]
+#[derive(Copy, Clone, Default, Eq, Hash, PartialEq)]
 pub struct Pos2<T> {
     pub x: T,
     pub y: T,
@@ -69,30 +69,6 @@ macro_rules! impl_pos2_decimal {
 }
 
 impl_pos2_decimal!(f32, f64);
-
-impl<T: PartialEq> PartialEq for Pos2<T> {
-    #[inline]
-    fn eq(&self, other: &Self) -> bool {
-        self.x.eq(&other.x) && self.y.eq(&other.y)
-    }
-
-    #[inline]
-    fn ne(&self, other: &Self) -> bool {
-        self.x.ne(&other.x) || self.y.ne(&other.y)
-    }
-}
-
-impl<T: Eq> Eq for Pos2<T> {}
-
-impl<T: Default> Default for Pos2<T> {
-    #[inline]
-    fn default() -> Self {
-        Self {
-            x: T::default(),
-            y: T::default(),
-        }
-    }
-}
 
 impl<T: Debug> Debug for Pos2<T> {
     fn fmt(&self, f: &mut Formatter) -> Result {
@@ -210,37 +186,97 @@ impl<U: Copy, T: RemAssign<U>> RemAssign<U> for Pos2<T> {
 }
 
 macro_rules! impl_index {
-        ($($ty:ty),+) => {
-            $(
-                impl<T> Index<$ty> for Pos2<T> {
-                    type Output = T;
+    ($($ty:ty),+) => {
+        $(
+            impl<T> Index<$ty> for Pos2<T> {
+                type Output = T;
 
-                    #[inline]
-                    fn index(&self, idx: $ty) -> &Self::Output {
-                        if idx == 0 {
-                            &self.x
-                        } else if idx == 1 {
-                            &self.y
-                        } else {
-                            panic!("index must be 0 or 1")
-                        }
+                #[inline]
+                fn index(&self, idx: $ty) -> &Self::Output {
+                    if idx == 0 {
+                        &self.x
+                    } else if idx == 1 {
+                        &self.y
+                    } else {
+                        panic!("index must be 0 or 1")
                     }
                 }
+            }
 
-                impl<T> IndexMut<$ty> for Pos2<T> {
-                    #[inline]
-                    fn index_mut(&mut self, idx: $ty) -> &mut Self::Output {
-                        if idx == 0 {
-                            &mut self.x
-                        } else if idx == 1 {
-                            &mut self.y
-                        } else {
-                            panic!("index must be 0 or 1")
-                        }
+            impl<T> IndexMut<$ty> for Pos2<T> {
+                #[inline]
+                fn index_mut(&mut self, idx: $ty) -> &mut Self::Output {
+                    if idx == 0 {
+                        &mut self.x
+                    } else if idx == 1 {
+                        &mut self.y
+                    } else {
+                        panic!("index must be 0 or 1")
                     }
                 }
+            }
             )+
-        };
-    }
+    };
+}
 
 impl_index!(i8, i16, i32, i64, isize, u8, u16, u32, u64, usize);
+
+// Can be generic once `std::iter::Step` is stabilized
+pub struct Pos2Iter {
+    x_range_curr: RangeInclusive<usize>,
+    x_range: RangeInclusive<usize>,
+    y_range: RangeInclusive<usize>,
+    y: Option<usize>,
+}
+
+impl Pos2Iter {
+    #[inline]
+    pub fn new(min_x: usize, max_x: usize, min_y: usize, max_y: usize) -> Self {
+        let x_range = min_x..=max_x;
+        let mut y_range = min_y..=max_y;
+
+        Self {
+            x_range_curr: x_range.clone(),
+            y: y_range.next(),
+            x_range,
+            y_range,
+        }
+    }
+}
+
+impl Iterator for Pos2Iter {
+    type Item = Pos2<usize>;
+
+    #[inline]
+    fn next(&mut self) -> Option<Self::Item> {
+        let (x, y) = match self.x_range_curr.next() {
+            Some(x) => (x, self.y?),
+            None => {
+                self.x_range_curr = self.x_range.clone();
+                self.y = self.y_range.next();
+
+                (self.x_range_curr.next()?, self.y?)
+            }
+        };
+
+        Some(Pos2::new(x, y))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn iter() {
+        let mut iter = Pos2Iter::new(2, 4, 0, 1);
+
+        assert_eq!(iter.next(), Some(Pos2::new(2, 0)));
+        assert_eq!(iter.next(), Some(Pos2::new(3, 0)));
+        assert_eq!(iter.next(), Some(Pos2::new(4, 0)));
+        assert_eq!(iter.next(), Some(Pos2::new(2, 1)));
+        assert_eq!(iter.next(), Some(Pos2::new(3, 1)));
+        assert_eq!(iter.next(), Some(Pos2::new(4, 1)));
+        assert_eq!(iter.next(), None);
+    }
+}

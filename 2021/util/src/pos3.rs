@@ -6,7 +6,7 @@ use std::{
     },
 };
 
-#[derive(Copy, Clone, Hash)]
+#[derive(Copy, Clone, Default, Eq, Hash, PartialEq)]
 pub struct Pos3<T> {
     pub x: T,
     pub y: T,
@@ -76,31 +76,6 @@ macro_rules! impl_pos2_decimal {
 }
 
 impl_pos2_decimal!(f32, f64);
-
-impl<T: PartialEq> PartialEq for Pos3<T> {
-    #[inline]
-    fn eq(&self, other: &Self) -> bool {
-        self.x.eq(&other.x) && self.y.eq(&other.y) && self.z.eq(&other.z)
-    }
-
-    #[inline]
-    fn ne(&self, other: &Self) -> bool {
-        self.x.ne(&other.x) || self.y.ne(&other.y) || self.z.ne(&other.z)
-    }
-}
-
-impl<T: Eq> Eq for Pos3<T> {}
-
-impl<T: Default> Default for Pos3<T> {
-    #[inline]
-    fn default() -> Self {
-        Self {
-            x: T::default(),
-            y: T::default(),
-            z: T::default(),
-        }
-    }
-}
 
 impl<T: Debug> Debug for Pos3<T> {
     fn fmt(&self, f: &mut Formatter) -> Result {

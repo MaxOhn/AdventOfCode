@@ -1,7 +1,11 @@
-use std::ops::{Index, IndexMut};
+use std::{
+    ops::{Index, IndexMut},
+    slice::{Iter, IterMut},
+};
 
-use crate::Pos2;
+use crate::{Pos2, Pos2Iter};
 
+#[derive(Clone, Debug)]
 pub struct Matrix<T> {
     entries: Box<[T]>,
     width: usize,
@@ -34,6 +38,112 @@ impl<T> Matrix<T> {
     #[inline]
     pub fn height(&self) -> usize {
         self.entries.len() / self.width
+    }
+
+    #[inline]
+    pub fn len(&self) -> usize {
+        self.entries.len()
+    }
+
+    #[inline]
+    pub fn is_empty(&self) -> bool {
+        self.entries.is_empty()
+    }
+
+    #[inline]
+    pub fn get<I>(&self, pos: Pos2<I>) -> Option<&T>
+    where
+        usize: TryFrom<I>,
+    {
+        let x = pos.x.try_into().ok()?;
+        let y = pos.y.try_into().ok()?;
+
+        (x < self.width && y < self.height()).then(|| self.index((x, y)))
+    }
+
+    #[inline]
+    pub fn get_mut<I>(&mut self, pos: Pos2<I>) -> Option<&mut T>
+    where
+        usize: TryFrom<I>,
+    {
+        let x = pos.x.try_into().ok()?;
+        let y = pos.y.try_into().ok()?;
+
+        (x < self.width && y < self.height()).then(|| self.index_mut((x, y)))
+    }
+
+    #[inline]
+    /// Iterates over neighbors:
+    ///    1
+    ///   2 3
+    ///    4
+    pub fn neighbors_4(&self, pos: Pos2<usize>) -> impl Iterator<Item = Pos2<usize>> {
+        let cx = pos.x as isize;
+        let cy = pos.y as isize;
+        let w = self.width as isize;
+        let h = self.height() as isize;
+
+        let offsets = [(0, -1), (-1, 0), (1, 0), (0, 1)];
+
+        offsets
+            .into_iter()
+            .map(move |(x, y)| {
+                let nx = cx + x;
+                let ny = cy + y;
+
+                (nx >= 0 && ny >= 0 && nx < w && ny < h)
+                    .then(|| Pos2::new(nx as usize, ny as usize))
+            })
+            .flatten()
+    }
+
+    #[inline]
+    /// Iterates over neighbors:
+    ///   123
+    ///   4 5
+    ///   678
+    pub fn neighbors_8(&self, pos: Pos2<usize>) -> impl Iterator<Item = Pos2<usize>> {
+        let cx = pos.x as isize;
+        let cy = pos.y as isize;
+        let w = self.width as isize;
+        let h = self.height() as isize;
+
+        let offsets = [
+            (-1, -1),
+            (0, -1),
+            (1, -1),
+            (-1, 0),
+            (1, 0),
+            (-1, 1),
+            (0, 1),
+            (1, 1),
+        ];
+
+        offsets
+            .into_iter()
+            .map(move |(x, y)| {
+                let nx = cx + x;
+                let ny = cy + y;
+
+                (nx >= 0 && ny >= 0 && nx < w && ny < h)
+                    .then(|| Pos2::new(nx as usize, ny as usize))
+            })
+            .flatten()
+    }
+
+    #[inline]
+    pub fn pos_iter(&self) -> Pos2Iter {
+        Pos2Iter::new(0, self.width - 1, 0, self.height() - 1)
+    }
+
+    #[inline]
+    pub fn iter(&self) -> Iter<'_, T> {
+        self.entries.iter()
+    }
+
+    #[inline]
+    pub fn iter_mut(&mut self) -> IterMut<'_, T> {
+        self.entries.iter_mut()
     }
 }
 
@@ -117,14 +227,70 @@ mod tests {
     }
 
     #[test]
-    fn neighbors_centre() {
+    fn neighbors_4_centre() {
+        let matrix = basic_matrix();
+
+        let mut neighbors = matrix.neighbors_4(Pos2::new(1, 1));
+
+        assert_eq!(neighbors.next(), Some(Pos2::new(1, 0)));
+        assert_eq!(neighbors.next(), Some(Pos2::new(0, 1)));
+        assert_eq!(neighbors.next(), Some(Pos2::new(2, 1)));
+        assert_eq!(neighbors.next(), Some(Pos2::new(1, 2)));
+        assert_eq!(neighbors.next(), None);
+    }
+
+    #[test]
+    fn neighbors_4_edge() {
+        let matrix = basic_matrix();
+
+        let mut neighbors = matrix.neighbors_4(Pos2::new(0, 1));
+
+        assert_eq!(neighbors.next(), Some(Pos2::new(0, 0)));
+        assert_eq!(neighbors.next(), Some(Pos2::new(1, 1)));
+        assert_eq!(neighbors.next(), Some(Pos2::new(0, 2)));
+        assert_eq!(neighbors.next(), None);
+    }
+
+    #[test]
+    fn neighbors_8_centre() {
+        let matrix = basic_matrix();
+
+        let mut neighbors = matrix.neighbors_8(Pos2::new(1, 1));
+
+        assert_eq!(neighbors.next(), Some(Pos2::new(0, 0)));
+        assert_eq!(neighbors.next(), Some(Pos2::new(1, 0)));
+        assert_eq!(neighbors.next(), Some(Pos2::new(2, 0)));
+        assert_eq!(neighbors.next(), Some(Pos2::new(0, 1)));
+        assert_eq!(neighbors.next(), Some(Pos2::new(2, 1)));
+        assert_eq!(neighbors.next(), Some(Pos2::new(0, 2)));
+        assert_eq!(neighbors.next(), Some(Pos2::new(1, 2)));
+        assert_eq!(neighbors.next(), Some(Pos2::new(2, 2)));
+        assert_eq!(neighbors.next(), None);
+    }
+
+    #[test]
+    fn neighbors_8_edge() {
+        let matrix = basic_matrix();
+
+        let mut neighbors = matrix.neighbors_8(Pos2::new(0, 1));
+
+        assert_eq!(neighbors.next(), Some(Pos2::new(0, 0)));
+        assert_eq!(neighbors.next(), Some(Pos2::new(1, 0)));
+        assert_eq!(neighbors.next(), Some(Pos2::new(1, 1)));
+        assert_eq!(neighbors.next(), Some(Pos2::new(0, 2)));
+        assert_eq!(neighbors.next(), Some(Pos2::new(1, 2)));
+        assert_eq!(neighbors.next(), None);
+    }
+
+    #[test]
+    fn count_neighbors_centre() {
         let matrix = basic_matrix();
 
         assert_eq!(matrix.count_neighbors(1, 1, 2), 1);
     }
 
     #[test]
-    fn neighbors_border() {
+    fn count_neighbors_edge() {
         let matrix = basic_matrix();
 
         assert_eq!(matrix.count_neighbors(0, 1, 7), 1);
