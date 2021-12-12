@@ -3,13 +3,13 @@ use std::collections::HashMap;
 pub fn run(input: &[u8]) -> i64 {
     let (map, start, end) = parse_input(input);
 
-    let mut paths = Vec::with_capacity(8192);
+    let mut paths = 0;
     let mut stack = vec![(start, vec![start])];
 
     while let Some((cave, path)) = stack.pop() {
         for &cave in map.get(cave) {
             if cave == end {
-                paths.push(path.clone());
+                paths += 1;
             } else if !cave.is_small() {
                 stack.push((cave, path.clone()));
             } else if is_valid(&path, cave) {
@@ -20,7 +20,7 @@ pub fn run(input: &[u8]) -> i64 {
         }
     }
 
-    paths.len() as i64
+    paths
 }
 
 #[derive(Copy, Clone, Eq, Hash, PartialEq)]

@@ -25,11 +25,11 @@ fn run() -> Result<(), Box<dyn Error>> {
 
     let start_ = Instant::now();
     let p1 = part1(&map, start, end);
-    println!("Part 1: {} [{:?}]", p1, start_.elapsed()); // 2.3ms
+    println!("Part 1: {} [{:?}]", p1, start_.elapsed()); // 1.4ms
 
     let start_ = Instant::now();
     let p2 = part2(&map, start, end);
-    println!("Part 2: {} [{:?}]", p2, start_.elapsed()); // 457ms
+    println!("Part 2: {} [{:?}]", p2, start_.elapsed()); // 420ms
 
     assert_eq!(p1, 5756);
     assert_eq!(p2, 144_603);
@@ -38,13 +38,13 @@ fn run() -> Result<(), Box<dyn Error>> {
 }
 
 fn part1(map: &Map, start: Id, end: Id) -> usize {
-    let mut paths = Vec::with_capacity(8192);
+    let mut paths = 0;
     let mut stack = vec![(start, vec![start])];
 
     while let Some((cave, path)) = stack.pop() {
         for &cave in map.get(cave) {
             if cave == end {
-                paths.push(path.clone());
+                paths += 1;
             } else if !cave.is_small() {
                 stack.push((cave, path.clone()));
             } else if is_valid_1(&path, cave) {
@@ -55,18 +55,18 @@ fn part1(map: &Map, start: Id, end: Id) -> usize {
         }
     }
 
-    paths.len()
+    paths
 }
 
 fn part2(map: &Map, start: Id, end: Id) -> usize {
-    let mut paths = Vec::with_capacity(200_000);
+    let mut paths = 0;
     let mut buf = HashMap::new();
     let mut stack = vec![(start, vec![start])];
 
     while let Some((cave, path)) = stack.pop() {
         for &cave in map.get(cave) {
             if cave == end {
-                paths.push(path.clone());
+                paths += 1;
             } else if !cave.is_small() {
                 stack.push((cave, path.clone()));
             } else if is_valid_2(&path, cave, &mut buf) {
@@ -77,7 +77,7 @@ fn part2(map: &Map, start: Id, end: Id) -> usize {
         }
     }
 
-    paths.len()
+    paths
 }
 
 #[derive(Copy, Clone, Eq, Hash, PartialEq)]
