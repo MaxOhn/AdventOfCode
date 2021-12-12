@@ -1,5 +1,5 @@
 use std::{
-    collections::{HashMap, VecDeque},
+    collections::HashMap,
     error::Error,
     fs::File,
     io::{BufRead, BufReader},
@@ -25,11 +25,11 @@ fn run() -> Result<(), Box<dyn Error>> {
 
     let start_ = Instant::now();
     let p1 = part1(&map, start, end);
-    println!("Part 1: {} [{:?}]", p1, start_.elapsed()); // 3.1ms
+    println!("Part 1: {} [{:?}]", p1, start_.elapsed()); // 2.9ms
 
     let start_ = Instant::now();
     let p2 = part2(&map, start, end);
-    println!("Part 2: {} [{:?}]", p2, start_.elapsed()); // 495ms
+    println!("Part 2: {} [{:?}]", p2, start_.elapsed()); // 485ms
 
     assert_eq!(p1, 5756);
     assert_eq!(p2, 144_603);
@@ -39,17 +39,16 @@ fn run() -> Result<(), Box<dyn Error>> {
 
 fn part1(map: &Map, start: Id, end: Id) -> usize {
     let mut paths = Vec::with_capacity(8192);
-    let mut queue = VecDeque::with_capacity(4092);
-    queue.push_front((start, vec![start]));
+    let mut stack = vec![(start, vec![start])];
 
-    while let Some((node, path)) = queue.pop_back() {
+    while let Some((node, path)) = stack.pop() {
         for &node in map.get(node) {
             if node == end {
                 paths.push(path.clone());
             } else if is_valid_1(&path, node) {
                 let mut path_ = path.clone();
                 path_.push(node);
-                queue.push_front((node, path_));
+                stack.push((node, path_));
             }
         }
     }
@@ -59,18 +58,17 @@ fn part1(map: &Map, start: Id, end: Id) -> usize {
 
 fn part2(map: &Map, start: Id, end: Id) -> usize {
     let mut paths = Vec::with_capacity(200_000);
-    let mut buf = HashMap::with_capacity(8);
-    let mut queue = VecDeque::with_capacity(75_000);
-    queue.push_front((start, vec![start]));
+    let mut buf = HashMap::new();
+    let mut stack = vec![(start, vec![start])];
 
-    while let Some((node, path)) = queue.pop_back() {
+    while let Some((node, path)) = stack.pop() {
         for &node in map.get(node) {
             if node == end {
                 paths.push(path.clone());
             } else if is_valid_2(&path, node, &mut buf) {
                 let mut path_ = path.clone();
                 path_.push(node);
-                queue.push_front((node, path_));
+                stack.push((node, path_));
             }
         }
     }
