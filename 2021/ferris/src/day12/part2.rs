@@ -1,67 +1,11 @@
-use std::{
-    collections::HashMap,
-    error::Error,
-    fs::File,
-    io::{BufRead, BufReader},
-    time::Instant,
-};
+use std::collections::HashMap;
 
-fn main() {
-    if let Err(err) = run() {
-        eprintln!("Error: {}", err);
-        let mut e: &dyn Error = &*err;
+pub fn run(input: &[u8]) -> i64 {
+    let (map, start, end) = parse_input(input);
 
-        while let Some(src) = e.source() {
-            eprintln!("  - caused by: {}", src);
-            e = src;
-        }
-    }
-}
-
-fn run() -> Result<(), Box<dyn Error>> {
-    let start_ = Instant::now();
-    let (map, start, end) = parse_input()?;
-    println!("Setup: {:?}", start_.elapsed()); // 63µs
-
-    let start_ = Instant::now();
-    let p1 = part1(&map, start, end);
-    println!("Part 1: {} [{:?}]", p1, start_.elapsed()); // 2.3ms
-
-    let start_ = Instant::now();
-    let p2 = part2(&map, start, end);
-    println!("Part 2: {} [{:?}]", p2, start_.elapsed()); // 457ms
-
-    assert_eq!(p1, 5756);
-    assert_eq!(p2, 144_603);
-
-    Ok(())
-}
-
-fn part1(map: &Map, start: Id, end: Id) -> usize {
-    let mut paths = Vec::with_capacity(8192);
-    let mut stack = vec![(start, vec![start])];
-
-    while let Some((cave, path)) = stack.pop() {
-        for &cave in map.get(cave) {
-            if cave == end {
-                paths.push(path.clone());
-            } else if !cave.is_small() {
-                stack.push((cave, path.clone()));
-            } else if is_valid_1(&path, cave) {
-                let mut path_ = path.clone();
-                path_.push(cave);
-                stack.push((cave, path_));
-            }
-        }
-    }
-
-    paths.len()
-}
-
-fn part2(map: &Map, start: Id, end: Id) -> usize {
     let mut paths = Vec::with_capacity(200_000);
-    let mut buf = HashMap::new();
     let mut stack = vec![(start, vec![start])];
+    let mut buf = HashMap::new();
 
     while let Some((cave, path)) = stack.pop() {
         for &cave in map.get(cave) {
@@ -69,7 +13,7 @@ fn part2(map: &Map, start: Id, end: Id) -> usize {
                 paths.push(path.clone());
             } else if !cave.is_small() {
                 stack.push((cave, path.clone()));
-            } else if is_valid_2(&path, cave, &mut buf) {
+            } else if is_valid(&path, cave, &mut buf) {
                 let mut path_ = path.clone();
                 path_.push(cave);
                 stack.push((cave, path_));
@@ -77,7 +21,7 @@ fn part2(map: &Map, start: Id, end: Id) -> usize {
         }
     }
 
-    paths.len()
+    paths.len() as i64
 }
 
 #[derive(Copy, Clone, Eq, Hash, PartialEq)]
@@ -137,10 +81,8 @@ impl Map {
     }
 }
 
-fn parse_input() -> Result<(Map, Id, Id), Box<dyn Error>> {
-    let file = File::open("./input")?;
-    let mut input = BufReader::new(file);
-    let mut line = String::new();
+fn parse_input(input: &[u8]) -> (Map, Id, Id) {
+    let input = unsafe { std::str::from_utf8_unchecked(input) };
 
     let mut ids = HashMap::new();
     let mut curr_id = 0;
@@ -158,16 +100,14 @@ fn parse_input() -> Result<(Map, Id, Id), Box<dyn Error>> {
 
     let mut map = Map::new();
 
-    while input.read_line(&mut line)? != 0 {
-        let (left, right) = line.trim_end().split_once('-').unwrap();
+    for line in input.lines() {
+        let (left, right) = line.split_once('-').unwrap();
 
         let left = get_id(left);
         let right = get_id(right);
 
         map.get_mut(left).push(right);
         map.get_mut(right).push(left);
-
-        line.clear();
     }
 
     let start = *ids.get("start").unwrap();
@@ -178,14 +118,11 @@ fn parse_input() -> Result<(Map, Id, Id), Box<dyn Error>> {
 
     let end = *ids.get("end").unwrap();
 
-    Ok((map, start, end))
+    (map, start, end)
 }
 
-fn is_valid_1(path: &[Id], cave: Id) -> bool {
-    !path.contains(&cave)
-}
-
-fn is_valid_2(path: &[Id], cave: Id, buf: &mut HashMap<Id, usize>) -> bool {
+#[inline(always)]
+fn is_valid(path: &[Id], cave: Id, buf: &mut HashMap<Id, usize>) -> bool {
     buf.clear();
 
     for &cave in path {
