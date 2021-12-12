@@ -21,15 +21,15 @@ fn main() {
 fn run() -> Result<(), Box<dyn Error>> {
     let start_ = Instant::now();
     let (map, start, end) = parse_input()?;
-    println!("Setup: {:?}", start_.elapsed()); // 65µs
+    println!("Setup: {:?}", start_.elapsed()); // 63µs
 
     let start_ = Instant::now();
     let p1 = part1(&map, start, end);
-    println!("Part 1: {} [{:?}]", p1, start_.elapsed()); // 3.4ms
+    println!("Part 1: {} [{:?}]", p1, start_.elapsed()); // 3.1ms
 
     let start_ = Instant::now();
     let p2 = part2(&map, start, end);
-    println!("Part 2: {} [{:?}]", p2, start_.elapsed()); // 510ms
+    println!("Part 2: {} [{:?}]", p2, start_.elapsed()); // 495ms
 
     assert_eq!(p1, 5756);
     assert_eq!(p2, 144_603);
@@ -37,15 +37,13 @@ fn run() -> Result<(), Box<dyn Error>> {
     Ok(())
 }
 
-type Map = HashMap<Id, Vec<Id>>;
-
 fn part1(map: &Map, start: Id, end: Id) -> usize {
     let mut paths = Vec::with_capacity(8192);
     let mut queue = VecDeque::with_capacity(4092);
     queue.push_front((start, vec![start]));
 
     while let Some((node, path)) = queue.pop_back() {
-        for &node in map.get(&node).unwrap() {
+        for &node in map.get(node) {
             if node == end {
                 paths.push(path.clone());
             } else if is_valid_1(&path, node) {
@@ -66,7 +64,7 @@ fn part2(map: &Map, start: Id, end: Id) -> usize {
     queue.push_front((start, vec![start]));
 
     while let Some((node, path)) = queue.pop_back() {
-        for &node in map.get(&node).unwrap() {
+        for &node in map.get(node) {
             if node == end {
                 paths.push(path.clone());
             } else if is_valid_2(&path, node, &mut buf) {
@@ -84,6 +82,8 @@ fn part2(map: &Map, start: Id, end: Id) -> usize {
 struct Id(u8);
 
 impl Id {
+    const SMALL: u8 = 0b1000_0000;
+
     fn new(mut id: u8, name: &str) -> Self {
         id |= ((name.as_bytes()[0] > b'Z') as u8) << 7;
 
@@ -91,7 +91,47 @@ impl Id {
     }
 
     fn small(self) -> bool {
-        self.0 >= 0b1000_0000
+        self.0 >= Self::SMALL
+    }
+}
+
+// Assuming there are no more than 20 caves
+struct Map([Vec<Id>; 20]);
+
+impl Map {
+    fn new() -> Self {
+        let arr = [
+            Vec::new(),
+            Vec::new(),
+            Vec::new(),
+            Vec::new(),
+            Vec::new(),
+            Vec::new(),
+            Vec::new(),
+            Vec::new(),
+            Vec::new(),
+            Vec::new(),
+            Vec::new(),
+            Vec::new(),
+            Vec::new(),
+            Vec::new(),
+            Vec::new(),
+            Vec::new(),
+            Vec::new(),
+            Vec::new(),
+            Vec::new(),
+            Vec::new(),
+        ];
+
+        Self(arr)
+    }
+
+    fn get(&self, id: Id) -> &[Id] {
+        unsafe { self.0.get_unchecked((id.0 & !Id::SMALL) as usize) }
+    }
+
+    fn get_mut(&mut self, id: Id) -> &mut Vec<Id> {
+        unsafe { self.0.get_unchecked_mut((id.0 & !Id::SMALL) as usize) }
     }
 }
 
@@ -114,7 +154,7 @@ fn parse_input() -> Result<(Map, Id, Id), Box<dyn Error>> {
         }
     };
 
-    let mut map: HashMap<_, Vec<_>> = HashMap::new();
+    let mut map = Map::new();
 
     while input.read_line(&mut line)? != 0 {
         let (left, right) = line.trim_end().split_once('-').unwrap();
@@ -122,20 +162,19 @@ fn parse_input() -> Result<(Map, Id, Id), Box<dyn Error>> {
         let left = get_id(left);
         let right = get_id(right);
 
-        map.entry(left).or_default().push(right);
-        map.entry(right).or_default().push(left);
+        map.get_mut(left).push(right);
+        map.get_mut(right).push(left);
 
         line.clear();
     }
 
-    let end = *ids.get("end").unwrap();
-    map.remove(&end);
-
     let start = *ids.get("start").unwrap();
 
-    for values in map.values_mut() {
+    for values in &mut map.0 {
         values.retain(|&value| value != start);
     }
+
+    let end = *ids.get("end").unwrap();
 
     Ok((map, start, end))
 }
@@ -154,9 +193,7 @@ fn is_valid_2(path: &[Id], node: Id, buf: &mut HashMap<Id, usize>) -> bool {
             }
         }
 
-        if buf.contains_key(&node) && buf.iter().any(|(_, count)| *count == 2) {
-            return false;
-        }
+        return !(buf.contains_key(&node) && buf.iter().any(|(_, count)| *count == 2));
     }
 
     true
