@@ -14,8 +14,17 @@ fn bench(c: &mut Criterion) {
     c.bench_function("part2 branchless", |b| {
         b.iter(|| aoc_ferris::day13::part2::without_branches(INPUT))
     });
-    c.bench_function("part2 branchless abc", |b| {
+    c.bench_function("part2 branchless abs", |b| {
         b.iter(|| aoc_ferris::day13::part2::without_branches_abs(INPUT))
+    });
+    c.bench_function("part2 branchless combined", |b| {
+        b.iter(|| aoc_ferris::day13::part2::without_branches_combined(INPUT))
+    });
+    c.bench_function("part2 branchless combined pointers", |b| {
+        b.iter(|| aoc_ferris::day13::part2::without_branches_combined_pointers(INPUT))
+    });
+    c.bench_function("part2 branched combined pointers", |b| {
+        b.iter(|| aoc_ferris::day13::part2::branched_combined_pointers(INPUT))
     });
 }
 
