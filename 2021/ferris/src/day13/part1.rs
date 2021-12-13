@@ -69,10 +69,10 @@ pub fn fxhash(input: &[u8]) -> i64 {
 
 #[inline(always)]
 fn fold_x(x: u16, y: u16, n: u16, m: u16) -> (u16, u16) {
-    (if x > n { m - x } else { x }, y)
+    ((x > n) as u16 * (m - x) + (x <= n) as u16 * x, y)
 }
 
 #[inline(always)]
 fn fold_y(x: u16, y: u16, n: u16, m: u16) -> (u16, u16) {
-    (x, if y > n { m - y } else { y })
+    (x, (y > n) as u16 * (m - y) + (y <= n) as u16 * y)
 }

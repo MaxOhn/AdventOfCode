@@ -8,6 +8,15 @@ fn bench(c: &mut Criterion) {
     c.bench_function("part1 fx", |b| {
         b.iter(|| aoc_ferris::day13::part1::fxhash(INPUT))
     });
+    c.bench_function("part2 branches", |b| {
+        b.iter(|| aoc_ferris::day13::part2::with_branches(INPUT))
+    });
+    c.bench_function("part2 branchless", |b| {
+        b.iter(|| aoc_ferris::day13::part2::without_branches(INPUT))
+    });
+    c.bench_function("part2 branchless abc", |b| {
+        b.iter(|| aoc_ferris::day13::part2::without_branches_abs(INPUT))
+    });
 }
 
 criterion_group!(benches, bench);
