@@ -11,10 +11,11 @@ rayon = "1"
 regex = "1"
 memchr = "2"
 core_simd = { git = "https://github.com/rust-lang/portable-simd" }
+rustc-hash = "1"
 
 [dev-dependencies]
 criterion = "*"
 
 [[bench]]
-name = "day10"
+name = "day13"
 harness = false
