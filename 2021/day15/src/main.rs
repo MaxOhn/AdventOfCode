@@ -25,12 +25,12 @@ fn run() -> Result<(), Box<dyn Error>> {
     let start = Instant::now();
     let matrix = part1_matrix()?;
     let p1 = solve(matrix);
-    println!("Part 1: {} [{:?}]", p1, start.elapsed());
+    println!("Part 1: {} [{:?}]", p1, start.elapsed()); // 895µs
 
     let start = Instant::now();
     let matrix = part2_matrix()?;
     let p2 = solve(matrix);
-    println!("Part 2: {} [{:?}]", p2, start.elapsed());
+    println!("Part 2: {} [{:?}]", p2, start.elapsed()); // 22ms
 
     assert_eq!(p1, 498);
     assert_eq!(p2, 2901);
@@ -119,17 +119,17 @@ fn solve(matrix: Matrix<u8>) -> u16 {
     let w = matrix.width();
     let h = matrix.height();
 
-    let dists: Vec<_> = iter::repeat(u16::MAX).take(w * h).collect();
-    let mut dists = Matrix::from_vec(dists, w);
-    dists[Pos2::new(0, 0)] = 0;
-
-    let mut prevs = Matrix::new(w, h);
-
-    let mut queue = BinaryHeap::new();
-    queue.push(State::new(Pos2::new(0, 0)));
+    let start = Pos2::new(0, 0);
     let end = Pos2::new(w - 1, h - 1);
 
-    while let Some(State { pos, cost }) = queue.pop() {
+    let dists: Vec<_> = iter::repeat(u16::MAX).take(w * h).collect();
+    let mut dists = Matrix::from_vec(dists, w);
+    dists[start] = 0;
+
+    let mut heap = BinaryHeap::new();
+    heap.push(State::new(start));
+
+    while let Some(State { pos, cost }) = heap.pop() {
         if pos == end {
             break;
         } else if cost > dists[pos] {
@@ -141,13 +141,12 @@ fn solve(matrix: Matrix<u8>) -> u16 {
 
             if cost < dists[n] {
                 dists[n] = cost;
-                prevs[n] = Some(pos);
-                queue.push(State { pos: n, cost });
+                heap.push(State { pos: n, cost });
             }
         }
     }
 
-    dists[Pos2::new(w - 1, h - 1)]
+    dists[end]
 }
 
 #[derive(Eq, PartialEq)]
