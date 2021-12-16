@@ -49,12 +49,15 @@ fn run() -> Result<(), Box<dyn Error>> {
         }
     }
 
-    let (p1, _, p2) = process_packet(&binary);
+    let mut p1 = 0;
+    let mut len = 0;
+
+    let p2 = process_packet(&binary, &mut p1, &mut len);
     let elapsed = start.elapsed();
 
     println!("Part 1: {}", p1);
     println!("Part 2: {}", p2);
-    println!("Elapsed: {:?}", elapsed); // 156µs
+    println!("Elapsed: {:?}", elapsed); // 125µs
 
     assert_eq!(p1, 886);
     assert_eq!(p2, 184_487_454_837);
@@ -62,79 +65,35 @@ fn run() -> Result<(), Box<dyn Error>> {
     Ok(())
 }
 
-fn process_packet(bytes: &[u8]) -> (u32, usize, u64) {
-    let mut version = 0;
+macro_rules! parse {
+    ($bytes:ident[*$len:ident..$end:literal] => $ty:ty) => {
+        $bytes[*$len..]
+            .iter()
+            .copied()
+            .inspect(|_| *$len += 1)
+            .take($end)
+            .fold(0, |v, byte| v * 2 + byte as $ty)
+    };
+}
 
-    for &byte in &bytes[..3] {
-        version = version * 2 + byte as u32;
-    }
-
-    let mut type_id = 0;
-
-    for &byte in &bytes[3..6] {
-        type_id = type_id * 2 + byte;
-    }
-
-    let mut len = 6;
+fn process_packet(bytes: &[u8], versions: &mut u32, len: &mut usize) -> u64 {
+    *versions += parse!(bytes[*len..3] => u32);
+    let type_id = parse!(bytes[*len..3] => u8);
 
     if type_id == 4 {
-        let mut literal = 0;
-
-        for chunk in bytes[6..].chunks_exact(5) {
-            len += 5;
-
-            for &byte in &chunk[1..] {
-                literal = literal * 2 + byte as u64;
-            }
-
-            if chunk[0] == 0 {
-                break;
-            }
-        }
-
-        return (version, len, literal);
+        return gather_literal(bytes, len);
     }
 
-    len += 1;
-    let mut values = Vec::new();
+    let len_type_id = bytes[*len];
+    *len += 1;
 
-    match bytes[6] {
-        0 => {
-            let mut number = 0;
-            len += 15;
-
-            for &byte in &bytes[7..22] {
-                number = number * 2 + byte as usize;
-            }
-
-            let goal = len + number;
-
-            while len < goal {
-                let (version_, len_, value) = process_packet(&bytes[len..]);
-                version += version_;
-                len += len_;
-                values.push(value);
-            }
-        }
-        1 => {
-            let mut number = 0;
-            len += 11;
-
-            for &byte in &bytes[7..18] {
-                number = number * 2 + byte;
-            }
-
-            for _ in 0..number {
-                let (version_, len_, value) = process_packet(&bytes[len..]);
-                version += version_;
-                len += len_;
-                values.push(value);
-            }
-        }
+    let values = match len_type_id {
+        0 => gather_subpackets_by_len(bytes, versions, len),
+        1 => gather_subpackets_by_count(bytes, versions, len),
         _ => unreachable!(),
     };
 
-    let value = match type_id {
+    match type_id {
         0 => values.into_iter().sum(),
         1 => values.into_iter().product(),
         2 => values.into_iter().min().unwrap(),
@@ -143,7 +102,43 @@ fn process_packet(bytes: &[u8]) -> (u32, usize, u64) {
         6 => (values[0] < values[1]) as u64,
         7 => (values[0] == values[1]) as u64,
         _ => unreachable!(),
-    };
+    }
+}
 
-    (version, len, value)
+fn gather_literal(bytes: &[u8], len: &mut usize) -> u64 {
+    let mut literal = 0;
+
+    for chunk in bytes[*len..].chunks_exact(5) {
+        *len += 5;
+
+        for &byte in &chunk[1..] {
+            literal = literal * 2 + byte as u64;
+        }
+
+        if chunk[0] == 0 {
+            break;
+        }
+    }
+
+    literal
+}
+
+fn gather_subpackets_by_len(bytes: &[u8], versions: &mut u32, len: &mut usize) -> Vec<u64> {
+    let mut values = Vec::new();
+    let number = parse!(bytes[*len..15] => usize);
+    let goal = *len + number;
+
+    while *len < goal {
+        values.push(process_packet(bytes, versions, len));
+    }
+
+    values
+}
+
+fn gather_subpackets_by_count(bytes: &[u8], versions: &mut u32, len: &mut usize) -> Vec<u64> {
+    let count = parse!(bytes[*len..11] => usize);
+
+    (0..count)
+        .map(|_| process_packet(bytes, versions, len))
+        .collect()
 }

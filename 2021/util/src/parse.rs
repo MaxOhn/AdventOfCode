@@ -6,7 +6,7 @@ pub trait Parse<N> {
 macro_rules! impl_parse_u {
     ($($uint:ty),*) => {
         $(
-            impl Parse<$uint> for &[u8] {
+            impl Parse<$uint> for [u8] {
                 #[inline]
                 fn parse(&self) -> $uint {
                     let mut n = 0;
@@ -35,7 +35,7 @@ macro_rules! impl_parse_u {
 macro_rules! impl_parse_i {
     ($($int:ty),*) => {
         $(
-            impl Parse<$int> for &[u8] {
+            impl Parse<$int> for [u8] {
                 #[inline]
                 fn parse(&self) -> $int {
                     let (mut n, sig) = match unsafe { *self.get_unchecked(0) } {
