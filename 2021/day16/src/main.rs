@@ -57,7 +57,7 @@ fn run() -> Result<(), Box<dyn Error>> {
 
     println!("Part 1: {}", p1);
     println!("Part 2: {}", p2);
-    println!("Elapsed: {:?}", elapsed); // 125µs
+    println!("Elapsed: {:?}", elapsed); // 105µs
 
     assert_eq!(p1, 886);
     assert_eq!(p2, 184_487_454_837);
@@ -80,32 +80,26 @@ fn process_packet(bytes: &[u8], versions: &mut u32, len: &mut usize) -> u64 {
     *versions += parse!(bytes[*len..3] => u32);
     let type_id = parse!(bytes[*len..3] => u8);
 
-    if type_id == 4 {
-        return gather_literal(bytes, len);
-    }
-
-    let len_type_id = bytes[*len];
-    *len += 1;
-
-    let values = match len_type_id {
-        0 => gather_subpackets_by_len(bytes, versions, len),
-        1 => gather_subpackets_by_count(bytes, versions, len),
-        _ => unreachable!(),
+    let process_subpackets = if bytes[*len] == 0 {
+        process_subpackets_by_len
+    } else {
+        process_subpackets_by_count
     };
 
     match type_id {
-        0 => values.into_iter().sum(),
-        1 => values.into_iter().product(),
-        2 => values.into_iter().min().unwrap(),
-        3 => values.into_iter().max().unwrap(),
-        5 => (values[0] > values[1]) as u64,
-        6 => (values[0] < values[1]) as u64,
-        7 => (values[0] == values[1]) as u64,
+        0 => process_subpackets(bytes, versions, len, |a, b| a + b),
+        1 => process_subpackets(bytes, versions, len, |a, b| a * b),
+        2 => process_subpackets(bytes, versions, len, |a, b| a.min(b)),
+        3 => process_subpackets(bytes, versions, len, |a, b| a.max(b)),
+        4 => process_literal(bytes, len),
+        5 => process_two_subpackets(bytes, versions, len, |a, b| (a > b) as u64),
+        6 => process_two_subpackets(bytes, versions, len, |a, b| (a < b) as u64),
+        7 => process_two_subpackets(bytes, versions, len, |a, b| (a == b) as u64),
         _ => unreachable!(),
     }
 }
 
-fn gather_literal(bytes: &[u8], len: &mut usize) -> u64 {
+fn process_literal(bytes: &[u8], len: &mut usize) -> u64 {
     let mut literal = 0;
 
     for chunk in bytes[*len..].chunks_exact(5) {
@@ -123,22 +117,50 @@ fn gather_literal(bytes: &[u8], len: &mut usize) -> u64 {
     literal
 }
 
-fn gather_subpackets_by_len(bytes: &[u8], versions: &mut u32, len: &mut usize) -> Vec<u64> {
-    let mut values = Vec::new();
+fn process_subpackets_by_len(
+    bytes: &[u8],
+    versions: &mut u32,
+    len: &mut usize,
+    fold_op: fn(u64, u64) -> u64,
+) -> u64 {
+    *len += 1;
     let number = parse!(bytes[*len..15] => usize);
     let goal = *len + number;
+    let mut value = process_packet(bytes, versions, len);
 
     while *len < goal {
-        values.push(process_packet(bytes, versions, len));
+        value = fold_op(value, process_packet(bytes, versions, len));
     }
 
-    values
+    value
 }
 
-fn gather_subpackets_by_count(bytes: &[u8], versions: &mut u32, len: &mut usize) -> Vec<u64> {
+fn process_subpackets_by_count(
+    bytes: &[u8],
+    versions: &mut u32,
+    len: &mut usize,
+    fold_op: fn(u64, u64) -> u64,
+) -> u64 {
+    *len += 1;
     let count = parse!(bytes[*len..11] => usize);
+    let value = process_packet(bytes, versions, len);
 
-    (0..count)
+    (0..count - 1)
         .map(|_| process_packet(bytes, versions, len))
-        .collect()
+        .fold(value, fold_op)
+}
+
+fn process_two_subpackets(
+    bytes: &[u8],
+    versions: &mut u32,
+    len: &mut usize,
+    cmp_op: fn(u64, u64) -> u64,
+) -> u64 {
+    let len_type_id = bytes[*len];
+    *len += 12 + 4 * (len_type_id == 0) as usize;
+
+    let a = process_packet(bytes, versions, len);
+    let b = process_packet(bytes, versions, len);
+
+    cmp_op(a, b)
 }
