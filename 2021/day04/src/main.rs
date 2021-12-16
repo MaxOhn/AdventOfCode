@@ -144,7 +144,7 @@ impl Bingo {
                 .trim_end()
                 .split_whitespace()
                 .map(str::as_bytes)
-                .map(|bytes| <&[u8] as Parse<u8>>::parse(&bytes));
+                .map(|bytes| <[u8] as Parse<u8>>::parse(bytes));
 
             field.extend(row);
         }
