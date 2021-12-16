@@ -89,8 +89,8 @@ fn process_packet(bytes: &[u8], versions: &mut u32, len: &mut usize) -> u64 {
     match type_id {
         0 => process_subpackets(bytes, versions, len, |a, b| a + b),
         1 => process_subpackets(bytes, versions, len, |a, b| a * b),
-        2 => process_subpackets(bytes, versions, len, |a, b| a.min(b)),
-        3 => process_subpackets(bytes, versions, len, |a, b| a.max(b)),
+        2 => process_subpackets(bytes, versions, len, std::cmp::min),
+        3 => process_subpackets(bytes, versions, len, std::cmp::max),
         4 => process_literal(bytes, len),
         5 => process_two_subpackets(bytes, versions, len, |a, b| (a > b) as u64),
         6 => process_two_subpackets(bytes, versions, len, |a, b| (a < b) as u64),
