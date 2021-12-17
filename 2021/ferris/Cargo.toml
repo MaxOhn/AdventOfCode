@@ -17,5 +17,5 @@ rustc-hash = "1"
 criterion = "*"
 
 [[bench]]
-name = "day14"
+name = "day16"
 harness = false
