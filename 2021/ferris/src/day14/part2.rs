@@ -13,11 +13,18 @@ pub fn sync(input: &[u8]) -> i64 {
     let mut cache = Cache::default();
 
     for window in template.windows(2) {
-        *counts.entry(window[0]).or_default() += 1;
-        recurse(window[0], window[1], 40, &pairs, &mut counts, &mut cache);
+        counts[(window[0] - b'A') as usize] += 1;
+        recurse(
+            window[0] - b'A',
+            window[1] - b'A',
+            40,
+            &pairs,
+            &mut counts,
+            &mut cache,
+        );
     }
 
-    *counts.entry(*template.last().unwrap()).or_default() += 1;
+    counts[(*template.last().unwrap() - b'A') as usize] += 1;
 
     eval(counts)
 }
@@ -27,15 +34,24 @@ pub fn parallel(input: &[u8]) -> i64 {
 
     let map_op = |cache: &mut Cache, window: &[u8]| {
         let mut counts = Counts::default();
-        *counts.entry(window[0]).or_default() += 1;
-        recurse(window[0], window[1], 40, &pairs, &mut counts, cache);
+        counts[(window[0] - b'A') as usize] += 1;
+        recurse(
+            window[0] - b'A',
+            window[1] - b'A',
+            40,
+            &pairs,
+            &mut counts,
+            cache,
+        );
 
         counts
     };
 
     let reduce_op = |mut counts: Counts, curr: Counts| {
-        curr.into_iter()
-            .for_each(|(c, n)| *counts.entry(c).or_default() += n);
+        counts
+            .iter_mut()
+            .zip(curr)
+            .for_each(|(count, n)| *count += n);
 
         counts
     };
@@ -45,7 +61,7 @@ pub fn parallel(input: &[u8]) -> i64 {
         .map_init(Cache::default, map_op)
         .reduce(Counts::default, reduce_op);
 
-    *counts.entry(*template.last().unwrap()).or_default() += 1;
+    counts[(*template.last().unwrap() - b'A') as usize] += 1;
 
     eval(counts)
 }
@@ -54,48 +70,66 @@ pub fn parallel(input: &[u8]) -> i64 {
 fn parse_input(input: &[u8]) -> (&[u8], Pairs) {
     let new_line = memchr(b'\n', input).unwrap();
 
-    let pairs: Pairs = memchr_iter(b'-', input)
-        .map(|i| ((input[i - 3], input[i - 2]), input[i + 3]))
-        .collect();
+    let mut pairs = Pairs::new();
+    memchr_iter(b'-', input).for_each(|i| pairs.insert(input[i - 3], input[i - 2], input[i + 3]));
 
     (&input[..new_line], pairs)
 }
 
 #[inline(always)]
 fn eval(counts: Counts) -> i64 {
-    let (min, max) = counts
-        .into_iter()
-        .map(|(_, v)| v)
-        .fold((i64::MAX, 0), |(min, max), count| {
-            (min.min(count), max.max(count))
-        });
+    let (min, max) = counts.into_iter().fold((i64::MAX, 0), |(min, max), count| {
+        (if count > 0 { min.min(count) } else { min }, max.max(count))
+    });
 
     max - min
 }
 
-type Pairs = HashMap<(u8, u8), u8>;
-type Counts = HashMap<u8, i64>;
+struct Pairs([u8; 26 * 26]);
+
+impl Pairs {
+    #[inline(always)]
+    fn new() -> Self {
+        Self([0; 26 * 26])
+    }
+
+    #[inline(always)]
+    fn insert(&mut self, a: u8, b: u8, c: u8) {
+        let a = (a - b'A') as usize;
+        let b = (b - b'A') as usize;
+
+        self.0[a * 26 + b] = c - b'A';
+    }
+
+    #[inline(always)]
+    fn get(&self, a: u8, b: u8) -> u8 {
+        self.0[a as usize * 26 + b as usize]
+    }
+}
+
+type Counts = [i64; 26];
 type Cache = HashMap<(u8, u8, u8), Counts>;
 
 fn recurse(a: u8, b: u8, depth: u8, pairs: &Pairs, total: &mut Counts, cache: &mut Cache) {
     match cache.get(&(a, b, depth)) {
         Some(counts) => {
-            for (k, v) in counts {
-                *total.entry(*k).or_default() += *v;
+            for (total, curr) in total.iter_mut().zip(counts) {
+                *total += *curr;
             }
         }
         None => {
-            if let Some(c) = pairs.get(&(a, b)).filter(|_| depth > 0).copied() {
+            if depth > 0 {
+                let c = pairs.get(a, b);
                 let mut counts = Counts::default();
-                *counts.entry(c).or_default() += 1;
+                counts[c as usize] += 1;
 
                 recurse(a, c, depth - 1, pairs, &mut counts, cache);
                 recurse(c, b, depth - 1, pairs, &mut counts, cache);
 
                 let counts = cache.entry((a, b, depth)).or_insert(counts);
 
-                for (k, v) in counts {
-                    *total.entry(*k).or_default() += *v;
+                for (total, curr) in total.iter_mut().zip(counts) {
+                    *total += *curr;
                 }
             }
         }
