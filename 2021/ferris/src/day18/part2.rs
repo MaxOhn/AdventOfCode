@@ -1,97 +1,38 @@
-use std::{
-    error::Error,
-    fmt,
-    fs::File,
-    intrinsics::transmute,
-    io::{BufRead, BufReader},
-    ops::Add,
-    str::Chars,
-    time::Instant,
-};
+use std::{intrinsics::transmute, ops::Add, str::Chars};
 
-fn main() {
-    if let Err(err) = run() {
-        eprintln!("Error: {}", err);
-        let mut e: &dyn Error = &*err;
+pub fn run(input: &[u8]) -> i64 {
+    let input = unsafe { std::str::from_utf8_unchecked(input) };
+    let mut elems: Vec<Elem> = Vec::with_capacity(100);
+    let mut max = 0;
 
-        while let Some(src) = e.source() {
-            eprintln!("  - caused by: {}", src);
-            e = src;
-        }
-    }
-}
-
-fn run() -> Result<(), Box<dyn Error>> {
-    let start = Instant::now();
-    let file = File::open("./input")?;
-    let mut input = BufReader::new(file);
-
-    let mut line = String::new();
-
-    let mut elems: Vec<Elem> = Vec::new();
-    let mut sum = Elem::Number(0);
-    let mut p2 = 0;
-
-    while input.read_line(&mut line)? != 0 {
-        let elem = Elem::from_str(line.trim_end());
-        sum = sum + elem.clone();
-
+    for elem in input.lines().map(Elem::from_str) {
         for prev in &elems {
-            p2 = p2
+            max = max
                 .max((elem.clone() + prev.to_owned()).magnitude())
                 .max((prev.to_owned() + elem.clone()).magnitude());
         }
 
         elems.push(elem);
-        line.clear();
     }
 
-    let p1 = sum.magnitude();
-    let elapsed = start.elapsed();
-    println!("Part 1: {}", p1);
-    println!("Part 2: {}", p2);
-    println!("Elapsed: {:?}", elapsed); // 39.8ms
-
-    assert_eq!(p1, 4480);
-    assert_eq!(p2, 4676);
-
-    Ok(())
+    max
 }
 
 #[derive(Clone)]
 enum Elem {
     Pair(Box<(Elem, Elem)>),
-    Number(u32),
+    Number(i64),
 }
 
 enum ElemInner<'e> {
     Pair(&'e Elem, &'e Elem),
-    Number(&'e u32),
-}
-
-impl fmt::Debug for Elem {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self.inner() {
-            ElemInner::Pair(lhs, rhs) => write!(f, "[{:?},{:?}]", lhs, rhs),
-            ElemInner::Number(n) => write!(f, "{}", n),
-        }
-    }
+    Number(&'e i64),
 }
 
 struct NestedResult<'e> {
     pair: &'e Elem,
-    next_lhs: Option<&'e u32>,
-    next_rhs: Option<&'e u32>,
-}
-
-impl fmt::Debug for NestedResult<'_> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(
-            f,
-            ".., {:?}],{:?},[{:?},..",
-            self.next_lhs, self.pair, self.next_rhs
-        )
-    }
+    next_lhs: Option<&'e i64>,
+    next_rhs: Option<&'e i64>,
 }
 
 impl Elem {
@@ -105,14 +46,14 @@ impl Elem {
         match chars.next() {
             Some('[') => {
                 let lhs = Self::from_chars(chars);
-                assert_eq!(chars.next(), Some(','));
+                chars.next();
                 let rhs = Self::from_chars(chars);
-                assert_eq!(chars.next(), Some(']'));
+                chars.next();
 
                 Elem::Pair(Box::new((lhs, rhs)))
             }
-            Some(n @ '0'..='9') => Elem::Number(n as u32 & 0x0F),
-            c => unreachable!("expected [ or num, got {:?}", c),
+            Some(n @ '0'..='9') => Elem::Number(n as i64 & 0x0F),
+            _ => unreachable!(),
         }
     }
 
@@ -155,24 +96,24 @@ impl Elem {
         }
     }
 
-    fn far_left(&self) -> &u32 {
+    fn far_left(&self) -> &i64 {
         match self {
             Self::Pair(pair) => pair.0.far_left(),
             Self::Number(n) => n,
         }
     }
 
-    fn far_right(&self) -> &u32 {
+    fn far_right(&self) -> &i64 {
         match self {
             Self::Pair(pair) => pair.1.far_right(),
             Self::Number(n) => n,
         }
     }
 
-    fn magnitude(&self) -> u64 {
+    fn magnitude(&self) -> i64 {
         match self {
             Self::Pair(pair) => 3 * pair.0.magnitude() + 2 * pair.1.magnitude(),
-            Self::Number(n) => *n as u64,
+            Self::Number(n) => *n,
         }
     }
 
@@ -187,12 +128,12 @@ impl Elem {
 
             let mut ten = false;
 
-            if let Some(next_lhs) = next_lhs.map(|lhs| unsafe { transmute::<_, &mut u32>(lhs) }) {
+            if let Some(next_lhs) = next_lhs.map(|lhs| unsafe { transmute::<_, &mut i64>(lhs) }) {
                 *next_lhs += pair.far_left();
                 ten |= *next_lhs >= 10;
             }
 
-            if let Some(next_rhs) = next_rhs.map(|rhs| unsafe { transmute::<_, &mut u32>(rhs) }) {
+            if let Some(next_rhs) = next_rhs.map(|rhs| unsafe { transmute::<_, &mut i64>(rhs) }) {
                 *next_rhs += pair.far_right();
                 ten |= *next_rhs >= 10;
             }
@@ -209,7 +150,7 @@ impl Elem {
             Self::Pair(pair) => pair.0.split() || pair.1.split(),
             Self::Number(n) if *n >= 10 => {
                 let lhs = Elem::Number(*n / 2);
-                let rhs = Elem::Number(*n / 2 + ((*n % 2) == 1) as u32);
+                let rhs = Elem::Number(*n / 2 + ((*n % 2) == 1) as i64);
                 *self = Elem::Pair(Box::new((lhs, rhs)));
 
                 true
