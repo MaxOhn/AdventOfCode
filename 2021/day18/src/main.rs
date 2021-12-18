@@ -37,11 +37,9 @@ fn run() -> Result<(), Box<dyn Error>> {
         sum = sum + elem.clone();
 
         for prev in &elems {
-            let sum = elem.clone() + prev.to_owned();
-            p2 = p2.max(sum.magnitude());
-
-            let sum = prev.to_owned() + elem.clone();
-            p2 = p2.max(sum.magnitude());
+            p2 = p2
+                .max((elem.clone() + prev.to_owned()).magnitude())
+                .max((prev.to_owned() + elem.clone()).magnitude());
         }
 
         elems.push(elem);
@@ -116,13 +114,13 @@ impl Elem {
     fn find_nested_four(&self) -> Option<NestedResult<'_>> {
         match self {
             Self::Pair(lhs, rhs) => lhs
-                .find_nested_n_(None, Some(rhs), 4)
-                .or_else(|| rhs.find_nested_n_(Some(lhs), None, 4)),
+                .find_nested_n(None, Some(rhs), 4)
+                .or_else(|| rhs.find_nested_n(Some(lhs), None, 4)),
             Self::Number(_) => None,
         }
     }
 
-    fn find_nested_n_<'e>(
+    fn find_nested_n<'e>(
         &'e self,
         next_lhs: Option<&'e Elem>,
         next_rhs: Option<&'e Elem>,
@@ -139,8 +137,8 @@ impl Elem {
                         }
                     })
                 } else {
-                    lhs.find_nested_n_(next_lhs, Some(rhs), n - 1)
-                        .or_else(|| rhs.find_nested_n_(Some(lhs), next_rhs, n - 1))
+                    lhs.find_nested_n(next_lhs, Some(rhs), n - 1)
+                        .or_else(|| rhs.find_nested_n(Some(lhs), next_rhs, n - 1))
                 }
             }
             Self::Number(_) => None,
@@ -196,16 +194,13 @@ impl Elem {
         })
     }
 
-    #[allow(mutable_transmutes)]
-    fn split(&self) -> bool {
+    fn split(&mut self) -> bool {
         match self {
             Self::Pair(a, b) => a.split() || b.split(),
             Self::Number(n) if *n >= 10 => {
-                let lhs = Elem::Number(n / 2);
-                let rhs = Elem::Number(n / 2 + ((n % 2) == 1) as u32);
-
-                let elem: &mut Elem = unsafe { transmute(self) };
-                *elem = Elem::Pair(Box::new(lhs), Box::new(rhs));
+                let lhs = Elem::Number(*n / 2);
+                let rhs = Elem::Number(*n / 2 + ((*n % 2) == 1) as u32);
+                *self = Elem::Pair(Box::new(lhs), Box::new(rhs));
 
                 true
             }
@@ -218,20 +213,20 @@ impl Add for Elem {
     type Output = Elem;
 
     fn add(self, rhs: Self) -> Self::Output {
-        let result = Self::Pair(Box::new(self), Box::new(rhs));
+        let mut sum = Self::Pair(Box::new(self), Box::new(rhs));
         let mut ten = false;
 
         loop {
-            if let Some(ten_) = result.explode() {
+            if let Some(ten_) = sum.explode() {
                 ten |= ten_;
                 continue;
             }
 
-            if ten && result.split() {
+            if ten && sum.split() {
                 continue;
             }
 
-            return result;
+            return sum;
         }
     }
 }
