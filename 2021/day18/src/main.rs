@@ -78,17 +78,17 @@ impl fmt::Debug for Elem {
     }
 }
 
-struct NestedResult<'e> {
+struct ToExplode<'e> {
     pair: &'e Elem,
     next_lhs: Option<&'e u32>,
     next_rhs: Option<&'e u32>,
 }
 
-impl fmt::Debug for NestedResult<'_> {
+impl fmt::Debug for ToExplode<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
             f,
-            ".., {:?}],{:?},[{:?},..",
+            "..,{:?}],{:?},[{:?},..",
             self.next_lhs, self.pair, self.next_rhs
         )
     }
@@ -123,7 +123,7 @@ impl Elem {
         }
     }
 
-    fn find_nested_four(&self) -> Option<NestedResult<'_>> {
+    fn find_nested_four(&self) -> Option<ToExplode<'_>> {
         match self.inner() {
             ElemInner::Pair(lhs, rhs) => lhs
                 .find_nested_n(None, Some(rhs), 4)
@@ -137,22 +137,22 @@ impl Elem {
         next_lhs: Option<&'e Elem>,
         next_rhs: Option<&'e Elem>,
         n: u8,
-    ) -> Option<NestedResult<'e>> {
+    ) -> Option<ToExplode<'e>> {
         match self.inner() {
-            ElemInner::Pair(lhs, rhs) => {
-                if n == 1 {
-                    matches!((lhs, rhs), (Self::Number(_), Self::Number(_))).then(|| NestedResult {
-                        pair: self,
-                        next_lhs: next_lhs.map(Elem::far_right),
-                        next_rhs: next_rhs.map(Elem::far_left),
-                    })
-                } else {
-                    lhs.find_nested_n(next_lhs, Some(rhs), n - 1)
-                        .or_else(|| rhs.find_nested_n(Some(lhs), next_rhs, n - 1))
-                }
-            }
+            ElemInner::Pair(lhs, rhs) if n > 1 => lhs
+                .find_nested_n(next_lhs, Some(rhs), n - 1)
+                .or_else(|| rhs.find_nested_n(Some(lhs), next_rhs, n - 1)),
+            ElemInner::Pair(lhs, rhs) => Self::is_number_pair(lhs, rhs).then(|| ToExplode {
+                pair: self,
+                next_lhs: next_lhs.map(Elem::far_right),
+                next_rhs: next_rhs.map(Elem::far_left),
+            }),
             ElemInner::Number(_) => None,
         }
+    }
+
+    fn is_number_pair(lhs: &Elem, rhs: &Elem) -> bool {
+        matches!((lhs, rhs), (Self::Number(_), Self::Number(_)))
     }
 
     fn far_left(&self) -> &u32 {
@@ -178,12 +178,12 @@ impl Elem {
 
     #[allow(mutable_transmutes)]
     fn explode(&self) -> Option<bool> {
-        self.find_nested_four().map(|nested| {
-            let NestedResult {
+        self.find_nested_four().map(|to_explode| {
+            let ToExplode {
                 pair,
                 next_lhs,
                 next_rhs,
-            } = nested;
+            } = to_explode;
 
             let mut ten = false;
 
