@@ -1,9 +1,10 @@
+#![allow(dead_code, unused_mut)]
+
 use std::{
     collections::{HashMap, HashSet, VecDeque},
     error::Error,
     fs::File,
     io::{BufRead, BufReader},
-    mem,
     slice::Iter,
     time::Instant,
 };
@@ -66,29 +67,32 @@ fn run() -> Result<(), Box<dyn Error>> {
                 continue;
             }
 
-            // do identity orientation first
-            if let Some(offset) = correct.enough_overlaps(&to_correct) {
-                to_correct.apply_offset(offset);
-                to_correct.pos = offset;
-                corrected.push(to_correct);
+            for &orientation in ORIENTATIONS.iter() {
+                let mut adjusted = to_correct.apply_orientation(orientation);
 
-                continue 'outer;
-            }
-
-            let mut transformations = Transformations::new();
-
-            // apply the 23 remaining orientations
-            for _ in 0..23 {
-                to_correct.apply_transformation(&mut transformations);
-
-                if let Some(offset) = correct.enough_overlaps(&to_correct) {
-                    to_correct.apply_offset(offset);
-                    to_correct.pos = offset;
-                    corrected.push(to_correct);
+                if let Some(offset) = correct.enough_overlaps(&adjusted) {
+                    adjusted.apply_offset(offset);
+                    adjusted.pos = offset;
+                    corrected.push(adjusted);
 
                     continue 'outer;
                 }
             }
+
+            // * Alternative approach
+            // let mut transformations = Transformations::new();
+
+            // for _ in 0..24 {
+            //     to_correct.apply_transformation(&mut transformations);
+
+            //     if let Some(offset) = correct.enough_overlaps(&to_correct) {
+            //         to_correct.apply_offset(offset);
+            //         to_correct.pos = offset;
+            //         corrected.push(to_correct);
+
+            //         continue 'outer;
+            //     }
+            // }
         }
 
         scanner_queue.push_back(to_correct);
@@ -100,7 +104,7 @@ fn run() -> Result<(), Box<dyn Error>> {
 
     println!("Part 1: {}", p1);
     println!("Part 2: {}", p2);
-    println!("Elapsed: {:?}", elapsed); // 322ms
+    println!("Elapsed: {:?}", elapsed); // 350ms
 
     assert_eq!(p1, 353);
     assert_eq!(p2, 10_832);
@@ -147,6 +151,24 @@ impl Scanner {
         }
     }
 
+    fn apply_orientation(&self, orientation: Orientation) -> Self {
+        let reports = self
+            .reports
+            .iter()
+            .map(|pos| Pos3 {
+                x: pos[orientation.permutation[0]] * orientation.rotation[0],
+                y: pos[orientation.permutation[1]] * orientation.rotation[1],
+                z: pos[orientation.permutation[2]] * orientation.rotation[2],
+            })
+            .collect();
+
+        Self {
+            id: self.id,
+            pos: self.pos,
+            reports,
+        }
+    }
+
     fn enough_overlaps(&self, other: &Self) -> Option<Pos3<i32>> {
         let mut offsets: HashMap<Pos3<_>, usize> = HashMap::new();
 
@@ -170,7 +192,48 @@ impl Scanner {
     }
 }
 
-// https://stackoverflow.com/questions/16452383/how-to-get-all-24-rotations-of-a-3-dimensional-array
+static ORIENTATIONS: [Orientation; 24] = [
+    Orientation::new([1, -1, 1], [0, 2, 1]),
+    Orientation::new([1, -1, -1], [1, 2, 0]),
+    Orientation::new([-1, -1, -1], [0, 2, 1]),
+    Orientation::new([-1, -1, 1], [1, 2, 0]),
+    Orientation::new([1, -1, 1], [2, 1, 0]),
+    Orientation::new([1, 1, 1], [2, 0, 1]),
+    Orientation::new([1, 1, -1], [2, 1, 0]),
+    Orientation::new([1, -1, -1], [2, 0, 1]),
+    Orientation::new([1, -1, 1], [1, 0, 2]),
+    Orientation::new([-1, -1, 1], [0, 1, 2]),
+    Orientation::new([-1, 1, 1], [1, 0, 2]),
+    Orientation::new([1, 1, 1], [0, 1, 2]),
+    Orientation::new([-1, 1, -1], [1, 2, 0]),
+    Orientation::new([1, 1, -1], [0, 2, 1]),
+    Orientation::new([1, 1, 1], [1, 2, 0]),
+    Orientation::new([-1, 1, 1], [0, 2, 1]),
+    Orientation::new([-1, 1, -1], [0, 1, 2]),
+    Orientation::new([-1, -1, -1], [1, 0, 2]),
+    Orientation::new([1, -1, -1], [0, 1, 2]),
+    Orientation::new([1, 1, -1], [1, 0, 2]),
+    Orientation::new([-1, 1, -1], [2, 0, 1]),
+    Orientation::new([-1, 1, 1], [2, 1, 0]),
+    Orientation::new([-1, -1, 1], [2, 0, 1]),
+    Orientation::new([-1, -1, -1], [2, 1, 0]),
+];
+
+#[derive(Copy, Clone, Debug)]
+struct Orientation {
+    rotation: [i32; 3],
+    permutation: [usize; 3],
+}
+
+impl Orientation {
+    const fn new(rotation: [i32; 3], permutation: [usize; 3]) -> Self {
+        Self {
+            rotation,
+            permutation,
+        }
+    }
+}
+
 #[derive(Copy, Clone)]
 enum Transformation {
     Roll,
@@ -182,13 +245,13 @@ impl Transformation {
         match self {
             Transformation::Roll => {
                 for elem in elems {
-                    mem::swap(&mut elem.y, &mut elem.z);
+                    std::mem::swap(&mut elem.y, &mut elem.z);
                     elem.z *= -1;
                 }
             }
             Transformation::Turn => {
                 for elem in elems {
-                    mem::swap(&mut elem.x, &mut elem.y);
+                    std::mem::swap(&mut elem.x, &mut elem.y);
                     elem.x *= -1;
                 }
             }
