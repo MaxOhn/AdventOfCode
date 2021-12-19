@@ -28,13 +28,19 @@ fn run() -> Result<(), Box<dyn Error>> {
 
     let mut line = String::new();
     let mut scanner_queue = VecDeque::new();
+    let mut id = 0;
 
     while input.read_line(&mut line)? != 0 {
-        let mut scanner = Scanner::new();
+        let mut scanner = Scanner::new(id);
+        id += 1;
         line.clear();
 
         while input.read_line(&mut line)? > 1 {
-            let mut split = line.trim_end().split(',').map(|n| n.parse().unwrap());
+            let mut split = line
+                .trim_end()
+                .split(',')
+                .map(str::parse)
+                .map(Result::unwrap);
 
             let pos = Pos3 {
                 x: split.next().unwrap(),
@@ -51,9 +57,15 @@ fn run() -> Result<(), Box<dyn Error>> {
 
     let mut corrected = Vec::with_capacity(scanner_queue.len());
     corrected.push(scanner_queue.pop_front().unwrap());
+    let mut compared = HashSet::new();
 
     'outer: while let Some(mut to_correct) = scanner_queue.pop_front() {
         for correct in &corrected {
+            if !compared.insert((correct.id, to_correct.id)) {
+                continue;
+            }
+
+            // do identity orientation manually
             if let Some(offset) = correct.enough_overlaps(&to_correct) {
                 to_correct.apply_offset(offset);
                 to_correct.pos = offset;
@@ -84,7 +96,7 @@ fn run() -> Result<(), Box<dyn Error>> {
 
     println!("Part 1: {}", p1);
     println!("Part 2: {}", p2);
-    println!("Elapsed: {:?}", elapsed);
+    println!("Elapsed: {:?}", elapsed); // 3.7s
 
     assert_eq!(p1, 353);
     assert_eq!(p2, 10_832);
@@ -117,13 +129,15 @@ fn part2(scanners: &[Scanner]) -> i32 {
 
 #[derive(Default)]
 struct Scanner {
+    id: u8,
     pos: Pos3<i32>,
     reports: Vec<Pos3<i32>>,
 }
 
 impl Scanner {
-    fn new() -> Self {
+    fn new(id: u8) -> Self {
         Self {
+            id,
             pos: Pos3::default(),
             reports: Vec::new(),
         }
@@ -133,35 +147,29 @@ impl Scanner {
         let reports = self
             .reports
             .iter()
-            .copied()
-            .map(|mut pos| {
-                for i in 0..3 {
-                    pos[i] *= orientation.rotation[i];
-                }
-
-                Pos3 {
-                    x: pos[orientation.permutation[0]],
-                    y: pos[orientation.permutation[1]],
-                    z: pos[orientation.permutation[2]],
-                }
+            .map(|pos| Pos3 {
+                x: pos[orientation.permutation[0]] * orientation.rotation[0],
+                y: pos[orientation.permutation[1]] * orientation.rotation[1],
+                z: pos[orientation.permutation[2]] * orientation.rotation[2],
             })
             .collect();
 
         Self {
+            id: self.id,
             pos: self.pos,
             reports,
         }
     }
 
     fn enough_overlaps(&self, other: &Self) -> Option<Pos3<i32>> {
-        for i in 0..self.reports.len() {
-            for j in 0..other.reports.len() {
-                let offset = self.reports[i] - other.reports[j];
+        for &report1 in self.reports.iter() {
+            for &report2 in other.reports.iter() {
+                let offset = report1 - report2;
                 let mut overlaps = 0;
 
-                for k in 0..self.reports.len() {
-                    for l in 0..other.reports.len() {
-                        if self.reports[k] == other.reports[l] + offset {
+                for &report3 in self.reports.iter() {
+                    for &report4 in other.reports.iter() {
+                        if report3 == report4 + offset {
                             overlaps += 1;
 
                             if overlaps == 12 {
@@ -225,7 +233,7 @@ impl Orientations {
     }
 }
 
-// skips the first i.e. "no orientation change", do that manually instead
+// skips the first i.e. the identity orientation, do that manually instead
 impl Iterator for Orientations {
     type Item = Orientation;
 
@@ -240,11 +248,9 @@ impl Iterator for Orientations {
             }
         };
 
-        let permutation = self.permutation;
-
         Some(Orientation {
             rotation,
-            permutation,
+            permutation: self.permutation,
         })
     }
 }
