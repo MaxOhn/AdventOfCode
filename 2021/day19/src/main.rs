@@ -1,5 +1,5 @@
 use std::{
-    collections::{HashSet, VecDeque},
+    collections::{HashMap, HashSet, VecDeque},
     error::Error,
     fs::File,
     io::{BufRead, BufReader},
@@ -96,7 +96,7 @@ fn run() -> Result<(), Box<dyn Error>> {
 
     println!("Part 1: {}", p1);
     println!("Part 2: {}", p2);
-    println!("Elapsed: {:?}", elapsed); // 3.7s
+    println!("Elapsed: {:?}", elapsed); // 670ms
 
     assert_eq!(p1, 353);
     assert_eq!(p2, 10_832);
@@ -162,26 +162,17 @@ impl Scanner {
     }
 
     fn enough_overlaps(&self, other: &Self) -> Option<Pos3<i32>> {
-        for &report1 in self.reports.iter() {
-            for &report2 in other.reports.iter() {
-                let offset = report1 - report2;
-                let mut overlaps = 0;
+        let mut offsets: HashMap<Pos3<_>, usize> = HashMap::new();
 
-                for &report3 in self.reports.iter() {
-                    for &report4 in other.reports.iter() {
-                        if report3 == report4 + offset {
-                            overlaps += 1;
-
-                            if overlaps == 12 {
-                                return Some(offset);
-                            }
-                        }
-                    }
-                }
+        for &this in self.reports.iter() {
+            for &that in other.reports.iter() {
+                *offsets.entry(this - that).or_default() += 1;
             }
         }
 
-        None
+        offsets
+            .into_iter()
+            .find_map(|(offset, count)| (count >= 12).then(|| offset))
     }
 
     fn apply_offset(&mut self, offset: Pos3<i32>) {
@@ -223,17 +214,19 @@ struct Orientations {
 
 impl Orientations {
     fn new() -> Self {
+        let mut rotations = ROTATIONS.iter();
+        // skips the first i.e. the identity orientation, do that manually instead
+        rotations.next();
         let mut permutations = PERMUTATIONS.iter();
 
         Self {
-            rotations: ROTATIONS.iter(),
+            rotations,
             permutation: *permutations.next().unwrap(),
             permutations,
         }
     }
 }
 
-// skips the first i.e. the identity orientation, do that manually instead
 impl Iterator for Orientations {
     type Item = Orientation;
 
