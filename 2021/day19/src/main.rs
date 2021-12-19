@@ -3,6 +3,7 @@ use std::{
     error::Error,
     fs::File,
     io::{BufRead, BufReader},
+    mem,
     slice::Iter,
     time::Instant,
 };
@@ -65,7 +66,7 @@ fn run() -> Result<(), Box<dyn Error>> {
                 continue;
             }
 
-            // do identity orientation manually
+            // do identity orientation first
             if let Some(offset) = correct.enough_overlaps(&to_correct) {
                 to_correct.apply_offset(offset);
                 to_correct.pos = offset;
@@ -74,13 +75,16 @@ fn run() -> Result<(), Box<dyn Error>> {
                 continue 'outer;
             }
 
-            for orientation in Orientations::new() {
-                let mut adjusted = to_correct.apply_orientation(orientation);
+            let mut transformations = Transformations::new();
 
-                if let Some(offset) = correct.enough_overlaps(&adjusted) {
-                    adjusted.apply_offset(offset);
-                    adjusted.pos = offset;
-                    corrected.push(adjusted);
+            // apply the 23 remaining orientations
+            for _ in 0..23 {
+                to_correct.apply_transformation(&mut transformations);
+
+                if let Some(offset) = correct.enough_overlaps(&to_correct) {
+                    to_correct.apply_offset(offset);
+                    to_correct.pos = offset;
+                    corrected.push(to_correct);
 
                     continue 'outer;
                 }
@@ -96,7 +100,7 @@ fn run() -> Result<(), Box<dyn Error>> {
 
     println!("Part 1: {}", p1);
     println!("Part 2: {}", p2);
-    println!("Elapsed: {:?}", elapsed); // 670ms
+    println!("Elapsed: {:?}", elapsed); // 322ms
 
     assert_eq!(p1, 353);
     assert_eq!(p2, 10_832);
@@ -127,7 +131,7 @@ fn part2(scanners: &[Scanner]) -> i32 {
     max
 }
 
-#[derive(Default)]
+#[derive(Clone, Default)]
 struct Scanner {
     id: u8,
     pos: Pos3<i32>,
@@ -140,24 +144,6 @@ impl Scanner {
             id,
             pos: Pos3::default(),
             reports: Vec::new(),
-        }
-    }
-
-    fn apply_orientation(&self, orientation: Orientation) -> Self {
-        let reports = self
-            .reports
-            .iter()
-            .map(|pos| Pos3 {
-                x: pos[orientation.permutation[0]] * orientation.rotation[0],
-                y: pos[orientation.permutation[1]] * orientation.rotation[1],
-                z: pos[orientation.permutation[2]] * orientation.rotation[2],
-            })
-            .collect();
-
-        Self {
-            id: self.id,
-            pos: self.pos,
-            reports,
         }
     }
 
@@ -178,72 +164,81 @@ impl Scanner {
     fn apply_offset(&mut self, offset: Pos3<i32>) {
         self.reports.iter_mut().for_each(|pos| *pos += offset);
     }
+
+    fn apply_transformation(&mut self, transformations: &mut Transformations) {
+        transformations.apply(&mut self.reports);
+    }
 }
 
-static ROTATIONS: [[i32; 3]; 8] = [
-    [1, 1, 1],
-    [1, 1, -1],
-    [1, -1, 1],
-    [1, -1, -1],
-    [-1, 1, 1],
-    [-1, 1, -1],
-    [-1, -1, 1],
-    [-1, -1, -1],
-];
-
-static PERMUTATIONS: [[usize; 3]; 6] = [
-    [0, 1, 2],
-    [0, 2, 1],
-    [1, 0, 2],
-    [1, 2, 0],
-    [2, 0, 1],
-    [2, 1, 0],
-];
-
-#[derive(Debug)]
-struct Orientation {
-    rotation: [i32; 3],
-    permutation: [usize; 3],
+// https://stackoverflow.com/questions/16452383/how-to-get-all-24-rotations-of-a-3-dimensional-array
+#[derive(Copy, Clone)]
+enum Transformation {
+    Roll,
+    Turn,
 }
 
-struct Orientations {
-    rotations: Iter<'static, [i32; 3]>,
-    permutations: Iter<'static, [usize; 3]>,
-    permutation: [usize; 3],
-}
-
-impl Orientations {
-    fn new() -> Self {
-        let mut rotations = ROTATIONS.iter();
-        // skips the first i.e. the identity orientation, do that manually instead
-        rotations.next();
-        let mut permutations = PERMUTATIONS.iter();
-
-        Self {
-            rotations,
-            permutation: *permutations.next().unwrap(),
-            permutations,
+impl Transformation {
+    fn apply(self, elems: &mut [Pos3<i32>]) {
+        match self {
+            Transformation::Roll => {
+                for elem in elems {
+                    mem::swap(&mut elem.y, &mut elem.z);
+                    elem.z *= -1;
+                }
+            }
+            Transformation::Turn => {
+                for elem in elems {
+                    mem::swap(&mut elem.x, &mut elem.y);
+                    elem.x *= -1;
+                }
+            }
         }
     }
 }
 
-impl Iterator for Orientations {
-    type Item = Orientation;
+static CYCLE: [Transformation; 12] = [
+    Transformation::Roll,
+    Transformation::Turn,
+    Transformation::Turn,
+    Transformation::Turn,
+    Transformation::Roll,
+    Transformation::Turn,
+    Transformation::Turn,
+    Transformation::Turn,
+    Transformation::Roll,
+    Transformation::Turn,
+    Transformation::Turn,
+    Transformation::Turn,
+];
 
-    fn next(&mut self) -> Option<Self::Item> {
-        let rotation = match self.rotations.next() {
-            Some(rotation) => *rotation,
-            None => {
-                self.permutation = *self.permutations.next()?;
-                self.rotations = ROTATIONS.iter();
+struct Transformations {
+    iter: Iter<'static, Transformation>,
+    mid: bool,
+}
 
-                *self.rotations.next()?
+impl Transformations {
+    fn new() -> Self {
+        Self {
+            iter: CYCLE.iter(),
+            mid: true,
+        }
+    }
+
+    fn apply(&mut self, elems: &mut [Pos3<i32>]) {
+        let transformation = match self.iter.next().copied() {
+            Some(transformation) => transformation,
+            None if self.mid => {
+                self.mid = false;
+                self.iter = CYCLE.iter();
+                Transformation::Roll.apply(elems);
+                Transformation::Turn.apply(elems);
+                Transformation::Roll.apply(elems);
+
+                *self.iter.next().unwrap()
             }
+            None => return,
         };
 
-        Some(Orientation {
-            rotation,
-            permutation: self.permutation,
-        })
+        transformation.apply(elems);
     }
 }
