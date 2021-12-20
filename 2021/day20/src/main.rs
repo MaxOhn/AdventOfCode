@@ -57,12 +57,12 @@ fn run() -> Result<(), Box<dyn Error>> {
     let mut next_map = HashMap::with_capacity(map.len());
     let mut p1_map = map.clone();
     let start = Instant::now();
-    let p1 = solve(&mut p1_map, &mut next_map, &algorithm, 2);
-    println!("Part 1: {} [{:?}]", p1, start.elapsed()); // 65ms
+    let p1 = solve(&mut p1_map, &mut next_map, &algorithm, w as isize, 2);
+    println!("Part 1: {} [{:?}]", p1, start.elapsed()); // 6.9ms
 
     let start = Instant::now();
-    let p2 = solve(&mut map, &mut next_map, &algorithm, 50);
-    println!("Part 2: {} [{:?}]", p2, start.elapsed()); // 1.7s
+    let p2 = solve(&mut map, &mut next_map, &algorithm, w as isize, 50);
+    println!("Part 2: {} [{:?}]", p2, start.elapsed()); // 351ms
 
     assert_eq!(p1, 5680);
     assert_eq!(p2, 19_766);
@@ -72,18 +72,16 @@ fn run() -> Result<(), Box<dyn Error>> {
 
 type Map = HashMap<(isize, isize), u8>;
 
-fn solve(map: &mut Map, next_map: &mut Map, algorithm: &[u8], iterations: u8) -> usize {
-    const MAX: isize = 150;
-
+fn solve(map: &mut Map, next_map: &mut Map, algorithm: &[u8], w: isize, iterations: u8) -> usize {
     for i in 0..iterations {
-        for x in -MAX..=MAX {
-            for y in -MAX..=MAX {
+        for x in -(i as isize) - 1..=w + i as isize {
+            for y in -(i as isize) - 1..=w + i as isize {
                 let pos = (x, y);
 
                 let idx = OFFSETS
                     .iter()
                     .map(|(x, y)| (pos.0 + x, pos.1 + y))
-                    .map(|pos| map.get(&pos).map_or(i % 2, |v| *v))
+                    .map(|pos| map.get(&pos).map_or(i as u8 % 2, |v| *v))
                     .fold(0, |binary, bit| binary * 2 + bit as usize);
 
                 next_map.insert(pos, algorithm[idx]);
