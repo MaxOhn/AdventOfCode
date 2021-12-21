@@ -26,7 +26,6 @@ fn run() -> Result<(), Box<dyn Error>> {
 
     input.read_line(&mut line)?;
     let pos1 = *line.trim_end().as_bytes().last().unwrap() & 0x0F;
-
     line.clear();
 
     input.read_line(&mut line)?;
@@ -38,11 +37,11 @@ fn run() -> Result<(), Box<dyn Error>> {
 
     let start = Instant::now();
     let p1 = part1(player1, player2);
-    println!("Part 1: {} [{:?}]", p1, start.elapsed()); //
+    println!("Part 1: {} [{:?}]", p1, start.elapsed()); // 1.1µs
 
     let start = Instant::now();
     let p2 = part2(player1, player2);
-    println!("Part 2: {} [{:?}]", p2, start.elapsed()); //
+    println!("Part 2: {} [{:?}]", p2, start.elapsed()); // 12ms
 
     assert_eq!(p1, 908_595);
     assert_eq!(p2, 91_559_198_282_731);
@@ -56,21 +55,11 @@ fn part1(mut p1: Player, mut p2: Player) -> u32 {
     let mut die = Die::new();
 
     loop {
-        let roll1 = die.roll();
-        let roll2 = die.roll();
-        let roll3 = die.roll();
-        p1.forward(roll1 + roll2 + roll3);
-
-        if p1.score >= LIMIT {
+        if p1.forward(die.roll() + die.roll() + die.roll()) >= LIMIT {
             return p2.score * die.rolls;
         }
 
-        let roll1 = die.roll();
-        let roll2 = die.roll();
-        let roll3 = die.roll();
-        p2.forward(roll1 + roll2 + roll3);
-
-        if p2.score >= LIMIT {
+        if p2.forward(die.roll() + die.roll() + die.roll()) >= LIMIT {
             return p1.score * die.rolls;
         }
     }
@@ -80,73 +69,60 @@ type Cache = HashMap<([Player; 2], usize), [usize; 2]>;
 
 fn part2(p1: Player, p2: Player) -> usize {
     let mut cache = Cache::new();
-    let wins = roll_first([p1, p2], 0, &mut cache);
+    let wins = roll([p1, p2], 0, &mut cache);
 
     wins[0].max(wins[1])
 }
 
 const LIMIT: u32 = 21;
+const POSSIBS: [(u32, usize); 7] = [(3, 1), (4, 3), (5, 6), (6, 7), (7, 6), (8, 3), (9, 1)];
 
-fn roll_first(players: [Player; 2], player_idx: usize, cache: &mut Cache) -> [usize; 2] {
-    if let Some(wins) = cache.get(&(players, player_idx)) {
+fn roll(players: [Player; 2], player: usize, cache: &mut Cache) -> [usize; 2] {
+    if let Some(wins) = cache.get(&(players, player)) {
         return *wins;
     }
 
     let init_players = players;
-    let mut wins = [0, 0];
+    let mut total_wins = [0, 0];
 
-    for next_roll in 1..=3 {
-        roll(players, player_idx, next_roll, 1, &mut wins, cache);
-    }
+    for (sum, possibs) in POSSIBS {
+        let mut players = players;
 
-    cache.insert((init_players, player_idx), wins);
-
-    wins
-}
-
-fn roll(
-    mut players: [Player; 2],
-    player_idx: usize,
-    sum: u32,
-    idx: u32,
-    wins: &mut [usize; 2],
-    cache: &mut Cache,
-) {
-    if idx == 3 {
-        players[player_idx].forward(sum);
-
-        return if players[player_idx].score >= LIMIT {
-            wins[player_idx] += 1;
+        if players[player].forward(sum) >= LIMIT {
+            total_wins[player] += possibs;
         } else {
-            let new_wins = roll_first(players, 1 - player_idx, cache);
-            wins[0] += new_wins[0];
-            wins[1] += new_wins[1];
-        };
-    } else {
-        for next_roll in 1..=3 {
-            roll(players, player_idx, sum + next_roll, idx + 1, wins, cache);
+            let wins = roll(players, 1 - player, cache);
+
+            for (total, win) in total_wins.iter_mut().zip(wins) {
+                *total += win * possibs;
+            }
         }
     }
+
+    cache.insert((init_players, player), total_wins);
+
+    total_wins
 }
 
 #[derive(Copy, Clone, Hash, PartialEq, Eq)]
 struct Player {
-    pos: i16,
+    pos: u16,
     score: u32,
 }
 
 impl Player {
     fn new(pos: u8) -> Self {
         Self {
-            pos: pos as i16 - 1,
+            pos: pos as u16,
             score: 0,
         }
     }
 
-    fn forward(&mut self, num: u32) {
-        self.pos += num as i16;
-        self.pos %= 10;
-        self.score += (self.pos + 1) as u32;
+    fn forward(&mut self, num: u32) -> u32 {
+        self.pos = ((self.pos + num as u16 - 1) % 10) + 1;
+        self.score += (self.pos) as u32;
+
+        self.score
     }
 }
 
