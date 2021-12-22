@@ -82,7 +82,6 @@ fn roll(players: [Player; 2], player: usize, cache: &mut Cache) -> [usize; 2] {
         return *wins;
     }
 
-    let init_players = players;
     let mut total_wins = [0, 0];
 
     for (sum, possibs) in POSSIBS {
@@ -99,28 +98,26 @@ fn roll(players: [Player; 2], player: usize, cache: &mut Cache) -> [usize; 2] {
         }
     }
 
-    cache.insert((init_players, player), total_wins);
-
-    total_wins
+    *cache.entry((players, player)).or_insert(total_wins)
 }
 
 #[derive(Copy, Clone, Hash, PartialEq, Eq)]
 struct Player {
-    pos: u16,
+    pos: u32,
     score: u32,
 }
 
 impl Player {
     fn new(pos: u8) -> Self {
         Self {
-            pos: pos as u16,
+            pos: pos as u32,
             score: 0,
         }
     }
 
     fn forward(&mut self, num: u32) -> u32 {
-        self.pos = ((self.pos + num as u16 - 1) % 10) + 1;
-        self.score += (self.pos) as u32;
+        self.pos = ((self.pos + num - 1) % 10) + 1;
+        self.score += self.pos;
 
         self.score
     }
