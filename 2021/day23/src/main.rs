@@ -142,7 +142,7 @@ impl<const N: usize> Distances<N> {
 }
 
 #[derive(Clone, Eq)]
-pub struct Burrow<const N: usize> {
+struct Burrow<const N: usize> {
     hallway: [Field; 11],
     rooms: [Room<N>; 4],
     energy: u32,
@@ -151,7 +151,7 @@ pub struct Burrow<const N: usize> {
 static ROOM_OPENINGS: [usize; 4] = [2, 4, 6, 8];
 
 impl Burrow<2> {
-    pub fn from_input() -> Result<Self, Box<dyn Error>> {
+    fn from_input() -> Result<Self, Box<dyn Error>> {
         let file = File::open("./input")?;
         let mut input = BufReader::new(file);
 
@@ -163,25 +163,25 @@ impl Burrow<2> {
         line.clear();
         input.read_line(&mut line)?;
 
-        burrow.rooms[0].positions[0].amphipod = Some(Amphipod::from_byte(line.as_bytes()[3]));
-        burrow.rooms[1].positions[0].amphipod = Some(Amphipod::from_byte(line.as_bytes()[5]));
-        burrow.rooms[2].positions[0].amphipod = Some(Amphipod::from_byte(line.as_bytes()[7]));
-        burrow.rooms[3].positions[0].amphipod = Some(Amphipod::from_byte(line.as_bytes()[9]));
+        burrow.rooms[0].positions[0].set(Amphipod::from_byte(line.as_bytes()[3]));
+        burrow.rooms[1].positions[0].set(Amphipod::from_byte(line.as_bytes()[5]));
+        burrow.rooms[2].positions[0].set(Amphipod::from_byte(line.as_bytes()[7]));
+        burrow.rooms[3].positions[0].set(Amphipod::from_byte(line.as_bytes()[9]));
 
         line.clear();
         input.read_line(&mut line)?;
 
-        burrow.rooms[0].positions[1].amphipod = Some(Amphipod::from_byte(line.as_bytes()[3]));
-        burrow.rooms[1].positions[1].amphipod = Some(Amphipod::from_byte(line.as_bytes()[5]));
-        burrow.rooms[2].positions[1].amphipod = Some(Amphipod::from_byte(line.as_bytes()[7]));
-        burrow.rooms[3].positions[1].amphipod = Some(Amphipod::from_byte(line.as_bytes()[9]));
+        burrow.rooms[0].positions[1].set(Amphipod::from_byte(line.as_bytes()[3]));
+        burrow.rooms[1].positions[1].set(Amphipod::from_byte(line.as_bytes()[5]));
+        burrow.rooms[2].positions[1].set(Amphipod::from_byte(line.as_bytes()[7]));
+        burrow.rooms[3].positions[1].set(Amphipod::from_byte(line.as_bytes()[9]));
 
         Ok(burrow)
     }
 }
 
 impl Burrow<4> {
-    pub fn from_input() -> Result<Self, Box<dyn Error>> {
+    fn from_input() -> Result<Self, Box<dyn Error>> {
         let file = File::open("./input")?;
         let mut input = BufReader::new(file);
 
@@ -193,28 +193,28 @@ impl Burrow<4> {
         line.clear();
         input.read_line(&mut line)?;
 
-        burrow.rooms[0].positions[0].amphipod = Some(Amphipod::from_byte(line.as_bytes()[3]));
-        burrow.rooms[1].positions[0].amphipod = Some(Amphipod::from_byte(line.as_bytes()[5]));
-        burrow.rooms[2].positions[0].amphipod = Some(Amphipod::from_byte(line.as_bytes()[7]));
-        burrow.rooms[3].positions[0].amphipod = Some(Amphipod::from_byte(line.as_bytes()[9]));
+        burrow.rooms[0].positions[0].set(Amphipod::from_byte(line.as_bytes()[3]));
+        burrow.rooms[1].positions[0].set(Amphipod::from_byte(line.as_bytes()[5]));
+        burrow.rooms[2].positions[0].set(Amphipod::from_byte(line.as_bytes()[7]));
+        burrow.rooms[3].positions[0].set(Amphipod::from_byte(line.as_bytes()[9]));
 
         line.clear();
         input.read_line(&mut line)?;
 
-        burrow.rooms[0].positions[3].amphipod = Some(Amphipod::from_byte(line.as_bytes()[3]));
-        burrow.rooms[1].positions[3].amphipod = Some(Amphipod::from_byte(line.as_bytes()[5]));
-        burrow.rooms[2].positions[3].amphipod = Some(Amphipod::from_byte(line.as_bytes()[7]));
-        burrow.rooms[3].positions[3].amphipod = Some(Amphipod::from_byte(line.as_bytes()[9]));
+        burrow.rooms[0].positions[3].set(Amphipod::from_byte(line.as_bytes()[3]));
+        burrow.rooms[1].positions[3].set(Amphipod::from_byte(line.as_bytes()[5]));
+        burrow.rooms[2].positions[3].set(Amphipod::from_byte(line.as_bytes()[7]));
+        burrow.rooms[3].positions[3].set(Amphipod::from_byte(line.as_bytes()[9]));
 
-        burrow.rooms[0].positions[1].amphipod = Some(Amphipod::D);
-        burrow.rooms[1].positions[1].amphipod = Some(Amphipod::C);
-        burrow.rooms[2].positions[1].amphipod = Some(Amphipod::B);
-        burrow.rooms[3].positions[1].amphipod = Some(Amphipod::A);
+        burrow.rooms[0].positions[1].set(Amphipod::D);
+        burrow.rooms[1].positions[1].set(Amphipod::C);
+        burrow.rooms[2].positions[1].set(Amphipod::B);
+        burrow.rooms[3].positions[1].set(Amphipod::A);
 
-        burrow.rooms[0].positions[2].amphipod = Some(Amphipod::D);
-        burrow.rooms[1].positions[2].amphipod = Some(Amphipod::B);
-        burrow.rooms[2].positions[2].amphipod = Some(Amphipod::A);
-        burrow.rooms[3].positions[2].amphipod = Some(Amphipod::C);
+        burrow.rooms[0].positions[2].set(Amphipod::D);
+        burrow.rooms[1].positions[2].set(Amphipod::B);
+        burrow.rooms[2].positions[2].set(Amphipod::A);
+        burrow.rooms[3].positions[2].set(Amphipod::C);
 
         Ok(burrow)
     }
@@ -234,11 +234,11 @@ impl<const N: usize> Burrow<N> {
         }
     }
 
-    pub fn energy(&self) -> u32 {
+    fn energy(&self) -> u32 {
         self.energy
     }
 
-    pub fn is_sorted(&self) -> bool {
+    fn is_sorted(&self) -> bool {
         self.rooms.iter().all(Room::is_sorted)
     }
 
@@ -264,92 +264,74 @@ impl<const N: usize> Burrow<N> {
         &mut self.rooms[idx]
     }
 
-    pub fn successors(&self, buf: &mut Vec<Burrow<N>>) {
+    fn successors(&self, successors: &mut Vec<Burrow<N>>) {
+        // From room to hallway
         for (room_idx, room) in self.rooms.iter().enumerate() {
             'room: for i in 0..room.positions.len() {
-                if let Some(_) = room.positions[i].amphipod.as_ref() {
-                    if !room.is_clear() {
-                        if room
-                            .positions
-                            .iter()
-                            .take(i)
-                            .any(|field| field.amphipod.is_some())
-                        {
-                            continue 'room;
+                if room.positions[i].is_occupied() && !room.is_clear() {
+                    if room.positions.iter().take(i).any(Field::is_occupied) {
+                        continue 'room;
+                    }
+
+                    let hallway_idx = 2 + 2 * room_idx;
+
+                    // Going into hallway left
+                    for j in (0..hallway_idx).rev() {
+                        if ROOM_OPENINGS.contains(&j) {
+                            continue;
                         }
 
-                        let hallway_idx = 2 + 2 * room_idx;
+                        if self.hallway[j].is_free() {
+                            let mut burrow = self.to_owned();
+                            let amphipod = burrow.rooms[room_idx].positions[i].take();
+                            burrow.energy += (i + 1 + hallway_idx - j) as u32 * amphipod.energy();
+                            burrow.hallway[j].set(amphipod);
+                            successors.push(burrow);
+                        } else {
+                            break;
+                        }
+                    }
 
-                        // Going into hallway left
-                        for j in (0..hallway_idx).rev() {
-                            if ROOM_OPENINGS.contains(&j) {
-                                continue;
-                            }
-
-                            if self.hallway[j].amphipod.is_none() {
-                                let mut burrow = self.to_owned();
-
-                                let amphipod =
-                                    burrow.rooms[room_idx].positions[i].amphipod.take().unwrap();
-
-                                burrow.energy +=
-                                    (i + 1 + (hallway_idx - j)) as u32 * amphipod.energy();
-                                burrow.hallway[j].amphipod = Some(amphipod);
-                                buf.push(burrow);
-                            } else {
-                                break;
-                            }
+                    // Going into hallway right
+                    for j in hallway_idx + 1..self.hallway.len() {
+                        if ROOM_OPENINGS.contains(&j) {
+                            continue;
                         }
 
-                        // Going into hallway right
-                        for j in hallway_idx + 1..self.hallway.len() {
-                            if ROOM_OPENINGS.contains(&j) {
-                                continue;
-                            }
-
-                            if self.hallway[j].amphipod.is_none() {
-                                let mut burrow = self.to_owned();
-
-                                let amphipod =
-                                    burrow.rooms[room_idx].positions[i].amphipod.take().unwrap();
-
-                                burrow.energy +=
-                                    (i + 1 + (j - hallway_idx)) as u32 * amphipod.energy();
-                                burrow.hallway[j].amphipod = Some(amphipod);
-                                buf.push(burrow);
-                            } else {
-                                break;
-                            }
+                        if self.hallway[j].is_free() {
+                            let mut burrow = self.to_owned();
+                            let amphipod = burrow.rooms[room_idx].positions[i].take();
+                            burrow.energy += (i + 1 + j - hallway_idx) as u32 * amphipod.energy();
+                            burrow.hallway[j].set(amphipod);
+                            successors.push(burrow);
+                        } else {
+                            break;
                         }
                     }
                 }
             }
         }
 
+        // From hallway to room
         'hallway: for hallway_idx in 0..self.hallway.len() {
-            if let Some(amphipod) = self.hallway[hallway_idx].amphipod.as_ref() {
-                let room = self.room(*amphipod);
+            if let Some(amphipod) = self.hallway[hallway_idx].get() {
+                let room = self.room(amphipod);
 
-                if !room.is_clear() || room.positions[0].amphipod.is_some() {
+                if !room.is_clear() || room.positions[0].is_occupied() {
                     continue;
                 }
 
-                let target_idx = match amphipod {
-                    Amphipod::A => 2,
-                    Amphipod::B => 4,
-                    Amphipod::C => 6,
-                    Amphipod::D => 8,
-                };
+                let target_idx = amphipod.hallway_idx();
 
                 if target_idx < hallway_idx {
                     for j in target_idx + 1..hallway_idx {
-                        if self.hallway[j].amphipod.is_some() {
+                        if self.hallway[j].is_occupied() {
                             continue 'hallway;
                         }
                     }
                 } else {
                     for j in hallway_idx + 1..target_idx {
-                        if self.hallway[j].amphipod.is_some() {
+                        if self.hallway[j].is_occupied() {
                             continue 'hallway;
                         }
                     }
@@ -359,19 +341,19 @@ impl<const N: usize> Burrow<N> {
                     .positions
                     .iter()
                     .enumerate()
-                    .take_while(|(_, field)| field.amphipod.is_none())
+                    .take_while(|(_, field)| field.is_free())
                     .last();
 
                 if let Some((idx, _)) = last_free {
                     let mut burrow = self.to_owned();
-                    let amphipod = burrow.hallway[hallway_idx].amphipod.take().unwrap();
+                    let amphipod = burrow.hallway[hallway_idx].take();
 
                     let steps =
                         idx as u32 + 1 + (hallway_idx as isize - target_idx as isize).abs() as u32;
 
                     burrow.energy += steps * amphipod.energy();
-                    burrow.room_mut(amphipod).positions[idx].amphipod = Some(amphipod);
-                    buf.push(burrow);
+                    burrow.room_mut(amphipod).positions[idx].set(amphipod);
+                    successors.push(burrow);
                 }
             }
         }
@@ -408,6 +390,38 @@ struct Field {
     amphipod: Option<Amphipod>,
 }
 
+impl Field {
+    fn map_or<U, F: FnOnce(&Amphipod) -> U>(&self, default: U, f: F) -> U {
+        self.amphipod.as_ref().map_or(default, f)
+    }
+
+    fn is_free(&self) -> bool {
+        self.amphipod.is_none()
+    }
+
+    fn is_occupied(&self) -> bool {
+        self.amphipod.is_some()
+    }
+
+    fn get(&self) -> Option<Amphipod> {
+        self.amphipod
+    }
+
+    fn take(&mut self) -> Amphipod {
+        self.amphipod.take().unwrap()
+    }
+
+    fn set(&mut self, amphipod: Amphipod) {
+        self.amphipod = Some(amphipod)
+    }
+}
+
+impl PartialEq<Amphipod> for Field {
+    fn eq(&self, other: &Amphipod) -> bool {
+        self.amphipod == Some(*other)
+    }
+}
+
 #[derive(Copy, Clone, Debug, Eq)]
 struct Room<const N: usize> {
     kind: Amphipod,
@@ -437,7 +451,7 @@ impl<const N: usize> Room<N> {
     fn is_valid(&self, default: bool) -> bool {
         self.positions
             .iter()
-            .all(|pos| pos.amphipod.as_ref().map_or(default, |a| a == &self.kind))
+            .all(|pos| pos.map_or(default, |a| a == &self.kind))
     }
 
     fn is_sorted(&self) -> bool {
@@ -474,6 +488,15 @@ impl Amphipod {
             Amphipod::B => 10,
             Amphipod::C => 100,
             Amphipod::D => 1000,
+        }
+    }
+
+    fn hallway_idx(self) -> usize {
+        match self {
+            Amphipod::A => 2,
+            Amphipod::B => 4,
+            Amphipod::C => 6,
+            Amphipod::D => 8,
         }
     }
 }
@@ -515,7 +538,7 @@ impl<const N: usize> fmt::Display for Burrow<N> {
 
 impl fmt::Display for Field {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self.amphipod {
+        match self.get() {
             Some(ref amphipod) => fmt::Display::fmt(amphipod, f),
             None => f.write_str("."),
         }
