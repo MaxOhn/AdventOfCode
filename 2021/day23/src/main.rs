@@ -55,7 +55,7 @@ fn solve<const N: usize>(burrow: Burrow<N>) -> u32 {
 
     let mut successor_buf = Vec::new();
 
-    while let Some(State { burrow, .. }) = heap.pop() {
+    while let Some(State { burrow, path }) = heap.pop() {
         let energy = burrow.energy();
 
         if burrow.is_sorted() {
@@ -69,20 +69,18 @@ fn solve<const N: usize>(burrow: Burrow<N>) -> u32 {
             continue;
         }
 
-        burrow.successors(&mut successor_buf);
-
-        for successor in successor_buf.drain(..) {
+        for successor in burrow.successors(&mut successor_buf).drain(..) {
             let energy = successor.energy();
 
             if energy < dists.get(&successor) {
                 dists.set(&successor, energy);
 
-                // let mut path = path.clone();
-                // path.push(successor.clone());
+                let mut path = path.clone();
+                path.push(successor.clone());
 
                 let state = State {
                     burrow: successor,
-                    // path,
+                    path,
                 };
 
                 heap.push(state);
@@ -96,13 +94,13 @@ fn solve<const N: usize>(burrow: Burrow<N>) -> u32 {
 #[derive(Eq, PartialEq)]
 struct State<const N: usize> {
     burrow: Burrow<N>,
-    // path: Vec<Burrow<N>>,
+    path: Vec<Burrow<N>>,
 }
 
 impl<const N: usize> State<N> {
     fn new(burrow: Burrow<N>) -> Self {
         Self {
-            // path: vec![burrow.clone()],
+            path: vec![burrow.clone()],
             burrow,
         }
     }
@@ -163,18 +161,18 @@ impl Burrow<2> {
         line.clear();
         input.read_line(&mut line)?;
 
-        burrow.rooms[0].positions[0].set(Amphipod::from_byte(line.as_bytes()[3]));
-        burrow.rooms[1].positions[0].set(Amphipod::from_byte(line.as_bytes()[5]));
-        burrow.rooms[2].positions[0].set(Amphipod::from_byte(line.as_bytes()[7]));
-        burrow.rooms[3].positions[0].set(Amphipod::from_byte(line.as_bytes()[9]));
+        burrow.rooms[0].positions[0] = Field::from_byte(line.as_bytes()[3]);
+        burrow.rooms[1].positions[0] = Field::from_byte(line.as_bytes()[5]);
+        burrow.rooms[2].positions[0] = Field::from_byte(line.as_bytes()[7]);
+        burrow.rooms[3].positions[0] = Field::from_byte(line.as_bytes()[9]);
 
         line.clear();
         input.read_line(&mut line)?;
 
-        burrow.rooms[0].positions[1].set(Amphipod::from_byte(line.as_bytes()[3]));
-        burrow.rooms[1].positions[1].set(Amphipod::from_byte(line.as_bytes()[5]));
-        burrow.rooms[2].positions[1].set(Amphipod::from_byte(line.as_bytes()[7]));
-        burrow.rooms[3].positions[1].set(Amphipod::from_byte(line.as_bytes()[9]));
+        burrow.rooms[0].positions[1] = Field::from_byte(line.as_bytes()[3]);
+        burrow.rooms[1].positions[1] = Field::from_byte(line.as_bytes()[5]);
+        burrow.rooms[2].positions[1] = Field::from_byte(line.as_bytes()[7]);
+        burrow.rooms[3].positions[1] = Field::from_byte(line.as_bytes()[9]);
 
         Ok(burrow)
     }
@@ -193,28 +191,28 @@ impl Burrow<4> {
         line.clear();
         input.read_line(&mut line)?;
 
-        burrow.rooms[0].positions[0].set(Amphipod::from_byte(line.as_bytes()[3]));
-        burrow.rooms[1].positions[0].set(Amphipod::from_byte(line.as_bytes()[5]));
-        burrow.rooms[2].positions[0].set(Amphipod::from_byte(line.as_bytes()[7]));
-        burrow.rooms[3].positions[0].set(Amphipod::from_byte(line.as_bytes()[9]));
+        burrow.rooms[0].positions[0] = Field::from_byte(line.as_bytes()[3]);
+        burrow.rooms[1].positions[0] = Field::from_byte(line.as_bytes()[5]);
+        burrow.rooms[2].positions[0] = Field::from_byte(line.as_bytes()[7]);
+        burrow.rooms[3].positions[0] = Field::from_byte(line.as_bytes()[9]);
 
         line.clear();
         input.read_line(&mut line)?;
 
-        burrow.rooms[0].positions[3].set(Amphipod::from_byte(line.as_bytes()[3]));
-        burrow.rooms[1].positions[3].set(Amphipod::from_byte(line.as_bytes()[5]));
-        burrow.rooms[2].positions[3].set(Amphipod::from_byte(line.as_bytes()[7]));
-        burrow.rooms[3].positions[3].set(Amphipod::from_byte(line.as_bytes()[9]));
+        burrow.rooms[0].positions[3] = Field::from_byte(line.as_bytes()[3]);
+        burrow.rooms[1].positions[3] = Field::from_byte(line.as_bytes()[5]);
+        burrow.rooms[2].positions[3] = Field::from_byte(line.as_bytes()[7]);
+        burrow.rooms[3].positions[3] = Field::from_byte(line.as_bytes()[9]);
 
-        burrow.rooms[0].positions[1].set(Amphipod::D);
-        burrow.rooms[1].positions[1].set(Amphipod::C);
-        burrow.rooms[2].positions[1].set(Amphipod::B);
-        burrow.rooms[3].positions[1].set(Amphipod::A);
+        burrow.rooms[0].positions[1] = Field::new(Amphipod::D);
+        burrow.rooms[1].positions[1] = Field::new(Amphipod::C);
+        burrow.rooms[2].positions[1] = Field::new(Amphipod::B);
+        burrow.rooms[3].positions[1] = Field::new(Amphipod::A);
 
-        burrow.rooms[0].positions[2].set(Amphipod::D);
-        burrow.rooms[1].positions[2].set(Amphipod::B);
-        burrow.rooms[2].positions[2].set(Amphipod::A);
-        burrow.rooms[3].positions[2].set(Amphipod::C);
+        burrow.rooms[0].positions[2] = Field::new(Amphipod::D);
+        burrow.rooms[1].positions[2] = Field::new(Amphipod::B);
+        burrow.rooms[2].positions[2] = Field::new(Amphipod::A);
+        burrow.rooms[3].positions[2] = Field::new(Amphipod::C);
 
         Ok(burrow)
     }
@@ -243,28 +241,14 @@ impl<const N: usize> Burrow<N> {
     }
 
     fn room(&self, kind: Amphipod) -> &Room<N> {
-        let idx = match kind {
-            Amphipod::A => 0,
-            Amphipod::B => 1,
-            Amphipod::C => 2,
-            Amphipod::D => 3,
-        };
-
-        &self.rooms[idx]
+        &self.rooms[kind as usize]
     }
 
     fn room_mut(&mut self, kind: Amphipod) -> &mut Room<N> {
-        let idx = match kind {
-            Amphipod::A => 0,
-            Amphipod::B => 1,
-            Amphipod::C => 2,
-            Amphipod::D => 3,
-        };
-
-        &mut self.rooms[idx]
+        &mut self.rooms[kind as usize]
     }
 
-    fn successors(&self, successors: &mut Vec<Burrow<N>>) {
+    fn successors<'s>(&self, successors: &'s mut Vec<Self>) -> &'s mut Vec<Self> {
         // From room to hallway
         for (room_idx, room) in self.rooms.iter().enumerate() {
             'room: for i in 0..room.positions.len() {
@@ -357,6 +341,8 @@ impl<const N: usize> Burrow<N> {
                 }
             }
         }
+
+        successors
     }
 }
 
@@ -391,6 +377,16 @@ struct Field {
 }
 
 impl Field {
+    fn new(amphipod: Amphipod) -> Self {
+        Self {
+            amphipod: Some(amphipod),
+        }
+    }
+
+    fn from_byte(byte: u8) -> Self {
+        Self::new(Amphipod::from_byte(byte))
+    }
+
     fn map_or<U, F: FnOnce(&Amphipod) -> U>(&self, default: U, f: F) -> U {
         self.amphipod.as_ref().map_or(default, f)
     }
@@ -407,12 +403,12 @@ impl Field {
         self.amphipod
     }
 
-    fn take(&mut self) -> Amphipod {
-        self.amphipod.take().unwrap()
-    }
-
     fn set(&mut self, amphipod: Amphipod) {
         self.amphipod = Some(amphipod)
+    }
+
+    fn take(&mut self) -> Amphipod {
+        self.amphipod.take().unwrap()
     }
 }
 
@@ -483,21 +479,11 @@ impl Amphipod {
     }
 
     fn energy(self) -> u32 {
-        match self {
-            Amphipod::A => 1,
-            Amphipod::B => 10,
-            Amphipod::C => 100,
-            Amphipod::D => 1000,
-        }
+        10_u32.pow(self as u32)
     }
 
     fn hallway_idx(self) -> usize {
-        match self {
-            Amphipod::A => 2,
-            Amphipod::B => 4,
-            Amphipod::C => 6,
-            Amphipod::D => 8,
-        }
+        (self as usize + 1) * 2
     }
 }
 
