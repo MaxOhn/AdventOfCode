@@ -40,3 +40,10 @@ parse!(INT: i8, i16, i32, i64, isize);
 pub trait Parseable {
     fn parse(bytes: &[u8]) -> Self;
 }
+
+#[macro_export]
+macro_rules! get {
+    ( $slice:ident[$idx:expr] ) => {
+        unsafe { *$slice.get_unchecked($idx) }
+    };
+}

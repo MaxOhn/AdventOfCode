@@ -7,6 +7,9 @@ fn day02(c: &mut Criterion) {
     c.bench_function("simd+rayon", |b| {
         b.iter(|| aoc22::day02::part1_simd_rayon(INPUT))
     });
+    c.bench_function("const lookup", |b| {
+        b.iter(|| aoc22::day02::part1_const_lookup(INPUT))
+    });
 }
 
 criterion_group!(benches, day02);

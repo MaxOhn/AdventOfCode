@@ -1,12 +1,14 @@
 #![feature(portable_simd)]
 
+#[macro_use]
+mod util;
+
+mod solution;
+
 days! {
     day01,
     > day02,
 }
-
-mod solution;
-mod util;
 
 pub mod prelude {
     pub use super::{

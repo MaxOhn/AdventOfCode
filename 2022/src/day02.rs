@@ -6,6 +6,7 @@ use rayon::{prelude::ParallelIterator, slice::ParallelSlice};
 use crate::prelude::Solution;
 
 pub fn run(input: &[u8]) -> Solution {
+    // let p1 = part1_const_lookup(input);
     // let p1 = part1_simd_rayon(input);
     let p1 = part1_simd(input);
     // let p1 = part1_naive(input);
@@ -13,6 +14,49 @@ pub fn run(input: &[u8]) -> Solution {
     let p2 = part2(input);
 
     Solution::new().part1(p1).part2(p2)
+}
+
+const fn gen_lookup_p1() -> [u16; 9] {
+    let mut lookup = [0; 9];
+    let mut opponent = 0;
+
+    while opponent < 3 {
+        let mut mine = 0;
+
+        while mine < 3 {
+            lookup[opponent * 3 + mine] = match (mine, opponent) {
+                (0, 0) => 3,
+                (0, 1) => 0,
+                (0, 2) => 6,
+                (1, 0) => 6,
+                (1, 1) => 3,
+                (1, 2) => 0,
+                (2, 0) => 0,
+                (2, 1) => 6,
+                (2, 2) => 3,
+                _ => unreachable!(),
+            };
+
+            mine += 1;
+        }
+
+        opponent += 1;
+    }
+
+    lookup
+}
+
+const LOOKUP_P1: [u16; 9] = gen_lookup_p1();
+
+#[allow(unused)]
+pub fn part1_const_lookup(input: &[u8]) -> u16 {
+    input.chunks(4).fold(0, |score, chunk| {
+        let opponent = get!(chunk[0]) - b'A';
+        let mine = get!(chunk[2]) - b'X';
+        let idx = (opponent * 3 + mine) as usize;
+
+        score + get!(LOOKUP_P1[idx]) + mine as u16 + 1
+    })
 }
 
 #[allow(unused)]
