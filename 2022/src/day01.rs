@@ -1,6 +1,6 @@
 use std::{iter, mem};
 
-use aoc22::prelude::*;
+use crate::prelude::*;
 
 pub fn run(input: &[u8]) -> Solution {
     let [p1, b, c] = input

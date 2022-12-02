@@ -1,3 +1,10 @@
+#![feature(portable_simd)]
+
+days! {
+    day01,
+    > day02,
+}
+
 mod solution;
 mod util;
 
@@ -11,21 +18,18 @@ pub mod prelude {
 #[macro_export]
 macro_rules! days {
     ( $( $pre:ident ,)* > $day:ident, $( $post:ident ,)* ) => {
-        mod $day;
+        pub mod $day;
 
-        fn main() {
-            let start = std::time::Instant::now();
-            let path = concat!("./inputs/", stringify!($day), ".txt");
-            let file = std::fs::File::open(path).unwrap();
+        pub mod today {
+            pub fn run() -> super::solution::Solution {
+                let path = concat!("./inputs/", stringify!($day), ".txt");
+                let file = std::fs::File::open(path).unwrap();
 
-            // SAFETY: no :)
-            let input = unsafe { memmap::Mmap::map(&file) }.unwrap();
+                // SAFETY: no :)
+                let input = unsafe { memmap::Mmap::map(&file) }.unwrap();
 
-            let solution = $day::run(&input);
-            let elapsed = start.elapsed();
-
-            print!("{solution}");
-            println!("Elapsed: {elapsed:?}");
+                super::$day::run(&input)
+            }
         }
     };
 }
