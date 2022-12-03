@@ -1,3 +1,7 @@
+use std::mem;
+
+use memchr::memchr_iter;
+
 use crate::prelude::Solution;
 
 fn char_to_idx(c: &u8) -> usize {
@@ -15,11 +19,9 @@ pub fn run(input: &[u8]) -> Solution {
     let mut p2_count1 = [0; 26 * 2];
     let mut p2_count2 = [0; 26 * 2];
 
-    for (i, line) in input.split(|&byte| byte == b'\n').enumerate() {
-        if line.is_empty() {
-            continue;
-        }
+    let lines = memchr_iter(b'\n', input).scan(0, |i, j| Some(&input[mem::replace(i, j + 1)..j]));
 
+    for (i, line) in lines.enumerate() {
         let (front, back) = line.split_at(line.len() / 2);
 
         front
