@@ -47,3 +47,10 @@ macro_rules! get {
         unsafe { *$slice.get_unchecked($idx) }
     };
 }
+
+#[macro_export]
+macro_rules! set {
+    ( $slice:ident[$idx:expr] $op:tt $val:expr ) => {
+        unsafe { *$slice.get_unchecked_mut($idx) $op $val }
+    };
+}

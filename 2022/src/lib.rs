@@ -7,14 +7,12 @@ mod solution;
 
 days! {
     day01,
-    > day02,
+    day02,
+    > day03,
 }
 
 pub mod prelude {
-    pub use super::{
-        solution::{Solution, SolutionType},
-        util::Parseable,
-    };
+    pub use super::{solution::Solution, util::Parseable};
 }
 
 #[macro_export]
