@@ -2,9 +2,10 @@ use std::{iter, mem};
 
 use crate::prelude::*;
 
-pub fn run(input: &[u8]) -> Solution {
+pub fn run(input: &str) -> Solution {
     let [p1, b, c] = input
-        .split(|&byte| byte == b'\n')
+        .lines()
+        .map(str::as_bytes)
         .map(<u32 as Parseable>::parse)
         .chain(iter::once(0))
         .scan(0, |sum, n| {

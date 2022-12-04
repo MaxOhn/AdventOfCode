@@ -4,14 +4,9 @@ use memchr::memchr_iter;
 
 use crate::prelude::Solution;
 
-fn char_to_idx(c: &u8) -> usize {
-    match *c {
-        b'a'..=b'z' => (*c - b'a') as usize,
-        c => (c - b'A' + 26) as usize,
-    }
-}
+pub fn run(input: &str) -> Solution {
+    let input = input.as_bytes();
 
-pub fn run(input: &[u8]) -> Solution {
     let mut p1 = 0;
     let mut p2 = 0;
 
@@ -70,4 +65,11 @@ pub fn run(input: &[u8]) -> Solution {
     }
 
     Solution::new().part1(p1).part2(p2)
+}
+
+fn char_to_idx(c: &u8) -> usize {
+    match *c {
+        b'a'..=b'z' => (*c - b'a') as usize,
+        c => (c - b'A' + 26) as usize,
+    }
 }

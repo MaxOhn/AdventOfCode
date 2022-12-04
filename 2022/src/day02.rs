@@ -5,7 +5,9 @@ use rayon::{prelude::ParallelIterator, slice::ParallelSlice};
 
 use crate::prelude::Solution;
 
-pub fn run(input: &[u8]) -> Solution {
+pub fn run(input: &str) -> Solution {
+    let input = input.as_bytes();
+
     // let p1 = part1_const_lookup(input);
     // let p1 = part1_simd_rayon(input);
     let p1 = part1_simd(input);
