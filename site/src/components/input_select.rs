@@ -1,7 +1,7 @@
 use std::str::FromStr;
 
-use eyre::Result;
 use aoc22::prelude::Solution;
+use eyre::Result;
 use web_sys::HtmlInputElement;
 use yew::prelude::*;
 

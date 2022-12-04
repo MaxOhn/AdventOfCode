@@ -12,3 +12,9 @@ wasm-timer =  { version = "0.2.5" }
 web-sys =     { version = "0.3.60", features = ["HtmlTextAreaElement"] }
 yew =         { version = "0.20", features = ["csr"] }
 yew-router =  { version = "0.17" }
+
+[profile.release]
+panic = 'abort'
+codegen-units = 1
+opt-level = 's'
+lto = true
