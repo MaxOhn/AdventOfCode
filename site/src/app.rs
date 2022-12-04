@@ -1,5 +1,5 @@
 use yew::{html, Component, Context, Html};
-use yew_router::{BrowserRouter, Routable, Switch};
+use yew_router::{BrowserRouter, Routable, Switch, prelude::Redirect};
 
 use crate::{
     components::Footer,
@@ -42,7 +42,7 @@ pub enum Route {
 impl Route {
     fn switch(self) -> Html {
         match self {
-            Route::Home => html! { <Aoc22 /> },
+            Route::Home => html! { <Redirect<Route> to={Route::Aoc22} /> },
             Route::Aoc22 => html! { <Aoc22 /> },
             Route::NotFound => html! { <NotFound /> },
         }
