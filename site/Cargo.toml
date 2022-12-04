@@ -5,6 +5,7 @@ edition = "2021"
 
 [dependencies]
 aoc22 =       { path = "../2022" }
+eyre =        { version = "0.6.8" }
 log =         { version = "0.4" }
 wasm-logger = { version = "0.2" }
 wasm-timer =  { version = "0.2.5" }

@@ -30,7 +30,7 @@ impl Component for TextArea {
             <textarea
                 autofocus=true
                 rows="10"
-                cols="30"
+                cols="50"
                 placeholder="Copy-paste your puzzle input in here"
                 required=true
                 {onchange}

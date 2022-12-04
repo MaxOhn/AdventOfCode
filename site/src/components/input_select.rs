@@ -1,5 +1,6 @@
 use std::str::FromStr;
 
+use eyre::Result;
 use aoc22::prelude::Solution;
 use web_sys::HtmlInputElement;
 use yew::prelude::*;
@@ -37,6 +38,7 @@ macro_rules! day_from_str {
 }
 
 day_from_str! {
+    4: day04,
     3: day03,
     2: day02,
     1: day01,
@@ -94,5 +96,5 @@ fn day_to_option(day: u8, selected: bool) -> Html {
 #[derive(Copy, Clone)]
 pub struct Day {
     pub day: u8,
-    pub run: fn(&str) -> Solution,
+    pub run: fn(&str) -> Result<Solution>,
 }

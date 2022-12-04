@@ -1,7 +1,10 @@
-use yew::{Component, Context, Html, html};
-use yew_router::{Routable, BrowserRouter, Switch};
+use yew::{html, Component, Context, Html};
+use yew_router::{BrowserRouter, Routable, Switch};
 
-use crate::pages::{Home, NotFound};
+use crate::{
+    components::Footer,
+    pages::{Aoc22, NotFound},
+};
 
 pub enum Msg {}
 
@@ -18,9 +21,8 @@ impl Component for App {
     fn view(&self, _ctx: &Context<Self>) -> Html {
         html! {
             <BrowserRouter>
-                <main>
-                    <Switch<Route> render={switch} />
-                </main>
+                <Switch<Route> render={Route::switch} />
+                <Footer />
             </BrowserRouter>
         }
     }
@@ -30,18 +32,19 @@ impl Component for App {
 pub enum Route {
     #[at("/")]
     Home,
+    #[at("/2022")]
+    Aoc22,
     #[not_found]
     #[at("/404")]
     NotFound,
 }
 
-fn switch(routes: Route) -> Html {
-    match routes {
-        Route::Home => {
-            html! { <Home /> }
-        }
-        Route::NotFound => {
-            html! { <NotFound /> }
+impl Route {
+    fn switch(self) -> Html {
+        match self {
+            Route::Home => html! { <Aoc22 /> },
+            Route::Aoc22 => html! { <Aoc22 /> },
+            Route::NotFound => html! { <NotFound /> },
         }
     }
 }

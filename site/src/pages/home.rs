@@ -1,17 +1,18 @@
 use std::time::Duration;
 
 use aoc22::prelude::Solution;
+use eyre::Result;
 use wasm_timer::Instant;
 use yew::prelude::*;
 
 use crate::components::{FilledInputForm, InputForm};
 
 #[derive(Default)]
-pub struct Home {
+pub struct Aoc22 {
     result: Option<DayResult>,
 }
 
-impl Component for Home {
+impl Component for Aoc22 {
     type Message = DayResult;
     type Properties = ();
 
@@ -52,7 +53,7 @@ impl Component for Home {
 
 pub struct DayResult {
     day: u8,
-    solution: Solution,
+    solution: Result<Solution>,
     elapsed: Duration,
 }
 
@@ -64,13 +65,33 @@ impl DayResult {
             elapsed,
         } = self;
 
+        let solution_html = match solution {
+            Ok(solution) => html! {
+                <>
+                    <p>{ format!("Part 1: {}", &solution.part1) }</p>
+                    <p>{ format!("Part 2: {}", &solution.part2) }</p>
+                    <p>{ format!("Elapsed: {elapsed:?}") }</p>
+                </>
+            },
+            Err(err) => {
+                let mut chain = err.chain();
+
+                html! {
+                    <>
+                        if let Some(err)= chain.next() {
+                            <p>{ err }</p>
+                        }
+                        { chain.map(|err| html!(<p>{ "- caused by: " } { err }</p>)).collect::<Html>() }
+                    </>
+                }
+            }
+        };
+
         html! {
-            <>
-                <h1>{ "Day " } { day } { ":" }</h1>
-                <p>{ "Part 1: " } { &solution.part1 }</p>
-                <p>{ "Part 2: " } { &solution.part2 }</p>
-                <h4>{ "Elapsed: " } { format!("{elapsed:?}") }</h4>
-            </>
+            <div>
+                <h2>{ format!("Day {day}:") }</h2>
+                { solution_html }
+            </div>
         }
     }
 }
