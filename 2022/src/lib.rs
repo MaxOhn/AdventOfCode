@@ -1,6 +1,9 @@
 #![feature(portable_simd)]
 
 #[macro_use]
+extern crate eyre;
+
+#[macro_use]
 mod util;
 
 mod solution;
@@ -14,6 +17,8 @@ modules! {
 
 pub mod prelude {
     pub use super::{solution::Solution, util::Parseable};
+
+    pub use eyre::{ContextCompat, Report, Result, WrapErr};
 }
 
 #[macro_export]
@@ -25,14 +30,18 @@ macro_rules! modules {
 
         #[cfg(not(target_arch = "wasm32"))]
         pub mod current {
-            pub fn run() -> super::prelude::Solution {
-                let path = concat!("./inputs/", stringify!($current), ".txt");
-                let file = std::fs::File::open(path).unwrap();
+            use super::prelude::*;
 
-                let mmap = unsafe { memmap::Mmap::map(&file) }.unwrap();
+            pub fn run() -> Result<Solution> {
+                let path = concat!("./inputs/", stringify!($current), ".txt");
+                let file = std::fs::File::open(path)
+                    .wrap_err_with(|| format!("failed to open file at path `{path}`"))?;
+
+                let mmap = unsafe { memmap::Mmap::map(&file) }.wrap_err("failed to memory map")?;
                 let input = unsafe { std::str::from_utf8_unchecked(&mmap) };
 
                 super::$current::run(input)
+                    .wrap_err(concat!("failed to run day ", stringify!($current)))
             }
         }
     }

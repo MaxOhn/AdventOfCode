@@ -28,6 +28,16 @@ macro_rules! solution {
                     Self::$variant(n)
                 }
             }
+
+            impl PartialEq<$ty> for SolutionType {
+                fn eq(&self, other: &$ty) -> bool {
+                    if let Self::$variant(n) = self {
+                        n == other
+                    } else {
+                        false
+                    }
+                }
+            }
         )*
     };
 }

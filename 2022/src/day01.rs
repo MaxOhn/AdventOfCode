@@ -1,30 +1,32 @@
-use std::{iter, mem};
+use std::iter;
 
 use crate::prelude::*;
 
-pub fn run(input: &str) -> Solution {
-    let [p1, b, c] = input
-        .lines()
-        .map(str::as_bytes)
-        .map(<u32 as Parseable>::parse)
-        .chain(iter::once(0))
-        .scan(0, |sum, n| {
-            *sum += n;
+pub fn run(input: &str) -> Result<Solution> {
+    let mut max = 0;
+    let mut mid = 0;
+    let mut min = 0;
 
-            Some((n == 0).then(|| mem::replace(sum, 0)))
-        })
-        .flatten()
-        .fold([0, 0, 0], |[max, mid, min], sum| {
+    let mut sum = 0;
+
+    for line in input.lines().chain(iter::once("")) {
+        if line.is_empty() {
             if sum > max {
-                [sum, max, mid]
+                min = mid;
+                mid = max;
+                max = sum;
             } else if sum > mid {
-                [max, sum, mid]
+                min = mid;
+                mid = sum;
             } else if sum > min {
-                [max, mid, sum]
-            } else {
-                [max, mid, min]
+                min = sum;
             }
-        });
 
-    Solution::new().part1(p1).part2(p1 + b + c)
+            sum = 0;
+        } else {
+            sum += line.parse::<u32>().map_err(|_| eyre!("invalid number"))?;
+        }
+    }
+
+    Ok(Solution::new().part1(max).part2(max + mid + min))
 }

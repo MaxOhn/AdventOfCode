@@ -3,19 +3,19 @@ use std::ops::Add;
 use core_simd::simd::{u8x4, u8x8, SimdUint};
 use rayon::{prelude::ParallelIterator, slice::ParallelSlice};
 
-use crate::prelude::Solution;
+use crate::prelude::*;
 
-pub fn run(input: &str) -> Solution {
+pub fn run(input: &str) -> Result<Solution> {
     let input = input.as_bytes();
 
-    // let p1 = part1_const_lookup(input);
+    // let p1 = part1_const_lookup(input)?;
     // let p1 = part1_simd_rayon(input);
-    let p1 = part1_simd(input);
-    // let p1 = part1_naive(input);
+    // let p1 = part1_simd(input);
+    let p1 = part1_naive(input)?;
 
-    let p2 = part2(input);
+    let p2 = part2(input)?;
 
-    Solution::new().part1(p1).part2(p2)
+    Ok(Solution::new().part1(p1).part2(p2))
 }
 
 const fn gen_lookup_p1() -> [u16; 9] {
@@ -174,44 +174,44 @@ pub fn part1_simd(input: &[u8]) -> u16 {
 }
 
 #[allow(unused)]
-pub fn part1_naive(input: &[u8]) -> u16 {
+pub fn part1_naive(input: &[u8]) -> Result<u16> {
     input
         .chunks(4)
-        .fold(RockPaperScissors::default(), |rps, chunk| {
+        .try_fold(RockPaperScissors::default(), |rps, chunk| {
             match &chunk[..3] {
-                [b'A', _, b'X'] => rps.draw(1),
-                [b'A', _, b'Y'] => rps.win(2),
-                [b'A', _, b'Z'] => rps.loss(3),
-                [b'B', _, b'X'] => rps.loss(1),
-                [b'B', _, b'Y'] => rps.draw(2),
-                [b'B', _, b'Z'] => rps.win(3),
-                [b'C', _, b'X'] => rps.win(1),
-                [b'C', _, b'Y'] => rps.loss(2),
-                [b'C', _, b'Z'] => rps.draw(3),
-                _ => unreachable!("{:?}", chunk),
+                [b'A', _, b'X'] => Ok(rps.draw(1)),
+                [b'A', _, b'Y'] => Ok(rps.win(2)),
+                [b'A', _, b'Z'] => Ok(rps.loss(3)),
+                [b'B', _, b'X'] => Ok(rps.loss(1)),
+                [b'B', _, b'Y'] => Ok(rps.draw(2)),
+                [b'B', _, b'Z'] => Ok(rps.win(3)),
+                [b'C', _, b'X'] => Ok(rps.win(1)),
+                [b'C', _, b'Y'] => Ok(rps.loss(2)),
+                [b'C', _, b'Z'] => Ok(rps.draw(3)),
+                chunk => Err(Report::msg(format!("invalid chunk `{chunk:?}`"))),
             }
         })
-        .score
+        .map(|rps| rps.score)
 }
 
-fn part2(input: &[u8]) -> u16 {
+fn part2(input: &[u8]) -> Result<u16> {
     input
         .chunks(4)
-        .fold(RockPaperScissors::default(), |rps, chunk| {
+        .try_fold(RockPaperScissors::default(), |rps, chunk| {
             match &chunk[..3] {
-                [b'A', _, b'X'] => rps.loss(3),
-                [b'A', _, b'Y'] => rps.draw(1),
-                [b'A', _, b'Z'] => rps.win(2),
-                [b'B', _, b'X'] => rps.loss(1),
-                [b'B', _, b'Y'] => rps.draw(2),
-                [b'B', _, b'Z'] => rps.win(3),
-                [b'C', _, b'X'] => rps.loss(2),
-                [b'C', _, b'Y'] => rps.draw(3),
-                [b'C', _, b'Z'] => rps.win(1),
-                _ => unreachable!("{:?}", chunk),
+                [b'A', _, b'X'] => Ok(rps.loss(3)),
+                [b'A', _, b'Y'] => Ok(rps.draw(1)),
+                [b'A', _, b'Z'] => Ok(rps.win(2)),
+                [b'B', _, b'X'] => Ok(rps.loss(1)),
+                [b'B', _, b'Y'] => Ok(rps.draw(2)),
+                [b'B', _, b'Z'] => Ok(rps.win(3)),
+                [b'C', _, b'X'] => Ok(rps.loss(2)),
+                [b'C', _, b'Y'] => Ok(rps.draw(3)),
+                [b'C', _, b'Z'] => Ok(rps.win(1)),
+                chunk => Err(Report::msg(format!("invalid chunk `{chunk:?}`"))),
             }
         })
-        .score
+        .map(|rps| rps.score)
 }
 
 #[derive(Default)]

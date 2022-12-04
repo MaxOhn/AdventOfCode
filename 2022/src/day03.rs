@@ -2,9 +2,9 @@ use std::mem;
 
 use memchr::memchr_iter;
 
-use crate::prelude::Solution;
+use crate::prelude::*;
 
-pub fn run(input: &str) -> Solution {
+pub fn run(input: &str) -> Result<Solution> {
     let input = input.as_bytes();
 
     let mut p1 = 0;
@@ -28,7 +28,7 @@ pub fn run(input: &str) -> Solution {
             .iter()
             .map(char_to_idx)
             .find(|&i| get!(p1_seen[i]))
-            .unwrap();
+            .wrap_err("missing duplicate character in front and back")?;
 
         p1_seen.iter_mut().for_each(|seen| *seen = false);
 
@@ -48,7 +48,7 @@ pub fn run(input: &str) -> Solution {
                     .iter()
                     .map(char_to_idx)
                     .find(|&i| (get!(p2_count1[i]) > 0) && (get!(p2_count2[i]) > 0))
-                    .unwrap();
+                    .wrap_err("missing duplicate character in the last three lines")?;
 
                 p2_count1
                     .iter_mut()
@@ -64,7 +64,7 @@ pub fn run(input: &str) -> Solution {
         }
     }
 
-    Solution::new().part1(p1).part2(p2)
+    Ok(Solution::new().part1(p1).part2(p2))
 }
 
 fn char_to_idx(c: &u8) -> usize {
