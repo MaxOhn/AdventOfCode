@@ -6,12 +6,10 @@ use crate::{
     pages::{Aoc22, NotFound},
 };
 
-pub enum Msg {}
-
 pub struct App;
 
 impl Component for App {
-    type Message = Msg;
+    type Message = ();
     type Properties = ();
 
     fn create(_ctx: &Context<Self>) -> Self {
