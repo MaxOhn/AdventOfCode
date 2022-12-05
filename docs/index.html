@@ -8,12 +8,20 @@
 
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bulma@0.9.0/css/bulma.min.css">
 
-    <script type="module">import init from '/AdventOfCode/aoc-site-921ca2cbc20c282.js';init('/AdventOfCode/aoc-site-921ca2cbc20c282_bg.wasm');</script>
+    <script type="module">import init from '/AdventOfCode/aoc-site-b46ea473b214fe9.js';init('/AdventOfCode/aoc-site-b46ea473b214fe9_bg.wasm');</script>
     <link rel="stylesheet" href="/AdventOfCode/index-597d90855083f957.css">
+    
   
-<link rel="preload" href="/AdventOfCode/aoc-site-921ca2cbc20c282_bg.wasm" as="fetch" type="application/wasm" crossorigin="">
-<link rel="modulepreload" href="/AdventOfCode/aoc-site-921ca2cbc20c282.js"></head>
+<link rel="preload" href="/AdventOfCode/aoc-site-b46ea473b214fe9_bg.wasm" as="fetch" type="application/wasm" crossorigin="">
+<link rel="modulepreload" href="/AdventOfCode/aoc-site-b46ea473b214fe9.js"></head>
 
   <body>
+  
+  <script>
+    if (window.location.hash.length > 1) {
+      const path = window.location.hash.replace('#', '');
+      history.pushState({ page: 1 }, "Advent of Code Solver", '/AdventOfCode' + path);
+    }
+  </script>
 
 </body></html>

@@ -15,7 +15,15 @@
 
     <link data-trunk rel="rust" />
     <link data-trunk rel="sass" href="index.scss" />
+    <link data-trunk rel="copy-file" href="404.html" />
   </head>
 
   <body></body>
+  
+  <script>
+    if (window.location.hash.length > 1) {
+      const path = window.location.hash.replace('#', '');
+      history.pushState({ page: 1 }, "Advent of Code Solver", '/AdventOfCode' + path);
+    }
+  </script>
 </html>
