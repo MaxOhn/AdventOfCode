@@ -1,5 +1,6 @@
 macro_rules! solution {
     ( $( $variant:ident($ty:ty) ,)* ) => {
+        #[derive(Clone)]
         pub enum SolutionType {
             $( $variant($ty), )*
             Unsolved,
@@ -60,7 +61,7 @@ solution! {
     String(String),
 }
 
-#[derive(Default)]
+#[derive(Clone, Default)]
 pub struct Solution {
     pub part1: SolutionType,
     pub part2: SolutionType,
