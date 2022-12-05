@@ -1,6 +1,6 @@
 use std::{
     cmp::Ordering,
-    ops::Deref,
+    ops::{Deref, DerefMut},
     str::{FromStr, Lines},
 };
 
@@ -9,7 +9,7 @@ use crate::prelude::*;
 pub fn run(input: &str) -> Result<Solution> {
     let mut lines = input.lines();
 
-    let mut stacks = parse_stacks(&mut lines);
+    let mut stacks = parse_stacks(&mut lines)?;
 
     lines.next();
 
@@ -23,40 +23,40 @@ pub fn run(input: &str) -> Result<Solution> {
     Ok(Solution::new().part1(p1).part2(p2))
 }
 
-fn parse_stacks(lines: &mut Lines<'_>) -> Vec<Vec<u8>> {
-    let mut stacks = Vec::new();
+fn parse_stacks(lines: &mut Lines<'_>) -> Result<Vec<Vec<u8>>> {
+    let Some(line) = lines.next() else {
+        return Err(Report::msg("missing crates"));
+    };
 
-    if let Some(line) = lines.next() {
-        let crates = line.bytes().skip(1).step_by(4);
+    let mut stacks: Vec<_> = line
+        .bytes()
+        .skip(1)
+        .step_by(4)
+        .map(|c| if c != b' ' { vec![c] } else { Vec::new() })
+        .collect();
 
-        for c in crates {
-            if c != b' ' {
-                stacks.push(vec![c]);
-            } else {
-                stacks.push(Vec::new());
-            }
+    for line in lines {
+        let bytes = line.as_bytes();
+
+        if bytes.get(1).filter(|c| c.is_ascii_digit()).is_some() {
+            break;
         }
 
-        for line in lines {
-            let bytes = line.as_bytes();
-
-            if bytes.get(1).filter(|c| c.is_ascii_digit()).is_some() {
-                break;
-            }
-
-            let crates = bytes.iter().skip(1).step_by(4).zip(stacks.iter_mut());
-
-            for (&c, stack) in crates {
-                if c != b' ' {
-                    stack.push(c);
-                }
-            }
-        }
+        bytes
+            .iter()
+            .skip(1)
+            .step_by(4)
+            .zip(stacks.iter_mut())
+            .filter(|(&c, _)| c != b' ')
+            .for_each(|(&c, stack)| stack.push(c));
     }
 
-    stacks.iter_mut().for_each(|stack| stack.reverse());
-
     stacks
+        .iter_mut()
+        .map(Vec::deref_mut)
+        .for_each(<[u8]>::reverse);
+
+    Ok(stacks)
 }
 
 struct Instruction {
