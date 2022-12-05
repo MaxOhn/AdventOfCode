@@ -16,9 +16,11 @@ impl Component for Footer {
 
     fn view(&self, _ctx: &Context<Self>) -> Html {
         html! {
-            <footer>
-                <a href="https://github.com/MaxOhn/AdventOfCode">{ "Github" }</a>
-            </footer>
+            <nav class="navbar is-fixed-bottom is-active is-light">
+                <div class="content ml-5">
+                    <a href="https://github.com/MaxOhn/AdventOfCode">{ "Github" }</a>
+                </div>
+            </nav>
         }
     }
 }

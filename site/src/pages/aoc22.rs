@@ -9,11 +9,11 @@ use crate::components::{FilledInputForm, InputForm};
 
 #[derive(Default)]
 pub struct Aoc22 {
-    result: Option<DayResult>,
+    solution: Option<Result<DaySolution>>,
 }
 
 impl Component for Aoc22 {
-    type Message = DayResult;
+    type Message = Result<DaySolution>;
     type Properties = ();
 
     fn create(_ctx: &Context<Self>) -> Self {
@@ -21,7 +21,7 @@ impl Component for Aoc22 {
     }
 
     fn update(&mut self, _ctx: &Context<Self>, msg: Self::Message) -> bool {
-        self.result = Some(msg);
+        self.solution = Some(msg);
 
         true
     }
@@ -29,69 +29,101 @@ impl Component for Aoc22 {
     fn view(&self, ctx: &Context<Self>) -> Html {
         let onsubmit = ctx.link().callback(|FilledInputForm { day, input }| {
             let start = Instant::now();
-            let solution = (day.run)(&input);
-            let elapsed = start.elapsed();
+            let res = (day.run)(&input);
+            let elapsed = start.elapsed().max(Duration::from_millis(1));
 
-            DayResult {
+            res.map(|solution| DaySolution {
                 day: day.day,
                 solution,
                 elapsed,
-            }
+            })
         });
+
+        let solution_res = match &self.solution {
+            Some(Ok(solution)) => html! { <DayResult solution={solution.to_owned()} /> },
+            Some(Err(err)) => {
+                let mut chain = err.chain();
+
+                html! {
+                        <>
+                            if let Some(err)= chain.next() {
+                                <p>{ err }</p>
+                            }
+                            { chain.map(|err| html!(<p>{ "- caused by: " } { err }</p>)).collect::<Html>() }
+                        </>
+                }
+            }
+            None => html! {},
+        };
 
         html! {
             <div>
-                <h1>{ "Advent Of Code 2022 Solver" }</h1>
                 <InputForm onsubmit={onsubmit} />
-                if let Some(ref res) = self.result {
-                    { res.to_html() }
-                }
+                { solution_res }
             </div>
         }
     }
 }
 
-pub struct DayResult {
+#[derive(Clone)]
+pub struct DaySolution {
     day: u8,
-    solution: Result<Solution>,
+    solution: Solution,
     elapsed: Duration,
 }
 
-impl DayResult {
-    fn to_html(&self) -> Html {
-        let Self {
+impl PartialEq for DaySolution {
+    fn eq(&self, other: &Self) -> bool {
+        self.day == other.day
+    }
+}
+
+struct DayResult;
+
+#[derive(PartialEq, Properties)]
+struct DayResultProps {
+    solution: DaySolution,
+}
+
+impl Component for DayResult {
+    type Message = ();
+    type Properties = DayResultProps;
+
+    fn create(_ctx: &Context<Self>) -> Self {
+        Self
+    }
+
+    fn view(&self, ctx: &Context<Self>) -> Html {
+        let DaySolution {
             day,
             solution,
             elapsed,
-        } = self;
-
-        let solution_html = match solution {
-            Ok(solution) => html! {
-                <>
-                    <p>{ format!("Part 1: {}", &solution.part1) }</p>
-                    <p>{ format!("Part 2: {}", &solution.part2) }</p>
-                    <p>{ format!("Elapsed: {elapsed:?}") }</p>
-                </>
-            },
-            Err(err) => {
-                let mut chain = err.chain();
-
-                html! {
-                    <>
-                        if let Some(err)= chain.next() {
-                            <p>{ err }</p>
-                        }
-                        { chain.map(|err| html!(<p>{ "- caused by: " } { err }</p>)).collect::<Html>() }
-                    </>
-                }
-            }
-        };
+        } = &ctx.props().solution;
 
         html! {
-            <div>
-                <h2>{ format!("Day {day}:") }</h2>
-                { solution_html }
-            </div>
+            <table class="table ml-5">
+                <thead>
+                    <tr>
+                        <th colspan="2">{ "Day " }{ day }</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <th>{ "Part 1" }</th>
+                        <th>{ &solution.part1 }</th>
+                    </tr>
+                    <tr>
+                        <th>{ "Part 2" }</th>
+                        <th>{ &solution.part2 }</th>
+                    </tr>
+                </tbody>
+                <tfoot>
+                <tr>
+                <th>{ "Elapsed" }</th>
+                <th>{ format!("{elapsed:?}") }</th>
+                </tr>
+                </tfoot>
+            </table>
         }
     }
 }

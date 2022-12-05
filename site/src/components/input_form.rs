@@ -65,11 +65,16 @@ impl Component for InputForm {
         let text_update = ctx.link().callback(InputFormMsg::Text);
 
         html! {
-            <form {onsubmit}>
+            <form class="mt-5 mr-5 mb-5 ml-5" {onsubmit}>
                 <TextArea onchange={text_update} />
-                <br/>
-                <SelectDay onchange={select_update} />
-                <input type="submit" value="Solve"/>
+                <div class="field is-grouped">
+                    <div class="control">
+                        <SelectDay onchange={select_update} />
+                    </div>
+                    <div class="control">
+                        <input class="button is-primary" type="submit" value="Solve"/>
+                    </div>
+                </div>
             </form>
         }
     }

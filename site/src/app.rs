@@ -1,8 +1,8 @@
 use yew::{html, Component, Context, Html};
-use yew_router::{BrowserRouter, Routable, Switch, prelude::Redirect};
+use yew_router::{prelude::Redirect, BrowserRouter, Routable, Switch};
 
 use crate::{
-    components::Footer,
+    components::{Footer, Navbar},
     pages::{Aoc22, NotFound},
 };
 
@@ -20,10 +20,13 @@ impl Component for App {
 
     fn view(&self, _ctx: &Context<Self>) -> Html {
         html! {
-            <BrowserRouter>
-                <Switch<Route> render={Route::switch} />
-                <Footer />
-            </BrowserRouter>
+            <main>
+                <BrowserRouter>
+                    <Navbar />
+                    <Switch<Route> render={Route::switch} />
+                    <Footer />
+                </BrowserRouter>
+            </main>
         }
     }
 }

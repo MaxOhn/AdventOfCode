@@ -38,6 +38,7 @@ macro_rules! day_from_str {
 }
 
 day_from_str! {
+    5: day05,
     4: day04,
     3: day03,
     2: day02,
@@ -72,9 +73,14 @@ impl Component for SelectDay {
         });
 
         html! {
-            <select name="day" {onchange}>
-                { final_day_to_options() }
-            </select>
+            <div>
+                // <label class="label">{ "Select day" }</label>
+                <div class="select">
+                    <select name="day" {onchange}>
+                        { final_day_to_options() }
+                    </select>
+                </div>
+            </div>
         }
     }
 }
@@ -87,9 +93,9 @@ fn final_day_to_options() -> Html {
 
 fn day_to_option(day: u8, selected: bool) -> Html {
     html! {
-        <option value={day.to_string()} selected={selected}>{
-            format!("Day {day:0>2}")
-        }</option>
+        <option value={day.to_string()} selected={selected}>
+            { format!("Day {day:0>2}") }
+        </option>
     }
 }
 

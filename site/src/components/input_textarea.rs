@@ -27,14 +27,17 @@ impl Component for TextArea {
             .reform(|e: Event| e.target_unchecked_into::<HtmlInputElement>().value());
 
         html! {
+            <div class="field">
+            <label class="label">{ "Puzzle input" }</label>
             <textarea
+                class="textarea"
                 autofocus=true
-                rows="10"
-                cols="50"
+                rows="7"
                 placeholder="Copy-paste your puzzle input in here"
                 required=true
                 {onchange}
             />
+            </div>
         }
     }
 }
