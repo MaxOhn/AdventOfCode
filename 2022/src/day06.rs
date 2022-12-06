@@ -1,15 +1,30 @@
 use crate::prelude::*;
 
 pub fn run(input: &str) -> Result<Solution> {
+    solve_with_bitflags(input)
+}
+
+#[allow(unused)]
+pub fn solve_with_array(input: &str) -> Result<Solution> {
     let bytes = input.as_bytes();
 
-    let p1 = unique_idx(bytes, 4)?;
-    let p2 = unique_idx(&bytes[p1..], 14)?;
+    let p1 = unique_idx_array(bytes, 4)?;
+    let p2 = unique_idx_array(&bytes[p1..], 14)?;
 
     Ok(Solution::new().part1(p1 + 4).part2(p1 + p2 + 14))
 }
 
-fn unique_idx(stream: &[u8], target_len: u8) -> Result<usize> {
+#[allow(unused)]
+pub fn solve_with_bitflags(input: &str) -> Result<Solution> {
+    let bytes = input.as_bytes();
+
+    let p1 = unique_idx_bitflags::<4>(bytes)?;
+    let p2 = unique_idx_bitflags::<14>(&bytes[p1..])?;
+
+    Ok(Solution::new().part1(p1 + 4).part2(p1 + p2 + 14))
+}
+
+fn unique_idx_array(stream: &[u8], target_len: u8) -> Result<usize> {
     ensure!(stream.len() >= target_len as usize, "stream too short");
 
     let mut counts = [0_u16; 256];
@@ -39,4 +54,20 @@ fn unique_idx(stream: &[u8], target_len: u8) -> Result<usize> {
         })
         .map(|pos| pos + 1)
         .wrap_err_with(|| format!("missing {target_len} successive unique characters"))
+}
+
+fn unique_idx_bitflags<const N: u32>(stream: &[u8]) -> Result<usize> {
+    for (i, slice) in stream.windows(N as usize).enumerate() {
+        let mut bits: u32 = 0;
+
+        for x in slice {
+            bits |= 1 << (x - b'a');
+        }
+
+        if bits.count_ones() == N {
+            return Ok(i);
+        }
+    }
+
+    unreachable!();
 }
