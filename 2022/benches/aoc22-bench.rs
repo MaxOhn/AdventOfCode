@@ -22,6 +22,9 @@ fn day06(c: &mut Criterion) {
     c.bench_function("bitflags", |b| {
         b.iter(|| aoc22::day06::solve_with_bitflags(INPUT))
     });
+    c.bench_function("dynamic", |b| {
+        b.iter(|| aoc22::day06::solve_with_dynamic(INPUT))
+    });
 }
 
 criterion_group!(benches, day06);
