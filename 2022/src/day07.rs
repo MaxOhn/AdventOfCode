@@ -3,7 +3,7 @@ use std::{
     fmt::{Display, Formatter, Result as FmtResult},
     ops::Add,
     rc::{Rc, Weak},
-    str::{FromStr, Lines},
+    str::Lines,
 };
 
 use crate::prelude::*;
@@ -14,7 +14,7 @@ pub fn run(input: &str) -> Result<Solution> {
 
     let map = |entry: &DirEntry| match entry {
         DirEntry::Dir(dir) => {
-            let size = dir.borrow().size();
+            let size = dir.borrow().size;
 
             if size <= 100_000 {
                 size
@@ -35,12 +35,10 @@ pub fn run(input: &str) -> Result<Solution> {
     let to_delete = fs.size() - FREE_MEM;
 
     let p2 = fs.dir_min_by_key(|dir| {
-        let size = dir.size();
-
-        if size < to_delete {
+        if dir.size < to_delete {
             usize::MAX
         } else {
-            size
+            dir.size
         }
     });
 
@@ -55,18 +53,27 @@ impl<'i> FileSystem<'i> {
     fn parse(input: &'i str) -> Result<Self> {
         let mut lines = input.lines();
 
-        let this = Self::default();
+        let this = Self {
+            root: Rc::new(RefCell::new(Directory::new("/"))),
+        };
+
         let mut dir = Rc::clone(&this.root);
 
-        while let Some(next) = read_dir(dir, &mut lines)? {
+        while let Some(next) = read_command(dir, &mut lines)? {
             dir = next;
         }
+
+        this.finalize_dir_sizes();
 
         Ok(this)
     }
 
+    fn finalize_dir_sizes(&self) {
+        self.root.borrow_mut().finalize_size()
+    }
+
     fn size(&self) -> usize {
-        self.root.borrow().size()
+        self.root.borrow().size
     }
 
     fn map_reduce<M, O, F>(&self, map: M, fold: F) -> O
@@ -92,16 +99,8 @@ impl Display for FileSystem<'_> {
     }
 }
 
-impl Default for FileSystem<'_> {
-    fn default() -> Self {
-        Self {
-            root: Rc::new(RefCell::new(Directory::new("/"))),
-        }
-    }
-}
-
-fn read_dir<'i>(curr: Dir<'i>, lines: &mut Lines<'i>) -> Result<Option<Dir<'i>>> {
-    match lines.next().map(str::parse) {
+fn read_command<'i>(curr: Dir<'i>, lines: &mut Lines<'i>) -> Result<Option<Dir<'i>>> {
+    match lines.next().map(Command::parse) {
         Some(Ok(Command::Cd(cmd))) => process_cd(cmd, curr),
         Some(Ok(Command::Ls)) => {
             for line in &mut *lines {
@@ -111,7 +110,7 @@ fn read_dir<'i>(curr: Dir<'i>, lines: &mut Lines<'i>) -> Result<Option<Dir<'i>>>
                     }
 
                     curr.borrow_mut().entries.push(entry);
-                } else if let Ok(cmd) = line.parse() {
+                } else if let Ok(cmd) = Command::parse(line) {
                     match cmd {
                         Command::Cd(cmd) => return process_cd(cmd, curr),
                         Command::Ls => {}
@@ -128,70 +127,59 @@ fn read_dir<'i>(curr: Dir<'i>, lines: &mut Lines<'i>) -> Result<Option<Dir<'i>>>
     }
 }
 
-fn process_cd(cmd: CdCommand, curr: Dir) -> Result<Option<Dir>> {
+fn process_cd<'i>(cmd: CdCommand<'i>, curr: Dir<'i>) -> Result<Option<Dir<'i>>> {
     match cmd {
         CdCommand::Root => Ok(Some(Directory::root(curr))),
         CdCommand::StepOut => Ok(curr.borrow().parent.as_ref().and_then(Weak::upgrade)),
-        CdCommand::StepInto { dir } => {
-            let entry = curr
-                .borrow()
-                .entries
-                .iter()
-                .find_map(|entry| match entry {
-                    DirEntry::Dir(dir_entry) => {
-                        (dir_entry.borrow().name == dir).then_some(dir_entry)
-                    }
-                    DirEntry::File(_) => None,
-                })
-                .map(Rc::clone);
+        CdCommand::StepInto { dir } => curr
+            .borrow()
+            .entries
+            .iter()
+            .find_map(|entry| match entry {
+                DirEntry::Dir(dir_entry) => (dir_entry.borrow().name == dir).then_some(dir_entry),
+                DirEntry::File(_) => None,
+            })
+            .map(Rc::clone)
+            .ok_or_else(|| {
+                let parent = curr.borrow().name;
 
-            match entry {
-                Some(entry) => Ok(Some(entry)),
-                None => bail!(
-                    "directory `{parent}` contains no directory `{child}`",
-                    parent = curr.borrow().name,
-                    child = dir,
-                ),
-            }
-        }
+                eyre!("directory `{parent}` contains no directory `{dir}`")
+            })
+            .map(Some),
     }
 }
 
-enum Command {
-    Cd(CdCommand),
+enum Command<'d> {
+    Cd(CdCommand<'d>),
     Ls,
 }
 
-impl FromStr for Command {
-    type Err = Report;
-
-    fn from_str(cmd: &str) -> Result<Self, Self::Err> {
+impl<'d> Command<'d> {
+    fn parse(cmd: &'d str) -> Result<Self> {
         let cmd = cmd.strip_prefix("$ ").wrap_err("missing command prefix")?;
 
         if cmd.starts_with("ls") {
             Ok(Self::Ls)
         } else if let Some(suffix) = cmd.strip_prefix("cd ") {
-            suffix.parse().map(Self::Cd)
+            Ok(Self::Cd(CdCommand::parse(suffix)))
         } else {
             bail!("invalid command `{cmd}`")
         }
     }
 }
 
-enum CdCommand {
+enum CdCommand<'d> {
     Root,
     StepOut,
-    StepInto { dir: String },
+    StepInto { dir: &'d str },
 }
 
-impl FromStr for CdCommand {
-    type Err = Report;
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
+impl<'d> CdCommand<'d> {
+    fn parse(s: &'d str) -> Self {
         match s {
-            ".." => Ok(Self::StepOut),
-            "/" => Ok(Self::Root),
-            _ => Ok(Self::StepInto { dir: s.to_owned() }),
+            ".." => Self::StepOut,
+            "/" => Self::Root,
+            _ => Self::StepInto { dir: s },
         }
     }
 }
@@ -216,7 +204,7 @@ impl<'i> DirEntry<'i> {
 
     fn size(&self) -> usize {
         match self {
-            DirEntry::Dir(dir) => dir.borrow().size(),
+            DirEntry::Dir(dir) => dir.borrow().size,
             DirEntry::File(file) => file.size,
         }
     }
@@ -244,6 +232,7 @@ struct Directory<'n> {
     name: &'n str,
     entries: Vec<DirEntry<'n>>,
     parent: Option<Weak<RefCell<Directory<'n>>>>,
+    size: usize,
 }
 
 impl<'n> Directory<'n> {
@@ -252,7 +241,22 @@ impl<'n> Directory<'n> {
             name,
             entries: Vec::new(),
             parent: None,
+            size: 0,
         }
+    }
+
+    fn finalize_size(&mut self) {
+        fn size(dir: &Directory) -> usize {
+            dir.entries.iter().map(DirEntry::size).sum()
+        }
+
+        for entry in self.entries.iter() {
+            if let DirEntry::Dir(ref dir) = entry {
+                dir.borrow_mut().finalize_size();
+            }
+        }
+
+        self.size = size(self);
     }
 
     fn root(curr: Dir) -> Dir {
@@ -261,10 +265,6 @@ impl<'n> Directory<'n> {
         }
 
         curr
-    }
-
-    fn size(&self) -> usize {
-        self.entries.iter().map(DirEntry::size).sum()
     }
 
     fn print(&self, f: &mut Formatter<'_>, mut indent: usize) -> FmtResult {
@@ -299,19 +299,14 @@ impl<'n> Directory<'n> {
         F: Copy + Fn(&Self) -> V,
         V: Ord,
     {
-        let entries_min = self
-            .entries
+        self.entries
             .iter()
             .filter_map(|entry| match entry {
                 DirEntry::Dir(ref dir) => Some(dir.borrow().min_by_key(f)),
                 DirEntry::File(_) => None,
             })
-            .min();
-
-        match entries_min {
-            Some(min) => f(self).min(min),
-            None => f(self),
-        }
+            .min()
+            .map_or_else(|| f(self), |min| f(self).min(min))
     }
 }
 
