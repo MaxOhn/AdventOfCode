@@ -43,15 +43,15 @@ pub trait Parseable {
 
 #[macro_export]
 macro_rules! get {
-    ( $slice:ident[$idx:expr] ) => {
-        unsafe { *$slice.get_unchecked($idx) }
+    ( $( $slice:ident ).+ [$idx:expr] ) => {
+        unsafe { * $( $slice. )* get_unchecked($idx) }
     };
 }
 
 #[macro_export]
 macro_rules! get_mut {
-    ( $slice:ident[$idx:expr] ) => {
-        unsafe { $slice.get_unchecked_mut($idx) }
+    ( $( $slice:ident ).+ [$idx:expr] ) => {
+        unsafe { $( $slice. )* get_unchecked_mut($idx) }
     };
 }
 
