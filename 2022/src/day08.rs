@@ -133,9 +133,7 @@ impl Iterator for Iter<'_> {
     #[inline]
     fn next(&mut self) -> Option<Self::Item> {
         loop {
-            let chunk = self.chunk?;
-
-            match chunk.split_first() {
+            match self.chunk?.split_first() {
                 Some((elem, rest)) => {
                     self.chunk = Some(rest);
                     let x = self.x;
