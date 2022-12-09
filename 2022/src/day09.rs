@@ -49,14 +49,8 @@ fn move_successor(curr: Pos, succ: &mut Pos) {
     let dx = curr.x - succ.x;
     let dy = curr.y - succ.y;
 
-    if dx.abs() + dy.abs() == 4 {
+    if dx.abs() > 1 || dy.abs() > 1 {
         succ.x += dx.signum();
         succ.y += dy.signum();
-    } else if dx.abs() > 1 {
-        succ.x += dx.signum();
-        succ.y += (dy != 0) as i32 * dy;
-    } else if dy.abs() > 1 {
-        succ.y += dy.signum();
-        succ.x += (dx != 0) as i32 * dx;
     }
 }
