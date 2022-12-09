@@ -35,7 +35,7 @@ macro_rules! solution {
                     if let Self::$variant(n) = self {
                         n == other
                     } else {
-                        false
+                        panic!("comparing different solution types")
                     }
                 }
             }
@@ -58,7 +58,24 @@ solution! {
     Isize(isize),
     F32(f32),
     F64(f64),
-    String(String),
+    String(Box<str>),
+}
+
+impl From<String> for SolutionType {
+    #[inline]
+    fn from(n: String) -> Self {
+        Self::String(n.into())
+    }
+}
+
+impl PartialEq<str> for SolutionType {
+    fn eq(&self, other: &str) -> bool {
+        if let Self::String(n) = self {
+            &**n == other
+        } else {
+            panic!("comparing different solution types")
+        }
+    }
 }
 
 #[derive(Clone, Default)]
