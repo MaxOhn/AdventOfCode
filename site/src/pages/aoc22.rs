@@ -66,12 +66,16 @@ impl Aoc22 {
                         </thead>
                         <tbody>
                             <tr>
-                                <th>{ "Part 1" }</th>
-                                <th>{ &solution.part1 }</th>
+                                <th style="vertical-align: middle;">{ "Part 1" }</th>
+                                <th>
+                                    <pre>{ &solution.part1 }</pre>
+                                </th>
                             </tr>
                             <tr>
-                                <th>{ "Part 2" }</th>
-                                <th>{ &solution.part2 }</th>
+                                <th style="vertical-align: middle;">{ "Part 2" }</th>
+                                <th>
+                                    <pre>{ &solution.part2 }</pre>
+                                </th>
                             </tr>
                         </tbody>
                         <tfoot>

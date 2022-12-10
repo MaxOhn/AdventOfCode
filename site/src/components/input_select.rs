@@ -38,6 +38,7 @@ macro_rules! day_from_str {
 }
 
 day_from_str! {
+    10: day10,
     9: day09,
     8: day08,
     7: day07,
