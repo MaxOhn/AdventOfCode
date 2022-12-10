@@ -95,8 +95,8 @@ impl Solution {
 
 impl Display for Solution {
     fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
-        writeln!(f, "Part 1: {}", self.part1)?;
-        writeln!(f, "Part 2: {}", self.part2)?;
+        writeln!(f, "Part 1:\n{}", self.part1)?;
+        writeln!(f, "Part 2:\n{}", self.part2)?;
 
         Ok(())
     }

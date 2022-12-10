@@ -58,7 +58,15 @@ impl Crt {
 
 impl Display for Crt {
     fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
-        for chunk in self.inner.chunks_exact(Self::W) {
+        let mut chunks = self.inner.chunks_exact(Self::W);
+
+        if let Some(chunk) = chunks.next() {
+            for &px in chunk {
+                f.write_str(if px { "#" } else { "." })?;
+            }
+        }
+
+        for chunk in chunks {
             f.write_str("\n")?;
 
             for &px in chunk {
