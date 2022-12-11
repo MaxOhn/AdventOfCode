@@ -223,14 +223,14 @@ function addBorrowedObject(obj) {
 }
 function __wbg_adapter_32(arg0, arg1, arg2) {
     try {
-        wasm._dyn_core__ops__function__FnMut___A____Output___R_as_wasm_bindgen__closure__WasmClosure___describe__invoke__hdb5724e2644b27c7(arg0, arg1, addBorrowedObject(arg2));
+        wasm._dyn_core__ops__function__FnMut___A____Output___R_as_wasm_bindgen__closure__WasmClosure___describe__invoke__hbaa36ef4bd981473(arg0, arg1, addBorrowedObject(arg2));
     } finally {
         heap[stack_pointer++] = undefined;
     }
 }
 
 function __wbg_adapter_35(arg0, arg1, arg2) {
-    wasm._dyn_core__ops__function__FnMut__A____Output___R_as_wasm_bindgen__closure__WasmClosure___describe__invoke__h022fee4706e37e93(arg0, arg1, addHeapObject(arg2));
+    wasm._dyn_core__ops__function__FnMut__A____Output___R_as_wasm_bindgen__closure__WasmClosure___describe__invoke__h277c2e8a7666e932(arg0, arg1, addHeapObject(arg2));
 }
 
 let cachedUint32Memory0 = new Uint32Array();
@@ -785,12 +785,12 @@ function getImports() {
         getInt32Memory0()[arg0 / 4 + 1] = len0;
         getInt32Memory0()[arg0 / 4 + 0] = ptr0;
     };
-    imports.wbg.__wbindgen_closure_wrapper573 = function(arg0, arg1, arg2) {
-        const ret = makeMutClosure(arg0, arg1, 49, __wbg_adapter_32);
+    imports.wbg.__wbindgen_closure_wrapper640 = function(arg0, arg1, arg2) {
+        const ret = makeMutClosure(arg0, arg1, 50, __wbg_adapter_32);
         return addHeapObject(ret);
     };
-    imports.wbg.__wbindgen_closure_wrapper1431 = function(arg0, arg1, arg2) {
-        const ret = makeMutClosure(arg0, arg1, 49, __wbg_adapter_35);
+    imports.wbg.__wbindgen_closure_wrapper1460 = function(arg0, arg1, arg2) {
+        const ret = makeMutClosure(arg0, arg1, 50, __wbg_adapter_35);
         return addHeapObject(ret);
     };
 
@@ -829,7 +829,7 @@ function initSync(module) {
 
 async function init(input) {
     if (typeof input === 'undefined') {
-        input = new URL('aoc-site-9603e0730de0bda6_bg.wasm', import.meta.url);
+        input = new URL('aoc-site-831d39109fba2a21_bg.wasm', import.meta.url);
     }
     const imports = getImports();
 
