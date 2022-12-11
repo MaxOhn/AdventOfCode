@@ -1,7 +1,5 @@
-use std::ops::Add;
-
+#[cfg(feature = "nightly")]
 use core_simd::simd::{u8x4, u8x8, SimdUint};
-use rayon::{prelude::ParallelIterator, slice::ParallelSlice};
 
 use crate::prelude::*;
 
@@ -61,8 +59,13 @@ pub fn part1_const_lookup(input: &[u8]) -> u16 {
     })
 }
 
+#[cfg(feature = "nightly")]
 #[allow(unused)]
 pub fn part1_simd_rayon(input: &[u8]) -> u16 {
+    use std::ops::Add;
+
+    use rayon::{prelude::ParallelIterator, slice::ParallelSlice};
+
     input
         .par_chunks(32)
         .fold(u16::default, |score, chunk| {
@@ -100,8 +103,13 @@ pub fn part1_simd_rayon(input: &[u8]) -> u16 {
         .reduce(u16::default, <u16 as Add>::add)
 }
 
+#[cfg(feature = "nightly")]
 #[allow(unused)]
 pub fn part1_simd(input: &[u8]) -> u16 {
+    use std::ops::Add;
+
+    use rayon::{prelude::ParallelIterator, slice::ParallelSlice};
+
     let (aligned, suffix) = input.split_at((2500 * 4 / 32) * 32);
 
     let aligned_score = aligned.chunks(32).fold(0, |score, chunk| {

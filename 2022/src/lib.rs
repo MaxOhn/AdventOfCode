@@ -1,4 +1,4 @@
-#![feature(portable_simd)]
+#![cfg_attr(feature = "nightly", feature(portable_simd))]
 
 #[macro_use]
 extern crate eyre;
