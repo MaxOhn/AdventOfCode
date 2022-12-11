@@ -16,14 +16,14 @@ fn parse_monkeys(input: &str) -> Result<Vec<Monkey>> {
         .collect::<Result<Vec<Monkey>>>()
 }
 
-fn part1(input: &str) -> Result<usize> {
+fn part1(input: &str) -> Result<u64> {
     let mut monkeys = parse_monkeys(input)?;
     simulate_rounds(&mut monkeys, 20, |val| *val /= 3);
 
     Ok(mult_two_max(&monkeys))
 }
 
-fn part2(input: &str) -> Result<usize> {
+fn part2(input: &str) -> Result<u64> {
     let mut monkeys = parse_monkeys(input)?;
     let modulo: Worry = monkeys.iter().map(|monkey| monkey.test_div).product();
     simulate_rounds(&mut monkeys, 10_000, |val| *val %= modulo);
@@ -60,20 +60,19 @@ fn simulate_monkey(monkey: &mut Monkey, f: impl Fn(&mut Worry)) -> Option<(usize
     Some((next_monkey, worry))
 }
 
-fn mult_two_max(monkeys: &[Monkey]) -> usize {
-    let (max1, max2) =
-        monkeys
-            .iter()
-            .map(|monkey| monkey.inspect_count)
-            .fold((0, 0), |(max1, max2), count| {
-                if count > max1 {
-                    (count, max1)
-                } else if count > max2 {
-                    (max1, count)
-                } else {
-                    (max1, max2)
-                }
-            });
+fn mult_two_max(monkeys: &[Monkey]) -> u64 {
+    let (max1, max2) = monkeys
+        .iter()
+        .map(|monkey| monkey.inspect_count as u64)
+        .fold((0, 0), |(max1, max2), count| {
+            if count > max1 {
+                (count, max1)
+            } else if count > max2 {
+                (max1, count)
+            } else {
+                (max1, max2)
+            }
+        });
 
     max1 * max2
 }
