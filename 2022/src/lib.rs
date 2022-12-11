@@ -18,7 +18,8 @@ modules! {
     day07,
     day08,
     day09,
-    > day10,
+    day10,
+    > day11,
 }
 
 pub mod prelude {
@@ -29,6 +30,9 @@ pub mod prelude {
 
 #[macro_export]
 macro_rules! modules {
+    ( $( $pre:ident ,)* ) => {
+        compile_error!("One day must be prefixed with `> `")
+    };
     ( $( $pre:ident ,)* > $current:ident, $( $post:ident ,)* ) => {
         $( pub mod $pre; )*
         pub mod $current;
