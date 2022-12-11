@@ -10,10 +10,7 @@ pub fn run(input: &str) -> Result<Solution> {
 }
 
 fn parse_monkeys(input: &str) -> Result<Vec<Monkey>> {
-    input
-        .split("\n\n")
-        .map(str::parse)
-        .collect::<Result<Vec<Monkey>>>()
+    input.split("\n\n").map(str::parse).collect()
 }
 
 fn part1(input: &str) -> Result<u64> {
