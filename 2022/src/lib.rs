@@ -19,7 +19,8 @@ modules! {
     day08,
     day09,
     day10,
-    > day11,
+    day11,
+    > day12,
 }
 
 pub mod prelude {
