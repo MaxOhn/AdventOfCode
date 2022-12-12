@@ -1,53 +1,113 @@
 use std::{
     cmp::Ordering,
-    collections::{BinaryHeap, HashSet},
-    fmt::{Display, Formatter, Result as FmtResult},
+    collections::{BinaryHeap, HashMap, HashSet},
+    hash::{Hash, Hasher},
     ops::{Add, Index},
-    slice::ChunksExact,
 };
 
 use crate::prelude::*;
 
 pub fn run(input: &str) -> Result<Solution> {
-    let (hill, start) = Hill::parse(input)?;
+    run_dijkstra(input)
+    // run_a_star(input)
+}
 
-    let p1 = hike(&hill, start, None).wrap_err("missing end")?;
+#[allow(unused)]
+pub fn run_dijkstra(input: &str) -> Result<Solution> {
+    let hill = Hill::parse(input)?;
 
-    let p2 = hill
-        .find_all(|square| square.height == 0)
-        .fold(usize::MAX, |min, start| {
-            match hike(&hill, start, Some(min)) {
-                Some(path_len) => path_len.min(min),
-                None => min,
-            }
-        });
+    let goal = |pos| pos == hill.end;
+
+    let valid_height = |curr, neighbor| curr + 1 >= neighbor;
+
+    let start = State {
+        pos: hill.start,
+        height: 0,
+        path_len: 0,
+        f_score: (),
+    };
+
+    let p1 = hike_with_dijkstra(&hill, start, goal, valid_height).wrap_err("missing end")?;
+
+    let goal = |pos| hill[pos] == 0;
+
+    let valid_height = |curr, neighbor| curr <= neighbor + 1;
+
+    let start = State {
+        pos: hill.end,
+        height: 25,
+        path_len: 0,
+        f_score: (),
+    };
+
+    let p2 =
+        hike_with_dijkstra(&hill, start, goal, valid_height).wrap_err("missing height of 0")?;
 
     Ok(Solution::new().part1(p1).part2(p2))
 }
 
-fn hike(hill: &Hill, start: Pos, threshold: Option<usize>) -> Option<usize> {
-    let mut heap = BinaryHeap::with_capacity(hill.width);
-    let mut seen = HashSet::with_capacity(hill.width);
-    let threshold = threshold.unwrap_or(usize::MAX);
+#[allow(unused)]
+pub fn run_a_star(input: &str) -> Result<Solution> {
+    let hill = Hill::parse(input)?;
 
-    heap.push(State {
-        pos: start,
-        square: Square { height: 0 },
+    let goal = |pos| pos == hill.end;
+
+    let valid_height = |curr, neighbor| curr + 1 >= neighbor;
+
+    let start = State {
+        pos: hill.start,
+        height: 0,
         path_len: 0,
-    });
+        f_score: i32::MAX,
+    };
+
+    let heuristic = |hill: &Hill, pos: Pos| pos.manhatten_dist(&hill.end);
+
+    let p1 =
+        hike_with_a_star(&hill, start, goal, valid_height, heuristic).wrap_err("missing end")?;
+
+    let goal = |pos| hill[pos] == 0;
+
+    let valid_height = |curr, neighbor| curr <= neighbor + 1;
+
+    let start = State {
+        pos: hill.end,
+        height: 25,
+        path_len: 0,
+        f_score: i32::MAX,
+    };
+
+    let heuristic = |hill: &Hill, pos: Pos| -(hill[pos] as i32);
+
+    let p2 = hike_with_a_star(&hill, start, goal, valid_height, heuristic)
+        .wrap_err("missing height of 0")?;
+
+    Ok(Solution::new().part1(p1).part2(p2))
+}
+
+fn hike_with_dijkstra<G, V>(hill: &Hill, start: State, goal: G, valid_height: V) -> Option<usize>
+where
+    G: Fn(Pos) -> bool,
+    V: Fn(u8, u8) -> bool,
+{
+    let mut heap = BinaryHeap::with_capacity(hill.width);
+    let mut seen = HashSet::with_capacity(hill.width * 2);
+
+    heap.push(start);
 
     while let Some(state) = heap.pop() {
         let State {
             pos,
-            square,
+            height,
             path_len,
+            f_score: _,
         } = state;
 
-        if square.is_end() {
+        if goal(pos) {
             return Some(path_len);
         }
 
-        if !seen.insert(pos) || path_len == threshold {
+        if !seen.insert(pos) {
             continue;
         }
 
@@ -65,16 +125,17 @@ fn hike(hill: &Hill, start: Pos, threshold: Option<usize>) -> Option<usize> {
                 continue;
             }
 
-            let nsquare = hill[npos];
+            let nheight = hill[npos];
 
-            if square.height + 1 < nsquare.height {
+            if !valid_height(height, nheight) {
                 continue;
             }
 
             let nstate = State {
                 pos: npos,
-                square: nsquare,
+                height: nheight,
                 path_len: path_len + 1,
+                f_score: (),
             };
 
             heap.push(nstate);
@@ -84,42 +145,92 @@ fn hike(hill: &Hill, start: Pos, threshold: Option<usize>) -> Option<usize> {
     None
 }
 
-struct State {
-    pos: Pos,
-    square: Square,
-    path_len: usize,
-}
+fn hike_with_a_star<G, V, H>(
+    hill: &Hill,
+    start: State<i32>,
+    goal: G,
+    valid_height: V,
+    heuristic: H,
+) -> Option<usize>
+where
+    G: Fn(Pos) -> bool,
+    V: Fn(u8, u8) -> bool,
+    H: Fn(&Hill, Pos) -> i32,
+{
+    let mut heap = BinaryHeap::with_capacity(hill.width);
 
-impl Ord for State {
-    #[inline]
-    fn cmp(&self, other: &Self) -> Ordering {
-        let this = self.square.height as usize + self.path_len;
-        let that = other.square.height as usize + other.path_len;
+    let mut g_score = HashMap::with_capacity(hill.width * 2);
+    g_score.insert(start.pos, 0);
 
-        that.cmp(&this)
+    heap.push(start);
+
+    let mut seen = HashSet::with_capacity(hill.width * 2);
+
+    while let Some(current) = heap.pop() {
+        let State {
+            pos,
+            height,
+            path_len,
+            f_score: _,
+        } = current;
+
+        if goal(pos) {
+            return Some(path_len);
+        }
+
+        const DIRECTIONS: [Pos; 4] = [
+            Pos { x: -1, y: 0 },
+            Pos { x: 0, y: -1 },
+            Pos { x: 1, y: 0 },
+            Pos { x: 0, y: 1 },
+        ];
+
+        for direction in DIRECTIONS {
+            let npos = pos + direction;
+
+            if !hill.is_valid_pos(npos) {
+                continue;
+            }
+
+            let nheight = hill[npos];
+
+            if !valid_height(height, nheight) {
+                continue;
+            }
+
+            let g_score_current = *g_score.entry(pos).or_insert(i32::MAX);
+            let g_score_neighbor = g_score.entry(npos).or_insert(i32::MAX);
+
+            let tentative_g_score = g_score_current + 1;
+
+            if tentative_g_score < *g_score_neighbor && seen.insert(npos) {
+                *g_score_neighbor = tentative_g_score;
+
+                let nstate = State {
+                    pos: npos,
+                    height: nheight,
+                    path_len: path_len + 1,
+                    f_score: tentative_g_score + heuristic(hill, npos),
+                };
+
+                heap.push(nstate);
+            }
+        }
     }
-}
 
-impl PartialOrd for State {
-    #[inline]
-    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-        Some(self.cmp(other))
-    }
+    None
 }
-
-impl PartialEq for State {
-    #[inline]
-    fn eq(&self, other: &Self) -> bool {
-        self.pos == other.pos
-    }
-}
-
-impl Eq for State {}
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
 struct Pos {
     x: i32,
     y: i32,
+}
+
+impl Pos {
+    fn manhatten_dist(&self, other: &Self) -> i32 {
+        (self.x - other.x).abs() + (self.y - other.y).abs()
+    }
 }
 
 impl Add for Pos {
@@ -134,51 +245,28 @@ impl Add for Pos {
     }
 }
 
-#[derive(Copy, Clone, Eq, PartialEq)]
-struct Square {
-    height: u8,
-}
-
-impl Square {
-    const END: u8 = 26;
-
-    fn is_end(self) -> bool {
-        self.height == Self::END
-    }
-}
-
-impl Display for Square {
-    fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
-        match self {
-            Square { height: Self::END } => f.write_str("E"),
-            Square { height } => write!(f, "{}", (height + b'a') as char),
-        }
-    }
-}
-
 struct Hill {
-    inner: Box<[Square]>,
+    start: Pos,
+    end: Pos,
+    inner: Box<[u8]>,
     width: usize,
 }
 
 impl Hill {
-    fn parse(input: &str) -> Result<(Self, Pos)> {
+    fn parse(input: &str) -> Result<Self> {
         let mut lines = input.lines();
 
-        fn map_byte((byte, _): (u8, i32)) -> Result<Square> {
+        fn map_byte((byte, _): (u8, i32)) -> Result<u8> {
             match byte {
-                b'S' => Ok(Square { height: 0 }),
-                b'E' => Ok(Square {
-                    height: Square::END,
-                }),
-                b'a'..=b'z' => Ok(Square {
-                    height: byte - b'a',
-                }),
+                b'S' => Ok(0),
+                b'E' => Ok(25),
+                b'a'..=b'z' => Ok(byte - b'a'),
                 _ => bail!("invalid square `{}`", byte as char),
             }
         }
 
         let mut start = None;
+        let mut end = None;
         let mut y = 0;
 
         let mut inner = if let Some(line) = lines.next() {
@@ -186,7 +274,9 @@ impl Hill {
                 .zip(0..)
                 .inspect(|&(byte, x)| {
                     if byte == b'S' {
-                        start = Some(Pos { x, y })
+                        start = Some(Pos { x, y });
+                    } else if byte == b'E' {
+                        end = Some(Pos { x, y });
                     }
                 })
                 .map(map_byte)
@@ -204,7 +294,9 @@ impl Hill {
                 .zip(0..)
                 .inspect(|&(byte, x)| {
                     if byte == b'S' {
-                        start = Some(Pos { x, y })
+                        start = Some(Pos { x, y });
+                    } else if byte == b'E' {
+                        end = Some(Pos { x, y });
                     }
                 })
                 .map(map_byte)
@@ -216,8 +308,14 @@ impl Hill {
 
         let inner = inner.into();
         let start = start.wrap_err("missing start")?;
+        let end = end.wrap_err("missing end")?;
 
-        Ok((Self { inner, width }, start))
+        Ok(Self {
+            inner,
+            width,
+            start,
+            end,
+        })
     }
 
     fn height(&self) -> usize {
@@ -227,93 +325,66 @@ impl Hill {
     fn is_valid_pos(&self, pos: Pos) -> bool {
         pos.x >= 0 && pos.y >= 0 && pos.x < self.width as i32 && pos.y < self.height() as i32
     }
-
-    fn find_all<F>(&self, f: F) -> HillIter<'_, F>
-    where
-        F: Fn(&Square) -> bool,
-    {
-        let mut chunks = self.inner.chunks_exact(self.width);
-        let chunk = chunks.next();
-
-        HillIter {
-            filter: f,
-            x: 0,
-            y: 0,
-            chunks,
-            chunk,
-        }
-    }
 }
 
 impl Index<Pos> for Hill {
-    type Output = Square;
+    type Output = u8;
 
     #[inline]
     fn index(&self, idx: Pos) -> &Self::Output {
         let idx = idx.y as usize * self.width + idx.x as usize;
 
-        self.inner.index(idx)
+        &self.inner[idx]
     }
 }
 
-impl Display for Hill {
-    fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
-        let mut chunks = self.inner.chunks_exact(self.width);
-
-        if let Some(chunk) = chunks.next() {
-            for square in chunk {
-                write!(f, "{square}")?;
-            }
-        }
-
-        for chunk in chunks {
-            f.write_str("\n")?;
-
-            for square in chunk {
-                write!(f, "{square}")?;
-            }
-        }
-
-        Ok(())
-    }
+struct State<S = ()> {
+    pos: Pos,
+    height: u8,
+    path_len: usize,
+    f_score: S,
 }
 
-struct HillIter<'h, F> {
-    filter: F,
-    x: i32,
-    y: i32,
-    chunks: ChunksExact<'h, Square>,
-    chunk: Option<&'h [Square]>,
-}
-
-impl<'h, F> Iterator for HillIter<'h, F>
-where
-    F: Fn(&Square) -> bool,
-{
-    type Item = Pos;
-
+impl Ord for State<()> {
     #[inline]
-    fn next(&mut self) -> Option<Self::Item> {
-        loop {
-            let chunk = self.chunk?;
+    fn cmp(&self, other: &Self) -> Ordering {
+        other.path_len.cmp(&self.path_len)
+    }
+}
 
-            match chunk.split_first() {
-                Some((first, rest)) => {
-                    self.chunk = Some(rest);
+impl Ord for State<i32> {
+    #[inline]
+    fn cmp(&self, other: &Self) -> Ordering {
+        other.f_score.cmp(&self.f_score)
+    }
+}
 
-                    if (self.filter)(first) {
-                        let x = self.x;
-                        self.x += 1;
+impl PartialOrd for State<()> {
+    #[inline]
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.cmp(other))
+    }
+}
 
-                        return Some(Pos { x, y: self.y });
-                    }
-                }
-                None => {
-                    self.x = 0;
-                    self.y += 1;
-                    self.chunk = self.chunks.next();
-                }
-            }
-        }
+impl PartialOrd for State<i32> {
+    #[inline]
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl<S> PartialEq for State<S> {
+    #[inline]
+    fn eq(&self, other: &Self) -> bool {
+        self.pos == other.pos
+    }
+}
+
+impl<S> Eq for State<S> {}
+
+impl<S> Hash for State<S> {
+    #[inline]
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.pos.hash(state);
     }
 }

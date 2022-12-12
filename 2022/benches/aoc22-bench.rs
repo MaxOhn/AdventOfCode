@@ -31,5 +31,12 @@ fn day06(c: &mut Criterion) {
     });
 }
 
-criterion_group!(benches, day06);
+#[allow(unused)]
+fn day12(c: &mut Criterion) {
+    const INPUT: &str = include_str!("../inputs/day12.txt");
+    c.bench_function("Dijkstra", |b| b.iter(|| aoc22::day12::run_dijkstra(INPUT)));
+    c.bench_function("A*", |b| b.iter(|| aoc22::day12::run_a_star(INPUT)));
+}
+
+criterion_group!(benches, day12);
 criterion_main!(benches);
