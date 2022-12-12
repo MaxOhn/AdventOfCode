@@ -32,11 +32,28 @@ fn day06(c: &mut Criterion) {
 }
 
 #[allow(unused)]
+fn day11(c: &mut Criterion) {
+    const INPUT: &str = include_str!("../inputs/day11.txt");
+    // c.bench_function("VecDeque pop", |b| {
+    //     b.iter(|| aoc22::day11::dyn_monkey_op::run(INPUT))
+    // });
+    // c.bench_function("Vec iter", |b| {
+    //     b.iter(|| aoc22::day11::dyn_monkey_op_no_pop::run(INPUT))
+    // });
+    c.bench_function("Dyn MonkeyOp", |b| {
+        b.iter(|| aoc22::day11::dyn_monkey_op_no_pop::run(INPUT))
+    });
+    c.bench_function("Enum MonkeyOp", |b| {
+        b.iter(|| aoc22::day11::enum_monkey_op_no_pop::run(INPUT))
+    });
+}
+
+#[allow(unused)]
 fn day12(c: &mut Criterion) {
     const INPUT: &str = include_str!("../inputs/day12.txt");
     c.bench_function("Dijkstra", |b| b.iter(|| aoc22::day12::run_dijkstra(INPUT)));
     c.bench_function("A*", |b| b.iter(|| aoc22::day12::run_a_star(INPUT)));
 }
 
-criterion_group!(benches, day12);
+criterion_group!(benches, day11);
 criterion_main!(benches);
