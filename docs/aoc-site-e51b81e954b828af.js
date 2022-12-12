@@ -785,12 +785,12 @@ function getImports() {
         getInt32Memory0()[arg0 / 4 + 1] = len0;
         getInt32Memory0()[arg0 / 4 + 0] = ptr0;
     };
-    imports.wbg.__wbindgen_closure_wrapper640 = function(arg0, arg1, arg2) {
-        const ret = makeMutClosure(arg0, arg1, 50, __wbg_adapter_32);
+    imports.wbg.__wbindgen_closure_wrapper655 = function(arg0, arg1, arg2) {
+        const ret = makeMutClosure(arg0, arg1, 53, __wbg_adapter_32);
         return addHeapObject(ret);
     };
-    imports.wbg.__wbindgen_closure_wrapper1460 = function(arg0, arg1, arg2) {
-        const ret = makeMutClosure(arg0, arg1, 50, __wbg_adapter_35);
+    imports.wbg.__wbindgen_closure_wrapper1474 = function(arg0, arg1, arg2) {
+        const ret = makeMutClosure(arg0, arg1, 53, __wbg_adapter_35);
         return addHeapObject(ret);
     };
 
@@ -829,7 +829,7 @@ function initSync(module) {
 
 async function init(input) {
     if (typeof input === 'undefined') {
-        input = new URL('aoc-site-6796747e5b49dbee_bg.wasm', import.meta.url);
+        input = new URL('aoc-site-e51b81e954b828af_bg.wasm', import.meta.url);
     }
     const imports = getImports();
 
