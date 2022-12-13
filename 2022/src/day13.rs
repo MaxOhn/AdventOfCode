@@ -45,26 +45,39 @@ enum Packet {
     List(Vec<Packet>),
 }
 
+impl FromStr for Packet {
+    type Err = Report;
+
+    #[inline]
+    fn from_str(line: &str) -> Result<Self, Self::Err> {
+        let Some((b'[', rest)) = line.as_bytes().split_first() else {
+            bail!("packet must start with `[`");
+        };
+
+        Self::parse_list(rest).map(|(packet, _)| packet)
+    }
+}
+
 impl Packet {
     fn parse_list(mut bytes: &[u8]) -> Result<(Self, &[u8])> {
-        let mut data = Vec::new();
+        let mut list = Vec::new();
 
         loop {
-            match bytes.first() {
-                Some(b'[') => {
-                    let (item, rest) = Self::parse_list(&bytes[1..])?;
+            match bytes.split_first() {
+                Some((b'[', rest)) => {
+                    let (item, rest) = Self::parse_list(rest)?;
                     bytes = rest;
-                    data.push(item);
+                    list.push(item);
                 }
-                Some(b'0'..=b'9') => {
-                    let (item, rest) = Self::parse_num(bytes)?;
+                Some((b'0'..=b'9', _)) => {
+                    let (packet, rest) = Self::parse_num(bytes)?;
                     bytes = rest;
-                    data.push(item);
+                    list.push(packet);
                 }
-                Some(b',') => bytes = &bytes[1..],
-                Some(b']') => return Ok((Self::List(data), &bytes[1..])),
+                Some((b',', rest)) => bytes = rest,
+                Some((b']', rest)) => return Ok((Self::List(list), rest)),
                 None => bail!("unexpected end of list"),
-                Some(b) => bail!("invalid byte `{b}`"),
+                Some((byte, _)) => bail!("invalid byte `{byte}`"),
             }
         }
     }
@@ -73,28 +86,16 @@ impl Packet {
         let mut num = 0;
 
         loop {
-            match bytes.first() {
-                Some(b @ b'0'..=b'9') => {
+            match bytes.split_first() {
+                Some((byte @ b'0'..=b'9', rest)) => {
                     num *= 10;
-                    num += (b & 0xF) as i32;
-                    bytes = &bytes[1..];
+                    num += (byte & 0xF) as i32;
+                    bytes = rest;
                 }
-                Some(b',' | b']') | None => return Ok((Self::Num(num), bytes)),
-                Some(b) => bail!("unexpected byte `{b}` while parsing number"),
+                Some((b',' | b']', _)) | None => return Ok((Self::Num(num), bytes)),
+                Some((byte, _)) => bail!("unexpected byte `{byte}` while parsing number"),
             }
         }
-    }
-}
-
-impl FromStr for Packet {
-    type Err = Report;
-
-    fn from_str(line: &str) -> Result<Self, Self::Err> {
-        let bytes = line.as_bytes();
-        ensure!(bytes.first() == Some(&b'['), "missing `[`");
-        let (packet, _) = Self::parse_list(&bytes[1..])?;
-
-        Ok(packet)
     }
 }
 
