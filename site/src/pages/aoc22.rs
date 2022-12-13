@@ -106,45 +106,54 @@ impl Aoc22 {
                 } = solution;
 
                 html! {
-                    <table class="table ml-5">
-                        <thead>
-                            <tr>
-                                <th colspan="2">{ "Day " }{ day }</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <tr>
-                                <th style="vertical-align: middle;">{ "Part 1" }</th>
-                                <th>
-                                    <pre>{ &solution.part1 }</pre>
-                                </th>
-                            </tr>
-                            <tr>
-                                <th style="vertical-align: middle;">{ "Part 2" }</th>
-                                <th>
-                                    <pre>{ &solution.part2 }</pre>
-                                </th>
-                            </tr>
-                        </tbody>
-                        <tfoot>
-                            <tr>
-                                <th>{ "Elapsed" }</th>
-                                <th>{ format!("{elapsed:?}") }</th>
-                            </tr>
-                        </tfoot>
-                    </table>
+                    <article class="message is-primary ml-5 mr-5">
+                        <div class="message-body">
+                            <table class="table">
+                                <thead>
+                                    <tr>
+                                        <th colspan="2">{ "Day " }{ day }</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <th style="vertical-align: middle;">{ "Part 1" }</th>
+                                        <th>
+                                            <pre>{ &solution.part1 }</pre>
+                                        </th>
+                                    </tr>
+                                    <tr>
+                                        <th style="vertical-align: middle;">{ "Part 2" }</th>
+                                        <th>
+                                            <pre>{ &solution.part2 }</pre>
+                                        </th>
+                                    </tr>
+                                </tbody>
+                                <tfoot>
+                                    <tr>
+                                        <th>{ "Elapsed" }</th>
+                                        <th>{ format!("{elapsed:?}") }</th>
+                                    </tr>
+                                </tfoot>
+                            </table>
+                        </div>
+                    </article>
                 }
             }
             Some(Err(err)) => {
                 let mut chain = err.chain();
 
                 html! {
-                        <>
-                            if let Some(err)= chain.next() {
-                                <p>{ err }</p>
-                            }
-                            { chain.map(|err| html!(<p>{ "- caused by: " } { err }</p>)).collect::<Html>() }
-                        </>
+                        <article class="message is-danger ml-5 mr-5">
+                            <div class="message-header">
+                                <p>{ "Error" }</p>
+                            </div>
+                            <div class="message-body">
+                                if let Some(err)= chain.next() {
+                                    <p>{ err }</p>
+                                }
+                                { chain.map(|err| html!(<p>{ "- caused by: " } { err }</p>)).collect::<Html>() }
+                            </div>
+                        </article>
                 }
             }
             None => html! {},
