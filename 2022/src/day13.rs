@@ -39,7 +39,7 @@ pub fn run(input: &str) -> Result<Solution> {
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 enum Packet {
-    Num(i32),
+    Num(u8),
     List(Vec<Packet>),
 }
 
@@ -87,7 +87,7 @@ impl Packet {
             match bytes.split_first() {
                 Some((byte @ b'0'..=b'9', rest)) => {
                     num *= 10;
-                    num += (byte & 0xF) as i32;
+                    num += byte & 0xF;
                     bytes = rest;
                 }
                 Some((b',' | b']', _)) | None => return Ok((Self::Num(num), bytes)),
@@ -131,9 +131,9 @@ impl PartialOrd for Packet {
     }
 }
 
-impl PartialEq<i32> for Packet {
+impl PartialEq<u8> for Packet {
     #[inline]
-    fn eq(&self, other: &i32) -> bool {
+    fn eq(&self, other: &u8) -> bool {
         match self {
             Packet::Num(n) => n.eq(other),
             Packet::List(_) => false,
@@ -141,9 +141,9 @@ impl PartialEq<i32> for Packet {
     }
 }
 
-impl PartialOrd<i32> for Packet {
+impl PartialOrd<u8> for Packet {
     #[inline]
-    fn partial_cmp(&self, other: &i32) -> Option<Ordering> {
+    fn partial_cmp(&self, other: &u8) -> Option<Ordering> {
         match self {
             Packet::Num(n) => n.partial_cmp(other),
             Packet::List(list) => match list.as_slice() {
@@ -158,14 +158,14 @@ impl PartialOrd<i32> for Packet {
     }
 }
 
-impl PartialEq<Packet> for i32 {
+impl PartialEq<Packet> for u8 {
     #[inline]
     fn eq(&self, other: &Packet) -> bool {
         other.eq(self)
     }
 }
 
-impl PartialOrd<Packet> for i32 {
+impl PartialOrd<Packet> for u8 {
     #[inline]
     fn partial_cmp(&self, other: &Packet) -> Option<Ordering> {
         other.partial_cmp(self).map(Ordering::reverse)
