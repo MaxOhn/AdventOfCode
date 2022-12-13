@@ -100,23 +100,7 @@ impl PartialOrd for Packet {
             (Packet::Num(this), Packet::Num(that)) => this.partial_cmp(that),
             (Packet::Num(this), that @ Packet::List(_)) => this.partial_cmp(that),
             (this @ Packet::List(_), Packet::Num(that)) => this.partial_cmp(that),
-            (Packet::List(this), Packet::List(that)) => {
-                let mut this = this.iter();
-                let mut that = that.iter();
-
-                loop {
-                    return match (this.next(), that.next()) {
-                        (None, None) => Some(Ordering::Equal),
-                        (None, Some(_)) => Some(Ordering::Less),
-                        (Some(_), None) => Some(Ordering::Greater),
-                        (Some(this), Some(that)) => match this.partial_cmp(that)? {
-                            Ordering::Less => Some(Ordering::Less),
-                            Ordering::Equal => continue,
-                            Ordering::Greater => Some(Ordering::Greater),
-                        },
-                    };
-                }
-            }
+            (Packet::List(this), Packet::List(that)) => this.partial_cmp(that),
         }
     }
 }
