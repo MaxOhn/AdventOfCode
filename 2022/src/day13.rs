@@ -69,8 +69,8 @@ impl Packet {
                     bytes = rest;
                     list.push(item);
                 }
-                Some((b'0'..=b'9', _)) => {
-                    let (packet, rest) = Self::parse_num(bytes)?;
+                Some((byte @ b'0'..=b'9', rest)) => {
+                    let (packet, rest) = Self::parse_num(*byte, rest)?;
                     bytes = rest;
                     list.push(packet);
                 }
@@ -82,8 +82,8 @@ impl Packet {
         }
     }
 
-    fn parse_num(mut bytes: &[u8]) -> Result<(Self, &[u8])> {
-        let mut num = 0;
+    fn parse_num(start: u8, mut bytes: &[u8]) -> Result<(Self, &[u8])> {
+        let mut num = start & 0xF;
 
         loop {
             match bytes.split_first() {
