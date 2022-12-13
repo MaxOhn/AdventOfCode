@@ -55,5 +55,12 @@ fn day12(c: &mut Criterion) {
     c.bench_function("A*", |b| b.iter(|| aoc22::day12::run_a_star(INPUT)));
 }
 
-criterion_group!(benches, day11);
+#[allow(unused)]
+fn day13(c: &mut Criterion) {
+    const INPUT: &str = include_str!("../inputs/day13.txt");
+    c.bench_function("manual", |b| b.iter(|| aoc22::day13::run_manual(INPUT)));
+    c.bench_function("nom", |b| b.iter(|| aoc22::day13::run_nom(INPUT)));
+}
+
+criterion_group!(benches, day13);
 criterion_main!(benches);

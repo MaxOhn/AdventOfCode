@@ -1,12 +1,29 @@
 use std::{
     cmp::Ordering,
     fmt::{Display, Formatter, Result as FmtResult},
-    str::FromStr,
+};
+
+use nom::{
+    branch::alt, character::complete as ch, combinator::map, multi::separated_list0,
+    sequence::delimited, IResult,
 };
 
 use crate::prelude::*;
 
 pub fn run(input: &str) -> Result<Solution> {
+    run_manual(input)
+    // run_nom(input)
+}
+
+pub fn run_manual(input: &str) -> Result<Solution> {
+    run_with_fn(input, Packet::parse_manual)
+}
+
+pub fn run_nom(input: &str) -> Result<Solution> {
+    run_with_fn(input, Packet::parse_nom)
+}
+
+fn run_with_fn(input: &str, f: fn(&str) -> Result<Packet>) -> Result<Solution> {
     let mut p1 = 0;
 
     let divider1 = Packet::List(vec![Packet::Num(2)]);
@@ -17,8 +34,8 @@ pub fn run(input: &str) -> Result<Solution> {
 
     for (group, i) in input.split("\n\n").zip(1..) {
         let (line_a, line_b) = group.split_once('\n').wrap_err("invalid group")?;
-        let packet_a: Packet = line_a.parse().wrap_err("invalid packet")?;
-        let packet_b: Packet = line_b.parse().wrap_err("invalid packet")?;
+        let packet_a = (f)(line_a)?;
+        let packet_b = (f)(line_b)?;
 
         p1 += (packet_a <= packet_b) as i32 * i;
 
@@ -39,20 +56,15 @@ enum Packet {
     List(Vec<Packet>),
 }
 
-impl FromStr for Packet {
-    type Err = Report;
-
-    #[inline]
-    fn from_str(line: &str) -> Result<Self, Self::Err> {
+impl Packet {
+    fn parse_manual(line: &str) -> Result<Self> {
         let Some((b'[', rest)) = line.as_bytes().split_first() else {
             bail!("packet must start with `[`");
         };
 
         Self::parse_list(rest).map(|(packet, _)| packet)
     }
-}
 
-impl Packet {
     fn parse_list(mut bytes: &[u8]) -> Result<(Self, &[u8])> {
         let mut list = Vec::new();
 
@@ -90,6 +102,24 @@ impl Packet {
                 Some((byte, _)) => bail!("unexpected byte `{byte}` while parsing number"),
             }
         }
+    }
+
+    fn parse_nom(input: &str) -> Result<Self> {
+        fn list(input: &str) -> IResult<&str, Packet> {
+            let num = map(ch::u8, Packet::Num);
+            let list_or_num = alt((list, num));
+            let separated = separated_list0(ch::char(','), list_or_num);
+            let delim = delimited(ch::char('['), separated, ch::char(']'));
+            let mut mapped = map(delim, Packet::List);
+
+            (mapped)(input)
+        }
+
+        let (_, packet) = list(input)
+            .map_err(|e| e.to_owned())
+            .wrap_err("failed to parse packet")?;
+
+        Ok(packet)
     }
 }
 
