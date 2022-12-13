@@ -21,23 +21,25 @@ pub fn run(input: &str) -> Result<Solution> {
         packets.push(packet_b);
     }
 
+    packets.sort_unstable();
+
     let divider1 = Packet::List(vec![Packet::Num(2)]);
     let divider2 = Packet::List(vec![Packet::Num(6)]);
 
-    packets.push(divider1.clone());
-    packets.push(divider2.clone());
+    let idx_divider1 = packets.binary_search(&divider1).unwrap_err() + 1;
 
-    packets.sort_unstable();
-
-    let idx_divider1 = packets.binary_search(&divider1).unwrap() + 1;
-    let idx_divider2 = packets.binary_search(&divider2).unwrap() + 1;
+    let idx_divider2 = packets[idx_divider1..]
+        .binary_search(&divider2)
+        .unwrap_err()
+        + idx_divider1
+        + 2;
 
     let p2 = idx_divider1 * idx_divider2;
 
     Ok(Solution::new().part1(p1).part2(p2))
 }
 
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Debug, Eq, PartialEq)]
 enum Packet {
     Num(u8),
     List(Vec<Packet>),
