@@ -1,9 +1,8 @@
 use yew::prelude::*;
 
-use super::{
-    input_select::{Day, SelectDay},
-    input_textarea::TextArea,
-};
+use crate::pages::aoc22::Day;
+
+use super::{input_select::SelectDay, input_textarea::TextArea};
 
 #[derive(Clone, Default)]
 pub struct InputForm {

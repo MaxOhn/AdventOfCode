@@ -1,4 +1,5 @@
-mod aoc22;
+pub mod aoc22;
+
 mod not_found;
 
-pub use self::{aoc22::Aoc22, not_found::NotFound};
+pub use self::not_found::NotFound;

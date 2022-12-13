@@ -3,7 +3,7 @@ use yew_router::{prelude::Redirect, BrowserRouter, Routable, Switch};
 
 use crate::{
     components::{Footer, Navbar},
-    pages::{Aoc22, NotFound},
+    pages::{aoc22::Aoc22, NotFound},
 };
 
 pub struct App;

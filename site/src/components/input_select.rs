@@ -1,57 +1,7 @@
-use std::str::FromStr;
-
-use aoc22::prelude::Solution;
-use eyre::Result;
 use web_sys::HtmlInputElement;
 use yew::prelude::*;
 
-macro_rules! day_from_str {
-    ( $final_day:literal: $final_mod:ident, $( $n:literal: $mod:ident ,)* ) => {
-        const FINAL_DAY: u8 = $final_day;
-
-        impl Default for Day {
-            fn default() -> Self {
-                Self {
-                    day: $final_day,
-                    run: aoc22::$final_mod::run,
-                }
-            }
-        }
-
-        day_from_str!(@ $final_day: $final_mod, $( $n:$mod ,)*);
-    };
-    (@ $( $n:literal: $mod:ident ,)+ ) => {
-        impl FromStr for Day {
-            type Err = ();
-
-            fn from_str(s: &str) -> Result<Self, Self::Err> {
-                match s {
-                    $( stringify!($n) => Ok(Self {
-                        day: $n,
-                        run: aoc22::$mod::run
-                    }), )*
-                    _ => Err(()),
-                }
-            }
-        }
-    }
-}
-
-day_from_str! {
-    13: day13,
-    12: day12,
-    11: day11,
-    10: day10,
-    9: day09,
-    8: day08,
-    7: day07,
-    6: day06,
-    5: day05,
-    4: day04,
-    3: day03,
-    2: day02,
-    1: day01,
-}
+use crate::pages::aoc22::{Day, FINAL_DAY};
 
 pub struct SelectDay;
 
@@ -82,7 +32,6 @@ impl Component for SelectDay {
 
         html! {
             <div>
-                // <label class="label">{ "Select day" }</label>
                 <div class="select">
                     <select name="day" {onchange}>
                         { final_day_to_options() }
@@ -105,10 +54,4 @@ fn day_to_option(day: u8, selected: bool) -> Html {
             { format!("Day {day:0>2}") }
         </option>
     }
-}
-
-#[derive(Copy, Clone)]
-pub struct Day {
-    pub day: u8,
-    pub run: fn(&str) -> Result<Solution>,
 }

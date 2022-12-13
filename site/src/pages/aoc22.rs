@@ -7,6 +7,54 @@ use yew::prelude::*;
 
 use crate::components::{FilledInputForm, InputForm};
 
+macro_rules! day_from_str {
+    ( $final_day:literal: $final_mod:ident, $( $n:literal: $mod:ident ,)* ) => {
+        pub const FINAL_DAY: u8 = $final_day;
+
+        impl Default for Day {
+            fn default() -> Self {
+                Self {
+                    day: $final_day,
+                    run: aoc22::$final_mod::run,
+                }
+            }
+        }
+
+        day_from_str!(@ $final_day: $final_mod, $( $n:$mod ,)*);
+    };
+    (@ $( $n:literal: $mod:ident ,)+ ) => {
+        impl std::str::FromStr for Day {
+            type Err = ();
+
+            fn from_str(s: &str) -> Result<Self, Self::Err> {
+                match s {
+                    $( stringify!($n) => Ok(Self {
+                        day: $n,
+                        run: aoc22::$mod::run
+                    }), )*
+                    _ => Err(()),
+                }
+            }
+        }
+    }
+}
+
+day_from_str! {
+    13: day13,
+    12: day12,
+    11: day11,
+    10: day10,
+    9: day09,
+    8: day08,
+    7: day07,
+    6: day06,
+    5: day05,
+    4: day04,
+    3: day03,
+    2: day02,
+    1: day01,
+}
+
 pub struct Aoc22 {
     solution: Option<Result<DaySolution>>,
 }
@@ -108,4 +156,10 @@ pub struct DaySolution {
     day: u8,
     solution: Solution,
     elapsed: Duration,
+}
+
+#[derive(Copy, Clone)]
+pub struct Day {
+    pub day: u8,
+    pub run: fn(&str) -> Result<Solution>,
 }
