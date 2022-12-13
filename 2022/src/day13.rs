@@ -15,9 +15,7 @@ pub fn run(input: &str) -> Result<Solution> {
         let packet_a: Packet = line_a.parse().wrap_err("invalid packet")?;
         let packet_b: Packet = line_b.parse().wrap_err("invalid packet")?;
 
-        if let Some(Ordering::Less | Ordering::Equal) = packet_a.partial_cmp(&packet_b) {
-            p1 += i;
-        }
+        p1 += (packet_a <= packet_b) as i32 * i;
 
         packets.push(packet_a);
         packets.push(packet_b);
