@@ -60,6 +60,7 @@ fn day13(c: &mut Criterion) {
     const INPUT: &str = include_str!("../inputs/day13.txt");
     c.bench_function("manual", |b| b.iter(|| aoc22::day13::run_manual(INPUT)));
     c.bench_function("nom", |b| b.iter(|| aoc22::day13::run_nom(INPUT)));
+    c.bench_function("no allocs", |b| b.iter(|| aoc22::day13::run_wrapped(INPUT)));
 }
 
 criterion_group!(benches, day13);
