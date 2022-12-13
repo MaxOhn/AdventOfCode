@@ -103,31 +103,23 @@ impl Ord for Packet {
     fn cmp(&self, other: &Self) -> Ordering {
         match (self, other) {
             (Packet::Num(this), Packet::Num(that)) => this.cmp(that),
-            (Packet::Num(n), that @ Packet::List(_)) => {
-                let this = Self::List(vec![Self::Num(*n)]);
-
-                this.cmp(that)
-            }
-            (this @ Packet::List(_), Packet::Num(n)) => {
-                let that = Self::List(vec![Self::Num(*n)]);
-
-                this.cmp(&that)
-            }
+            (Packet::Num(this), that @ Packet::List(_)) => this.partial_cmp(that).unwrap(),
+            (this @ Packet::List(_), Packet::Num(that)) => this.partial_cmp(that).unwrap(),
             (Packet::List(this), Packet::List(that)) => {
                 let mut this = this.iter();
                 let mut that = that.iter();
 
                 loop {
-                    match (this.next(), that.next()) {
-                        (None, None) => return Ordering::Equal,
-                        (None, Some(_)) => return Ordering::Less,
-                        (Some(_), None) => return Ordering::Greater,
+                    return match (this.next(), that.next()) {
+                        (None, None) => Ordering::Equal,
+                        (None, Some(_)) => Ordering::Less,
+                        (Some(_), None) => Ordering::Greater,
                         (Some(this), Some(that)) => match this.cmp(that) {
-                            Ordering::Less => return Ordering::Less,
-                            Ordering::Equal => {}
-                            Ordering::Greater => return Ordering::Greater,
+                            Ordering::Less => Ordering::Less,
+                            Ordering::Equal => continue,
+                            Ordering::Greater => Ordering::Greater,
                         },
-                    }
+                    };
                 }
             }
         }
@@ -138,6 +130,47 @@ impl PartialOrd for Packet {
     #[inline]
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
         Some(self.cmp(other))
+    }
+}
+
+impl PartialEq<i32> for Packet {
+    #[inline]
+    fn eq(&self, other: &i32) -> bool {
+        match self {
+            Packet::Num(n) => n.eq(other),
+            Packet::List(_) => false,
+        }
+    }
+}
+
+impl PartialOrd<i32> for Packet {
+    #[inline]
+    fn partial_cmp(&self, other: &i32) -> Option<Ordering> {
+        match self {
+            Packet::Num(n) => n.partial_cmp(other),
+            Packet::List(list) => match list.as_slice() {
+                [] => Some(Ordering::Less),
+                [a] => a.partial_cmp(other),
+                [a, _, ..] => match a.partial_cmp(other)? {
+                    Ordering::Less => Some(Ordering::Less),
+                    Ordering::Equal | Ordering::Greater => Some(Ordering::Greater),
+                },
+            },
+        }
+    }
+}
+
+impl PartialEq<Packet> for i32 {
+    #[inline]
+    fn eq(&self, other: &Packet) -> bool {
+        other.eq(self)
+    }
+}
+
+impl PartialOrd<Packet> for i32 {
+    #[inline]
+    fn partial_cmp(&self, other: &Packet) -> Option<Ordering> {
+        other.partial_cmp(self).map(Ordering::reverse)
     }
 }
 
