@@ -8,7 +8,12 @@ use crate::prelude::*;
 
 pub fn run(input: &str) -> Result<Solution> {
     let mut p1 = 0;
-    let mut packets = Vec::with_capacity(16);
+
+    let divider1 = Packet::List(vec![Packet::Num(2)]);
+    let mut idx1 = 1;
+
+    let divider2 = Packet::List(vec![Packet::Num(6)]);
+    let mut idx2 = 2;
 
     for (group, i) in input.split("\n\n").zip(1..) {
         let (line_a, line_b) = group.split_once('\n').wrap_err("invalid group")?;
@@ -17,29 +22,18 @@ pub fn run(input: &str) -> Result<Solution> {
 
         p1 += (packet_a <= packet_b) as i32 * i;
 
-        packets.push(packet_a);
-        packets.push(packet_b);
+        idx1 += (packet_a < divider1) as usize;
+        idx1 += (packet_b < divider1) as usize;
+        idx2 += (packet_a < divider2) as usize;
+        idx2 += (packet_b < divider2) as usize;
     }
 
-    packets.sort_unstable();
-
-    let divider1 = Packet::List(vec![Packet::Num(2)]);
-    let divider2 = Packet::List(vec![Packet::Num(6)]);
-
-    let idx_divider1 = packets.binary_search(&divider1).unwrap_err() + 1;
-
-    let idx_divider2 = packets[idx_divider1..]
-        .binary_search(&divider2)
-        .unwrap_err()
-        + idx_divider1
-        + 2;
-
-    let p2 = idx_divider1 * idx_divider2;
+    let p2 = idx1 * idx2;
 
     Ok(Solution::new().part1(p1).part2(p2))
 }
 
-#[derive(Debug, Eq, PartialEq)]
+#[derive(PartialEq)]
 enum Packet {
     Num(u8),
     List(Vec<Packet>),
@@ -99,37 +93,31 @@ impl Packet {
     }
 }
 
-impl Ord for Packet {
-    fn cmp(&self, other: &Self) -> Ordering {
+impl PartialOrd for Packet {
+    #[inline]
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
         match (self, other) {
-            (Packet::Num(this), Packet::Num(that)) => this.cmp(that),
-            (Packet::Num(this), that @ Packet::List(_)) => this.partial_cmp(that).unwrap(),
-            (this @ Packet::List(_), Packet::Num(that)) => this.partial_cmp(that).unwrap(),
+            (Packet::Num(this), Packet::Num(that)) => this.partial_cmp(that),
+            (Packet::Num(this), that @ Packet::List(_)) => this.partial_cmp(that),
+            (this @ Packet::List(_), Packet::Num(that)) => this.partial_cmp(that),
             (Packet::List(this), Packet::List(that)) => {
                 let mut this = this.iter();
                 let mut that = that.iter();
 
                 loop {
                     return match (this.next(), that.next()) {
-                        (None, None) => Ordering::Equal,
-                        (None, Some(_)) => Ordering::Less,
-                        (Some(_), None) => Ordering::Greater,
-                        (Some(this), Some(that)) => match this.cmp(that) {
-                            Ordering::Less => Ordering::Less,
+                        (None, None) => Some(Ordering::Equal),
+                        (None, Some(_)) => Some(Ordering::Less),
+                        (Some(_), None) => Some(Ordering::Greater),
+                        (Some(this), Some(that)) => match this.partial_cmp(that)? {
+                            Ordering::Less => Some(Ordering::Less),
                             Ordering::Equal => continue,
-                            Ordering::Greater => Ordering::Greater,
+                            Ordering::Greater => Some(Ordering::Greater),
                         },
                     };
                 }
             }
         }
-    }
-}
-
-impl PartialOrd for Packet {
-    #[inline]
-    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-        Some(self.cmp(other))
     }
 }
 
