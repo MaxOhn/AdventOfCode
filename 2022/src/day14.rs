@@ -1,13 +1,22 @@
-use std::{
-    fmt::{Display, Formatter, Result as FmtResult},
-    ops::{Add, AddAssign, Index, IndexMut},
-};
+use std::ops::{Add, AddAssign, Index, IndexMut};
 
 use crate::prelude::*;
 
 pub fn run(input: &str) -> Result<Solution> {
-    let p1 = fill_cave(input, Part::One)?;
-    let p2 = fill_cave(input, Part::Two)?;
+    // run_naive(input)
+    run_dfs(input)
+}
+
+pub fn run_naive(input: &str) -> Result<Solution> {
+    let p1 = fill_cave_naive(input, Part::One)?;
+    let p2 = fill_cave_naive(input, Part::Two)?;
+
+    Ok(Solution::new().part1(p1).part2(p2))
+}
+
+pub fn run_dfs(input: &str) -> Result<Solution> {
+    let p1 = fill_cave_dfs(input, Part::One)?;
+    let p2 = fill_cave_dfs(input, Part::Two)?;
 
     Ok(Solution::new().part1(p1).part2(p2))
 }
@@ -18,7 +27,42 @@ enum Part {
     Two,
 }
 
-fn fill_cave(input: &str, part: Part) -> Result<usize> {
+fn fill_cave_dfs(input: &str, part: Part) -> Result<usize> {
+    let mut cave = Cave::parse(input, part)?;
+
+    let mut history = Vec::with_capacity(cave.height() as usize);
+    history.push(SOURCE);
+
+    let mut sand = 0;
+
+    while let Some(prev) = history.last().copied() {
+        let down = prev + DOWN;
+        let left = prev + LEFT;
+        let right = prev + RIGHT;
+
+        match cave.get(down) {
+            None => break,
+            Some(false) => history.push(down),
+            Some(true) => match cave.get(left) {
+                None => break,
+                Some(false) => history.push(left),
+                Some(true) => match cave.get(right) {
+                    None => break,
+                    Some(false) => history.push(right),
+                    Some(true) => {
+                        let Some(pos) = history.pop() else { unreachable!() };
+                        cave[pos] = true;
+                        sand += 1;
+                    }
+                },
+            },
+        }
+    }
+
+    Ok(sand)
+}
+
+fn fill_cave_naive(input: &str, part: Part) -> Result<usize> {
     let mut cave = Cave::parse(input, part)?;
     let mut sand = 0;
 
@@ -26,19 +70,10 @@ fn fill_cave(input: &str, part: Part) -> Result<usize> {
         sand += 1;
     }
 
-    // println!("{cave}");
-
     Ok(sand)
 }
 
-#[derive(Copy, Clone, Eq, PartialEq)]
-enum Square {
-    Air,
-    Sand,
-    Rock,
-}
-
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, Eq, PartialEq)]
 struct Pos {
     x: i32,
     y: i32,
@@ -77,14 +112,14 @@ const LEFT: Pos = Pos { x: -1, y: 1 };
 const RIGHT: Pos = Pos { x: 1, y: 1 };
 
 struct Cave {
-    inner: Box<[Square]>,
+    inner: Box<[bool]>,
     w: i32,
     x_off: i32,
 }
 
 impl Cave {
     fn fill_one(&mut self) -> bool {
-        if self[SOURCE] == Square::Sand {
+        if self[SOURCE] {
             return false;
         }
 
@@ -92,13 +127,13 @@ impl Cave {
 
         loop {
             match self.get(curr + DOWN) {
-                Some(Square::Air) => curr += DOWN,
-                Some(Square::Sand | Square::Rock) => match self[curr + LEFT] {
-                    Square::Air => curr += LEFT,
-                    Square::Sand | Square::Rock => match self[curr + RIGHT] {
-                        Square::Air => curr += RIGHT,
-                        Square::Sand | Square::Rock => {
-                            self[curr] = Square::Sand;
+                Some(false) => curr += DOWN,
+                Some(true) => match self[curr + LEFT] {
+                    false => curr += LEFT,
+                    true => match self[curr + RIGHT] {
+                        false => curr += RIGHT,
+                        true => {
+                            self[curr] = true;
 
                             return true;
                         }
@@ -162,9 +197,9 @@ impl Cave {
             paths.push(path);
         }
 
-        let mut w = max_x - min_x + 1 + 2;
+        let mut w = max_x - min_x + 1;
         let mut h = max_y - min_y + 1;
-        let mut x_off = min_x - 1;
+        let mut x_off = min_x;
 
         if part == Part::Two {
             h += 2;
@@ -193,7 +228,7 @@ impl Cave {
             x_off -= left_pad;
         }
 
-        let mut inner = vec![Square::Air; (w * h) as usize].into_boxed_slice();
+        let mut inner = vec![false; (w * h) as usize].into_boxed_slice();
 
         for path in paths {
             for (start, end) in path.iter().zip(path.iter().skip(1)) {
@@ -204,14 +239,14 @@ impl Cave {
 
                     for y in min..=max {
                         let idx = y * w + x;
-                        inner[idx as usize] = Square::Rock;
+                        inner[idx as usize] = true;
                     }
                 } else if start.y == end.y {
                     let min = (start.y * w + start.x.min(end.x) - x_off) as usize;
                     let max = (start.y * w + start.x.max(end.x) - x_off) as usize;
 
                     for square in get_mut!(inner[min..=max]) {
-                        *square = Square::Rock;
+                        *square = true;
                     }
                 } else {
                     bail!("cannot do diagonal line of rocks");
@@ -222,7 +257,7 @@ impl Cave {
         if part == Part::Two {
             for x in 0..w {
                 let idx = (h - 1) * w + x;
-                inner[idx as usize] = Square::Rock;
+                inner[idx as usize] = true;
             }
         }
 
@@ -239,13 +274,13 @@ impl Cave {
         x >= 0 && x < self.w && pos.y >= 0 && pos.y < self.height()
     }
 
-    fn get(&self, pos: Pos) -> Option<Square> {
+    fn get(&self, pos: Pos) -> Option<bool> {
         self.is_valid_pos(pos).then(|| self[pos])
     }
 }
 
 impl Index<Pos> for Cave {
-    type Output = Square;
+    type Output = bool;
 
     #[inline]
     fn index(&self, pos: Pos) -> &Self::Output {
@@ -261,37 +296,5 @@ impl IndexMut<Pos> for Cave {
         let idx = pos.y * self.w + pos.x - self.x_off;
 
         self.inner.index_mut(idx as usize)
-    }
-}
-
-impl Display for Square {
-    fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
-        match self {
-            Square::Air => f.write_str("."),
-            Square::Sand => f.write_str("o"),
-            Square::Rock => f.write_str("█"),
-        }
-    }
-}
-
-impl Display for Cave {
-    fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
-        let mut rows = self.inner.chunks_exact(self.w as usize);
-
-        if let Some(row) = rows.next() {
-            for square in row {
-                write!(f, "{square}")?;
-            }
-
-            for row in rows {
-                f.write_str("\n")?;
-
-                for square in row {
-                    write!(f, "{square}")?;
-                }
-            }
-        }
-
-        Ok(())
     }
 }
