@@ -8,9 +8,9 @@ use nom::{
 use crate::prelude::*;
 
 pub fn run(input: &str) -> Result<Solution> {
-    // run_manual(input)
+    run_manual(input)
     // run_nom(input)
-    run_wrapped(input)
+    // run_wrapped(input)
 }
 
 pub fn run_manual(input: &str) -> Result<Solution> {
