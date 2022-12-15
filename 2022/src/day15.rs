@@ -9,10 +9,10 @@ pub fn run(input: &str) -> Result<Solution> {
         .collect::<Result<Vec<Sensor>>>()?;
 
     // let p1 = part1::<10>(&sensors)?;
-    // let p2 = part2::<20>(&sensors)?;
+    // let p2 = part2_quadrants::<20>(&sensors)?;
 
     let p1 = part1::<2_000_000>(&sensors)?;
-    let p2 = part2::<4_000_000>(&sensors)?;
+    let p2 = part2_quadrants::<4_000_000>(&sensors)?;
 
     Ok(Solution::new().part1(p1).part2(p2))
 }
@@ -40,7 +40,8 @@ fn part1<const Y: i32>(sensors: &[Sensor]) -> Result<i32> {
     Ok(p1)
 }
 
-fn part2<const MAX: i32>(sensors: &[Sensor]) -> Result<i64> {
+#[allow(unused)]
+fn part2_lines<const MAX: i32>(sensors: &[Sensor]) -> Result<i64> {
     let mut buf = LinesBuf::default();
 
     for y in 0..=MAX {
@@ -48,6 +49,68 @@ fn part2<const MAX: i32>(sensors: &[Sensor]) -> Result<i64> {
 
         if let Some(x) = lines.first_missing(0, MAX) {
             return Ok(x as i64 * 4_000_000 + y as i64);
+        }
+    }
+
+    bail!("no matching pos")
+}
+
+#[allow(unused)]
+fn part2_quadrants<const MAX: i32>(sensors: &[Sensor]) -> Result<i64> {
+    let mut stack = vec![Quadrant {
+        top_l: Pos { x: 0, y: 0 },
+        bot_r: Pos { x: MAX, y: MAX },
+    }];
+
+    while let Some(Quadrant { top_l, bot_r }) = stack.pop() {
+        if top_l == bot_r {
+            let Pos { x, y } = top_l;
+
+            return Ok(x as i64 * 4_000_000 + y as i64);
+        }
+
+        let midx = top_l.x + (bot_r.x - top_l.x) / 2;
+        let midy = top_l.y + (bot_r.y - top_l.y) / 2;
+
+        let next_top_l = Quadrant {
+            top_l,
+            bot_r: Pos { x: midx, y: midy },
+        };
+
+        let next_top_r = Quadrant {
+            top_l: Pos {
+                x: midx + 1,
+                y: top_l.y,
+            },
+            bot_r: Pos {
+                x: bot_r.x,
+                y: midy,
+            },
+        };
+
+        let next_bot_l = Quadrant {
+            top_l: Pos {
+                x: top_l.x,
+                y: midy + 1,
+            },
+            bot_r: Pos {
+                x: midx,
+                y: bot_r.y,
+            },
+        };
+
+        let next_bot_r = Quadrant {
+            top_l: Pos {
+                x: midx + 1,
+                y: midy + 1,
+            },
+            bot_r,
+        };
+
+        for quadrant in [next_top_l, next_top_r, next_bot_l, next_bot_r] {
+            if sensors.iter().all(|sensor| quadrant.valid(sensor)) {
+                stack.push(quadrant);
+            }
         }
     }
 
@@ -335,4 +398,31 @@ struct LineEvent {
 enum LineEventKind {
     Start,
     End,
+}
+
+struct Quadrant {
+    top_l: Pos,
+    bot_r: Pos,
+}
+
+impl Quadrant {
+    fn valid(&self, sensor: &Sensor) -> bool {
+        let Self { top_l, bot_r } = self;
+
+        let top_r = Pos {
+            x: bot_r.x,
+            y: top_l.y,
+        };
+        let bot_l = Pos {
+            x: top_l.x,
+            y: bot_r.y,
+        };
+
+        let a = sensor.pos.manhatten_dist(*top_l);
+        let b = sensor.pos.manhatten_dist(top_r);
+        let c = sensor.pos.manhatten_dist(bot_l);
+        let d = sensor.pos.manhatten_dist(*bot_r);
+
+        a.max(b).max(c).max(d) > sensor.radius
+    }
 }
