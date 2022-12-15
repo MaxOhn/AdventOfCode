@@ -12,7 +12,9 @@ pub fn run(input: &str) -> Result<Solution> {
     // let p2 = part2_quadrants::<20>(&sensors)?;
 
     let p1 = part1::<2_000_000>(&sensors)?;
-    let p2 = part2_quadrants::<4_000_000>(&sensors)?;
+    // let p2 = part2_lines::<4_000_000>(&sensors)?;
+    // let p2 = part2_quadrants::<4_000_000>(&sensors)?;
+    let p2 = part2_border_intersection::<4_000_000>(&sensors)?;
 
     Ok(Solution::new().part1(p1).part2(p2))
 }
@@ -101,6 +103,73 @@ fn part2_quadrants<const MAX: i32>(sensors: &[Sensor]) -> Result<i64> {
 
     bail!("no matching pos")
 }
+#[allow(unused)]
+fn part2_border_intersection<const MAX: i32>(sensors: &[Sensor]) -> Result<i64> {
+    let mut verticals = Vec::with_capacity(sensors.len() * 2);
+    let mut horizontals = Vec::with_capacity(sensors.len() * 2);
+
+    for Sensor { pos, radius, .. } in sensors {
+        let xleft = pos.x - radius - 1;
+        let xright = pos.x + radius + 1;
+
+        let left = xleft - pos.y;
+        let right = xright - pos.y;
+
+        let top = xleft + pos.y;
+        let bot = xright + pos.y;
+
+        verticals.extend([left, right]);
+        horizontals.extend([top, bot]);
+    }
+
+    verticals.sort_unstable();
+    horizontals.sort_unstable();
+
+    let mut buf = Vec::with_capacity(verticals.len() / 2);
+
+    for window in verticals.windows(2) {
+        let [a, b] = window else { unreachable!() };
+
+        if a == b {
+            buf.push(*a);
+        }
+    }
+
+    mem::swap(&mut buf, &mut verticals);
+    buf.clear();
+
+    for window in horizontals.windows(2) {
+        let [a ,b] = window else { unreachable!() };
+
+        if a == b {
+            buf.push(*a);
+        }
+    }
+
+    mem::swap(&mut buf, &mut horizontals);
+
+    verticals.dedup();
+    horizontals.dedup();
+
+    for v in verticals {
+        for h in horizontals.iter() {
+            let y = (h - v) / 2;
+            let x = v + y;
+
+            if x < 0 || x > MAX || y < 0 || y > MAX {
+                continue;
+            }
+
+            let intersection = Pos::new(x, y);
+
+            if sensors.iter().all(|s| !intersection.is_in_range(s)) {
+                return Ok(x as i64 * 4_000_000 + y as i64);
+            }
+        }
+    }
+
+    bail!("no matching pos")
+}
 
 struct Sensor {
     pos: Pos,
@@ -114,40 +183,13 @@ impl FromStr for Sensor {
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         let rest = s.strip_prefix("Sensor at ").wrap_err("missing prefix")?;
         let (sensor, rest) = rest.split_once(':').wrap_err("missing colon")?;
-        let (sx, sy) = sensor.split_once(", ").wrap_err("missing comma")?;
 
-        let rest = rest
+        let beacon = rest
             .strip_prefix(" closest beacon is at ")
             .wrap_err("missing infix")?;
 
-        let (bx, by) = rest.split_once(", ").wrap_err("missing comma")?;
-
-        let sx = sx
-            .strip_prefix("x=")
-            .map(str::parse)
-            .and_then(Result::ok)
-            .wrap_err("invalid x")?;
-
-        let sy = sy
-            .strip_prefix("y=")
-            .map(str::parse)
-            .and_then(Result::ok)
-            .wrap_err("invalid y")?;
-
-        let bx = bx
-            .strip_prefix("x=")
-            .map(str::parse)
-            .and_then(Result::ok)
-            .wrap_err("invalid x")?;
-
-        let by = by
-            .strip_prefix("y=")
-            .map(str::parse)
-            .and_then(Result::ok)
-            .wrap_err("invalid y")?;
-
-        let sensor_pos = Pos::new(sx, sy);
-        let beacon_pos = Pos::new(bx, by);
+        let sensor_pos = sensor.parse()?;
+        let beacon_pos = beacon.parse()?;
 
         Ok(Sensor {
             pos: sensor_pos,
@@ -170,6 +212,33 @@ impl Pos {
 
     fn manhatten_dist(&self, other: Self) -> i32 {
         (self.x - other.x).abs() + (self.y - other.y).abs()
+    }
+
+    fn is_in_range(self, sensor: &Sensor) -> bool {
+        self.manhatten_dist(sensor.pos) <= sensor.radius
+    }
+}
+
+impl FromStr for Pos {
+    type Err = Report;
+
+    #[inline]
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let (x, y) = s.split_once(", ").wrap_err("missing comma")?;
+
+        let x = x
+            .strip_prefix("x=")
+            .map(str::parse)
+            .and_then(Result::ok)
+            .wrap_err("invalid x")?;
+
+        let y = y
+            .strip_prefix("y=")
+            .map(str::parse)
+            .and_then(Result::ok)
+            .wrap_err("invalid y")?;
+
+        Ok(Self { x, y })
     }
 }
 
