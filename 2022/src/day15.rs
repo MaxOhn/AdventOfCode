@@ -1,4 +1,4 @@
-use std::{collections::HashSet, mem, str::FromStr};
+use std::{mem, str::FromStr};
 
 use crate::prelude::*;
 
@@ -19,19 +19,14 @@ pub fn run(input: &str) -> Result<Solution> {
 }
 
 fn part1<const Y: i32>(sensors: &[Sensor]) -> Result<i32> {
-    let lines = Lines::generate(sensors, Y)?;
+    let lines = Line::generate(sensors, Y)?;
     let mut p1 = 0;
 
-    let mut removed_beacons = HashSet::new();
-
     for line in lines {
-        p1 += line.max - line.min + 1;
+        p1 += line.end - line.start + 1;
 
-        for Sensor { pos, beacon, .. } in sensors {
-            if (pos.y == Y && pos.x >= line.min && pos.x <= line.max)
-                || ((beacon.y == Y && beacon.x >= line.min && beacon.x <= line.max)
-                    && removed_beacons.insert(beacon))
-            {
+        for Sensor { pos, .. } in sensors {
+            if pos.y == Y && pos.x >= line.start && pos.x <= line.end {
                 p1 -= 1;
             }
         }
@@ -42,10 +37,12 @@ fn part1<const Y: i32>(sensors: &[Sensor]) -> Result<i32> {
 
 #[allow(unused)]
 fn part2_quadrants<const MAX: i32>(sensors: &[Sensor]) -> Result<i64> {
-    let mut stack = vec![Quadrant {
+    let full_area = Quadrant {
         top_l: Pos::new(0, 0),
         bot_r: Pos::new(MAX, MAX),
-    }];
+    };
+
+    let mut stack = vec![full_area];
 
     while let Some(Quadrant { top_l, bot_r }) = stack.pop() {
         if top_l == bot_r {
@@ -158,29 +155,6 @@ struct Sensor {
     radius: i32,
 }
 
-impl FromStr for Sensor {
-    type Err = Report;
-
-    #[inline]
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let rest = s.strip_prefix("Sensor at ").wrap_err("missing prefix")?;
-        let (sensor, rest) = rest.split_once(':').wrap_err("missing colon")?;
-
-        let beacon = rest
-            .strip_prefix(" closest beacon is at ")
-            .wrap_err("missing infix")?;
-
-        let sensor_pos = sensor.parse()?;
-        let beacon_pos = beacon.parse()?;
-
-        Ok(Sensor {
-            pos: sensor_pos,
-            beacon: beacon_pos,
-            radius: sensor_pos.dist(beacon_pos),
-        })
-    }
-}
-
 #[derive(Copy, Clone, Eq, PartialEq, Hash)]
 struct Pos {
     x: i32,
@@ -205,65 +179,61 @@ impl Pos {
     }
 }
 
-impl FromStr for Pos {
-    type Err = Report;
-
-    #[inline]
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let (x, y) = s.split_once(", ").wrap_err("missing comma")?;
-
-        let x = x
-            .strip_prefix("x=")
-            .map(str::parse)
-            .and_then(Result::ok)
-            .wrap_err("invalid x")?;
-
-        let y = y
-            .strip_prefix("y=")
-            .map(str::parse)
-            .and_then(Result::ok)
-            .wrap_err("invalid y")?;
-
-        Ok(Self { x, y })
-    }
-}
-
 #[derive(Copy, Clone)]
 struct Line {
-    min: i32,
-    max: i32,
+    start: i32,
+    end: i32,
 }
 
-struct Lines;
+impl Line {
+    fn generate(sensors: &[Sensor], y: i32) -> Result<Vec<Self>> {
+        #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord)]
+        struct LineEvent {
+            x: i32,
+            kind: LineEventKind,
+        }
 
-impl Lines {
-    fn generate(sensors: &[Sensor], y: i32) -> Result<Vec<Line>> {
+        #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord)]
+        enum LineEventKind {
+            Start,
+            End,
+        }
+
         let mut lines = Vec::new();
-        let mut events = Vec::with_capacity(sensors.len() * 2);
+        let mut events = Vec::with_capacity(sensors.len());
 
         for sensor in sensors {
             let Sensor {
                 pos,
-                beacon: _,
+                beacon,
                 radius,
             } = sensor;
 
             let y_dist = (pos.y - y).abs();
             let diff = radius - y_dist;
 
-            if diff < 0 {
+            if diff <= 0 {
                 continue;
             }
 
-            let start = LineEvent {
+            let mut start = LineEvent {
                 x: pos.x - diff,
                 kind: LineEventKind::Start,
             };
 
-            let end = LineEvent {
+            let mut end = LineEvent {
                 x: pos.x + diff,
                 kind: LineEventKind::End,
             };
+
+            // if beacon is on y, it must be on start or end
+            if beacon.y == y {
+                if beacon.x == start.x {
+                    start.x += 1;
+                } else {
+                    end.x -= 1;
+                }
+            }
 
             events.extend([start, end]);
         }
@@ -286,7 +256,7 @@ impl Lines {
                 }
                 LineEventKind::End if active > 1 => active -= 1,
                 LineEventKind::End => {
-                    lines.push(Line { min: start, max: x });
+                    lines.push(Line { start, end: x });
 
                     let Some(LineEvent { x, kind }) = events.next() else { break };
 
@@ -300,18 +270,6 @@ impl Lines {
 
         Ok(lines)
     }
-}
-
-#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord)]
-struct LineEvent {
-    x: i32,
-    kind: LineEventKind,
-}
-
-#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord)]
-enum LineEventKind {
-    Start,
-    End,
 }
 
 #[derive(Copy, Clone)]
@@ -333,5 +291,51 @@ impl Quadrant {
         let d = sensor.pos.dist(bot_r);
 
         a.max(b).max(c).max(d) > sensor.radius
+    }
+}
+
+impl FromStr for Sensor {
+    type Err = Report;
+
+    #[inline]
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let rest = s.strip_prefix("Sensor at ").wrap_err("missing prefix")?;
+        let (sensor, rest) = rest.split_once(':').wrap_err("missing colon")?;
+
+        let beacon = rest
+            .strip_prefix(" closest beacon is at ")
+            .wrap_err("missing infix")?;
+
+        let sensor_pos = sensor.parse().wrap_err("invalid sensor")?;
+        let beacon_pos = beacon.parse().wrap_err("invalid beacon")?;
+
+        Ok(Sensor {
+            pos: sensor_pos,
+            beacon: beacon_pos,
+            radius: sensor_pos.dist(beacon_pos),
+        })
+    }
+}
+
+impl FromStr for Pos {
+    type Err = Report;
+
+    #[inline]
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let (x, y) = s.split_once(", ").wrap_err("missing comma")?;
+
+        let x = x
+            .strip_prefix("x=")
+            .map(str::parse)
+            .and_then(Result::ok)
+            .wrap_err("invalid x")?;
+
+        let y = y
+            .strip_prefix("y=")
+            .map(str::parse)
+            .and_then(Result::ok)
+            .wrap_err("invalid y")?;
+
+        Ok(Self { x, y })
     }
 }
