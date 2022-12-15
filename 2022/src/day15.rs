@@ -18,7 +18,7 @@ pub fn run(input: &str) -> Result<Solution> {
 }
 
 fn part1(sensors: &[Sensor], target_y: i32) -> Result<i32> {
-    let mut buf = Vec::new();
+    let mut buf = LinesBuf::default();
     let Lines(lines) = Lines::generate(sensors, target_y, &mut buf)?;
     let mut p1 = 0;
 
@@ -41,7 +41,7 @@ fn part1(sensors: &[Sensor], target_y: i32) -> Result<i32> {
 }
 
 fn part2(sensors: &[Sensor], max: i32) -> Result<i64> {
-    let mut buf = Vec::new();
+    let mut buf = LinesBuf::default();
 
     for y in 0..=max {
         let lines = Lines::generate(sensors, y, &mut buf)?;
@@ -140,9 +140,15 @@ impl Line {
     }
 }
 
-struct Lines(Vec<Line>);
+#[derive(Default)]
+struct LinesBuf {
+    buf: Vec<Line>,
+    lines: Vec<Line>,
+}
 
-impl Lines {
+struct Lines<'b>(&'b [Line]);
+
+impl<'b> Lines<'b> {
     fn first_missing(&self, min: i32, max: i32) -> Option<i32> {
         let first = self.0.first()?;
 
@@ -155,7 +161,10 @@ impl Lines {
         }
     }
 
-    fn generate(sensors: &[Sensor], y: i32, buf: &mut Vec<Line>) -> Result<Self> {
+    fn generate(sensors: &[Sensor], y: i32, buf: &'b mut LinesBuf) -> Result<Self> {
+        let LinesBuf { buf, lines } = buf;
+        lines.clear();
+
         for sensor in sensors {
             let Sensor { pos, .. } = sensor;
 
@@ -170,11 +179,8 @@ impl Lines {
             let min = pos.x - diff;
             let max = pos.x + diff;
 
-            let line = Line { min, max };
-            buf.push(line);
+            buf.push(Line { min, max });
         }
-
-        let mut stitched: Vec<Line> = Vec::new();
 
         enum Op {
             Noop,
@@ -183,7 +189,7 @@ impl Lines {
         }
 
         while let Some(new) = buf.pop() {
-            let op = stitched.iter().enumerate().find_map(|(i, old)| {
+            let op = lines.iter().enumerate().find_map(|(i, old)| {
                 if old.contains(new) {
                     Some(Op::Noop)
                 } else if new.contains(*old) {
@@ -198,26 +204,24 @@ impl Lines {
             match op {
                 Some(Op::Noop) => {}
                 Some(Op::Replace(i)) => {
-                    stitched.swap_remove(i);
-
+                    lines.swap_remove(i);
                     buf.push(new);
                 }
                 Some(Op::Stitch(i)) => {
-                    let mut old = stitched.swap_remove(i);
+                    let mut old = lines.swap_remove(i);
                     old.min = old.min.min(new.min);
                     old.max = old.max.max(new.max);
-
                     buf.push(old);
                 }
-                None => stitched.push(new),
+                None => lines.push(new),
             }
         }
 
-        if stitched.len() == 1 {
-            return Ok(Self(stitched));
+        if lines.len() == 1 {
+            return Ok(Self(lines));
         }
 
-        buf.append(&mut stitched);
+        buf.append(lines);
 
         let mut drain = buf.drain(..);
         let mut prev = drain.next().wrap_err("empty lines")?;
@@ -229,13 +233,13 @@ impl Lines {
                     max: prev.max,
                 };
             } else {
-                stitched.push(mem::replace(&mut prev, next));
+                lines.push(mem::replace(&mut prev, next));
             }
         }
 
-        stitched.push(prev);
-        stitched.sort_unstable_by_key(|line| line.min);
+        lines.push(prev);
+        lines.sort_unstable_by_key(|line| line.min);
 
-        Ok(Self(stitched))
+        Ok(Self(lines))
     }
 }
