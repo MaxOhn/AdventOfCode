@@ -8,18 +8,18 @@ pub fn run(input: &str) -> Result<Solution> {
         .map(str::parse)
         .collect::<Result<Vec<Sensor>>>()?;
 
-    // let p1 = part1(&sensors, 10)?;
-    // let p2 = part2(&sensors, 20)?;
+    // let p1 = part1::<10>(&sensors)?;
+    // let p2 = part2::<20>(&sensors)?;
 
-    let p1 = part1(&sensors, 2_000_000)?;
-    let p2 = part2(&sensors, 4_000_000)?;
+    let p1 = part1::<2_000_000>(&sensors)?;
+    let p2 = part2::<4_000_000>(&sensors)?;
 
     Ok(Solution::new().part1(p1).part2(p2))
 }
 
-fn part1(sensors: &[Sensor], target_y: i32) -> Result<i32> {
+fn part1<const Y: i32>(sensors: &[Sensor]) -> Result<i32> {
     let mut buf = LinesBuf::default();
-    let Lines(lines) = Lines::generate(sensors, target_y, &mut buf)?;
+    let Lines(lines) = Lines::generate(sensors, Y, &mut buf)?;
     let mut p1 = 0;
 
     let mut removed_beacons = HashSet::new();
@@ -28,8 +28,8 @@ fn part1(sensors: &[Sensor], target_y: i32) -> Result<i32> {
         p1 += line.max - line.min + 1;
 
         for Sensor { pos, beacon, .. } in sensors {
-            if (pos.y == target_y && pos.x >= line.min && pos.x <= line.max)
-                || ((beacon.y == target_y && beacon.x >= line.min && beacon.x <= line.max)
+            if (pos.y == Y && pos.x >= line.min && pos.x <= line.max)
+                || ((beacon.y == Y && beacon.x >= line.min && beacon.x <= line.max)
                     && removed_beacons.insert(beacon))
             {
                 p1 -= 1;
@@ -40,13 +40,13 @@ fn part1(sensors: &[Sensor], target_y: i32) -> Result<i32> {
     Ok(p1)
 }
 
-fn part2(sensors: &[Sensor], max: i32) -> Result<i64> {
+fn part2<const MAX: i32>(sensors: &[Sensor]) -> Result<i64> {
     let mut buf = LinesBuf::default();
 
-    for y in 0..=max {
+    for y in 0..=MAX {
         let lines = Lines::generate(sensors, y, &mut buf)?;
 
-        if let Some(x) = lines.first_missing(0, max) {
+        if let Some(x) = lines.first_missing(0, MAX) {
             return Ok(x as i64 * 4_000_000 + y as i64);
         }
     }
@@ -121,7 +121,7 @@ impl Pos {
     }
 }
 
-#[derive(Copy, Clone, Eq, PartialEq, Hash)]
+#[derive(Copy, Clone)]
 struct Line {
     min: i32,
     max: i32,
@@ -165,6 +165,7 @@ impl<'b> Lines<'b> {
         let LinesBuf { buf, lines } = buf;
         lines.clear();
 
+        // Get the range for each sensor on the given y
         for sensor in sensors {
             let Sensor { pos, .. } = sensor;
 
@@ -188,6 +189,7 @@ impl<'b> Lines<'b> {
             Stitch(usize),
         }
 
+        // Stitch the lines together through overlaps
         while let Some(new) = buf.pop() {
             let op = lines.iter().enumerate().find_map(|(i, old)| {
                 if old.contains(new) {
@@ -221,6 +223,7 @@ impl<'b> Lines<'b> {
             return Ok(Self(lines));
         }
 
+        // Combine remaining lines e.g. 2..=4 and 5..=6 becomes 2..=6
         buf.append(lines);
 
         let mut drain = buf.drain(..);
@@ -238,7 +241,7 @@ impl<'b> Lines<'b> {
         }
 
         lines.push(prev);
-        lines.sort_unstable_by_key(|line| line.min);
+        lines.reverse();
 
         Ok(Self(lines))
     }
