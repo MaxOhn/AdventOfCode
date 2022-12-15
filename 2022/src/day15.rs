@@ -58,8 +58,8 @@ fn part2_lines<const MAX: i32>(sensors: &[Sensor]) -> Result<i64> {
 #[allow(unused)]
 fn part2_quadrants<const MAX: i32>(sensors: &[Sensor]) -> Result<i64> {
     let mut stack = vec![Quadrant {
-        top_l: Pos { x: 0, y: 0 },
-        bot_r: Pos { x: MAX, y: MAX },
+        top_l: Pos::new(0, 0),
+        bot_r: Pos::new(MAX, MAX),
     }];
 
     while let Some(Quadrant { top_l, bot_r }) = stack.pop() {
@@ -74,36 +74,21 @@ fn part2_quadrants<const MAX: i32>(sensors: &[Sensor]) -> Result<i64> {
 
         let next_top_l = Quadrant {
             top_l,
-            bot_r: Pos { x: midx, y: midy },
+            bot_r: Pos::new(midx, midy),
         };
 
         let next_top_r = Quadrant {
-            top_l: Pos {
-                x: midx + 1,
-                y: top_l.y,
-            },
-            bot_r: Pos {
-                x: bot_r.x,
-                y: midy,
-            },
+            top_l: Pos::new(midx + 1, top_l.y),
+            bot_r: Pos::new(bot_r.x, midy),
         };
 
         let next_bot_l = Quadrant {
-            top_l: Pos {
-                x: top_l.x,
-                y: midy + 1,
-            },
-            bot_r: Pos {
-                x: midx,
-                y: bot_r.y,
-            },
+            top_l: Pos::new(top_l.x, midy + 1),
+            bot_r: Pos::new(midx, bot_r.y),
         };
 
         let next_bot_r = Quadrant {
-            top_l: Pos {
-                x: midx + 1,
-                y: midy + 1,
-            },
+            top_l: Pos::new(midx + 1, midy + 1),
             bot_r,
         };
 
@@ -161,8 +146,8 @@ impl FromStr for Sensor {
             .and_then(Result::ok)
             .wrap_err("invalid y")?;
 
-        let sensor_pos = Pos { x: sx, y: sy };
-        let beacon_pos = Pos { x: bx, y: by };
+        let sensor_pos = Pos::new(sx, sy);
+        let beacon_pos = Pos::new(bx, by);
 
         Ok(Sensor {
             pos: sensor_pos,
@@ -179,6 +164,10 @@ struct Pos {
 }
 
 impl Pos {
+    fn new(x: i32, y: i32) -> Self {
+        Self { x, y }
+    }
+
     fn manhatten_dist(&self, other: Self) -> i32 {
         (self.x - other.x).abs() + (self.y - other.y).abs()
     }
@@ -400,28 +389,23 @@ enum LineEventKind {
     End,
 }
 
+#[derive(Copy, Clone)]
 struct Quadrant {
     top_l: Pos,
     bot_r: Pos,
 }
 
 impl Quadrant {
+    // whether the quadrant lies entirely within the sensor's range
     fn valid(&self, sensor: &Sensor) -> bool {
-        let Self { top_l, bot_r } = self;
+        let Self { top_l, bot_r } = *self;
+        let top_r = Pos::new(bot_r.x, top_l.y);
+        let bot_l = Pos::new(top_l.x, bot_r.y);
 
-        let top_r = Pos {
-            x: bot_r.x,
-            y: top_l.y,
-        };
-        let bot_l = Pos {
-            x: top_l.x,
-            y: bot_r.y,
-        };
-
-        let a = sensor.pos.manhatten_dist(*top_l);
+        let a = sensor.pos.manhatten_dist(top_l);
         let b = sensor.pos.manhatten_dist(top_r);
         let c = sensor.pos.manhatten_dist(bot_l);
-        let d = sensor.pos.manhatten_dist(*bot_r);
+        let d = sensor.pos.manhatten_dist(bot_r);
 
         a.max(b).max(c).max(d) > sensor.radius
     }
