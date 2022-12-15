@@ -27,7 +27,7 @@ fn part1(sensors: &[Sensor], target_y: i32) -> Result<i32> {
     for line in lines {
         p1 += line.max - line.min + 1;
 
-        for Sensor { pos, beacon } in sensors {
+        for Sensor { pos, beacon, .. } in sensors {
             if (pos.y == target_y && pos.x >= line.min && pos.x <= line.max)
                 || ((beacon.y == target_y && beacon.x >= line.min && beacon.x <= line.max)
                     && removed_beacons.insert(beacon))
@@ -57,12 +57,7 @@ fn part2(sensors: &[Sensor], max: i32) -> Result<i64> {
 struct Sensor {
     pos: Pos,
     beacon: Pos,
-}
-
-impl Sensor {
-    fn radius(&self) -> i32 {
-        self.pos.manhatten_dist(self.beacon)
-    }
+    radius: i32,
 }
 
 impl FromStr for Sensor {
@@ -109,6 +104,7 @@ impl FromStr for Sensor {
         Ok(Sensor {
             pos: sensor_pos,
             beacon: beacon_pos,
+            radius: sensor_pos.manhatten_dist(beacon_pos),
         })
     }
 }
@@ -163,7 +159,7 @@ impl Lines {
         for sensor in sensors {
             let Sensor { pos, .. } = sensor;
 
-            let beacon_dist = sensor.radius();
+            let beacon_dist = sensor.radius;
             let y_dist = (pos.y - y).abs();
             let diff = beacon_dist - y_dist;
 
