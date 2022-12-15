@@ -245,4 +245,94 @@ impl<'b> Lines<'b> {
 
         Ok(Self(lines))
     }
+
+    // slower for some reason :(
+    #[allow(unused)]
+    fn generate_through_events(
+        sensors: &[Sensor],
+        y: i32,
+        buf: &'b mut LinesBufEvents,
+    ) -> Result<Self> {
+        let LinesBufEvents { lines, events } = buf;
+        lines.clear();
+
+        for sensor in sensors {
+            let Sensor {
+                pos,
+                beacon: _,
+                radius,
+            } = sensor;
+
+            let y_dist = (pos.y - y).abs();
+            let diff = radius - y_dist;
+
+            if diff < 0 {
+                continue;
+            }
+
+            let event = LineEvent {
+                x: pos.x - diff,
+                kind: LineEventKind::Start,
+            };
+
+            events.push(event);
+
+            let event = LineEvent {
+                x: pos.x + diff,
+                kind: LineEventKind::End,
+            };
+
+            events.push(event);
+        }
+
+        events.sort_unstable();
+
+        let mut active = 0;
+        let mut start = 0;
+
+        let mut events = events.drain(..);
+
+        while let Some(LineEvent { x, kind }) = events.next() {
+            match kind {
+                LineEventKind::Start => {
+                    active += 1;
+
+                    if active == 1 {
+                        start = x;
+                    }
+                }
+                LineEventKind::End if active > 1 => active -= 1,
+                LineEventKind::End => {
+                    lines.push(Line { min: start, max: x });
+
+                    let Some(LineEvent { x, kind }) = events.next() else { break };
+
+                    match kind {
+                        LineEventKind::Start => start = x,
+                        LineEventKind::End => bail!("end event while no active lines"),
+                    }
+                }
+            }
+        }
+
+        Ok(Self(lines))
+    }
+}
+
+#[derive(Default)]
+struct LinesBufEvents {
+    lines: Vec<Line>,
+    events: Vec<LineEvent>,
+}
+
+#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord)]
+struct LineEvent {
+    x: i32,
+    kind: LineEventKind,
+}
+
+#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord)]
+enum LineEventKind {
+    Start,
+    End,
 }
