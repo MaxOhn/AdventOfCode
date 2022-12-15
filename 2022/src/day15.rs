@@ -9,10 +9,9 @@ pub fn run(input: &str) -> Result<Solution> {
         .collect::<Result<Vec<Sensor>>>()?;
 
     // let p1 = part1::<10>(&sensors)?;
-    // let p2 = part2_quadrants::<20>(&sensors)?;
+    // let p2 = part2_border_intersection::<20>(&sensors)?;
 
     let p1 = part1::<2_000_000>(&sensors)?;
-    // let p2 = part2_lines::<4_000_000>(&sensors)?;
     // let p2 = part2_quadrants::<4_000_000>(&sensors)?;
     let p2 = part2_border_intersection::<4_000_000>(&sensors)?;
 
@@ -20,8 +19,7 @@ pub fn run(input: &str) -> Result<Solution> {
 }
 
 fn part1<const Y: i32>(sensors: &[Sensor]) -> Result<i32> {
-    let mut buf = LinesBuf::default();
-    let Lines(lines) = Lines::generate(sensors, Y, &mut buf)?;
+    let lines = Lines::generate(sensors, Y)?;
     let mut p1 = 0;
 
     let mut removed_beacons = HashSet::new();
@@ -43,21 +41,6 @@ fn part1<const Y: i32>(sensors: &[Sensor]) -> Result<i32> {
 }
 
 #[allow(unused)]
-fn part2_lines<const MAX: i32>(sensors: &[Sensor]) -> Result<i64> {
-    let mut buf = LinesBuf::default();
-
-    for y in 0..=MAX {
-        let lines = Lines::generate(sensors, y, &mut buf)?;
-
-        if let Some(x) = lines.first_missing(0, MAX) {
-            return Ok(x as i64 * 4_000_000 + y as i64);
-        }
-    }
-
-    bail!("no matching pos")
-}
-
-#[allow(unused)]
 fn part2_quadrants<const MAX: i32>(sensors: &[Sensor]) -> Result<i64> {
     let mut stack = vec![Quadrant {
         top_l: Pos::new(0, 0),
@@ -66,9 +49,7 @@ fn part2_quadrants<const MAX: i32>(sensors: &[Sensor]) -> Result<i64> {
 
     while let Some(Quadrant { top_l, bot_r }) = stack.pop() {
         if top_l == bot_r {
-            let Pos { x, y } = top_l;
-
-            return Ok(x as i64 * 4_000_000 + y as i64);
+            return Ok(top_l.tuning_frequency());
         }
 
         let midx = top_l.x + (bot_r.x - top_l.x) / 2;
@@ -163,7 +144,7 @@ fn part2_border_intersection<const MAX: i32>(sensors: &[Sensor]) -> Result<i64> 
             let intersection = Pos::new(x, y);
 
             if sensors.iter().all(|s| !intersection.is_in_range(s)) {
-                return Ok(x as i64 * 4_000_000 + y as i64);
+                return Ok(intersection.tuning_frequency());
             }
         }
     }
@@ -180,6 +161,7 @@ struct Sensor {
 impl FromStr for Sensor {
     type Err = Report;
 
+    #[inline]
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         let rest = s.strip_prefix("Sensor at ").wrap_err("missing prefix")?;
         let (sensor, rest) = rest.split_once(':').wrap_err("missing colon")?;
@@ -194,7 +176,7 @@ impl FromStr for Sensor {
         Ok(Sensor {
             pos: sensor_pos,
             beacon: beacon_pos,
-            radius: sensor_pos.manhatten_dist(beacon_pos),
+            radius: sensor_pos.dist(beacon_pos),
         })
     }
 }
@@ -210,12 +192,16 @@ impl Pos {
         Self { x, y }
     }
 
-    fn manhatten_dist(&self, other: Self) -> i32 {
+    fn dist(&self, other: Self) -> i32 {
         (self.x - other.x).abs() + (self.y - other.y).abs()
     }
 
     fn is_in_range(self, sensor: &Sensor) -> bool {
-        self.manhatten_dist(sensor.pos) <= sensor.radius
+        self.dist(sensor.pos) <= sensor.radius
+    }
+
+    fn tuning_frequency(self) -> i64 {
+        self.x as i64 * 4_000_000 + self.y as i64
     }
 }
 
@@ -248,134 +234,12 @@ struct Line {
     max: i32,
 }
 
-impl Line {
-    fn contains(self, other: Self) -> bool {
-        self.min <= other.min && self.max >= other.max
-    }
+struct Lines;
 
-    fn overlap(self, other: Self) -> bool {
-        (self.min <= other.min && self.max >= other.min)
-            || (self.min <= other.max && self.max >= other.max)
-            || (other.min <= self.min && other.max >= self.min)
-            || (other.min <= self.max && other.max >= self.max)
-    }
-}
-
-#[derive(Default)]
-struct LinesBuf {
-    buf: Vec<Line>,
-    lines: Vec<Line>,
-}
-
-struct Lines<'b>(&'b [Line]);
-
-impl<'b> Lines<'b> {
-    fn first_missing(&self, min: i32, max: i32) -> Option<i32> {
-        let first = self.0.first()?;
-
-        if first.min > min {
-            Some(min)
-        } else if first.max < max {
-            Some(first.max + 1)
-        } else {
-            None
-        }
-    }
-
-    fn generate(sensors: &[Sensor], y: i32, buf: &'b mut LinesBuf) -> Result<Self> {
-        let LinesBuf { buf, lines } = buf;
-        lines.clear();
-
-        // Get the range for each sensor on the given y
-        for sensor in sensors {
-            let Sensor { pos, .. } = sensor;
-
-            let beacon_dist = sensor.radius;
-            let y_dist = (pos.y - y).abs();
-            let diff = beacon_dist - y_dist;
-
-            if diff < 0 {
-                continue;
-            }
-
-            let min = pos.x - diff;
-            let max = pos.x + diff;
-
-            buf.push(Line { min, max });
-        }
-
-        enum Op {
-            Noop,
-            Replace(usize),
-            Stitch(usize),
-        }
-
-        // Stitch the lines together through overlaps
-        while let Some(new) = buf.pop() {
-            let op = lines.iter().enumerate().find_map(|(i, old)| {
-                if old.contains(new) {
-                    Some(Op::Noop)
-                } else if new.contains(*old) {
-                    Some(Op::Replace(i))
-                } else if old.overlap(new) {
-                    Some(Op::Stitch(i))
-                } else {
-                    None
-                }
-            });
-
-            match op {
-                Some(Op::Noop) => {}
-                Some(Op::Replace(i)) => {
-                    lines.swap_remove(i);
-                    buf.push(new);
-                }
-                Some(Op::Stitch(i)) => {
-                    let mut old = lines.swap_remove(i);
-                    old.min = old.min.min(new.min);
-                    old.max = old.max.max(new.max);
-                    buf.push(old);
-                }
-                None => lines.push(new),
-            }
-        }
-
-        if lines.len() == 1 {
-            return Ok(Self(lines));
-        }
-
-        // Combine remaining lines e.g. 2..=4 and 5..=6 becomes 2..=6
-        buf.append(lines);
-
-        let mut drain = buf.drain(..);
-        let mut prev = drain.next().wrap_err("empty lines")?;
-
-        for next in drain {
-            if next.max + 1 == prev.min {
-                prev = Line {
-                    min: next.min,
-                    max: prev.max,
-                };
-            } else {
-                lines.push(mem::replace(&mut prev, next));
-            }
-        }
-
-        lines.push(prev);
-        lines.reverse();
-
-        Ok(Self(lines))
-    }
-
-    // slower for some reason :(
-    #[allow(unused)]
-    fn generate_through_events(
-        sensors: &[Sensor],
-        y: i32,
-        buf: &'b mut LinesBufEvents,
-    ) -> Result<Self> {
-        let LinesBufEvents { lines, events } = buf;
-        lines.clear();
+impl Lines {
+    fn generate(sensors: &[Sensor], y: i32) -> Result<Vec<Line>> {
+        let mut lines = Vec::new();
+        let mut events = Vec::with_capacity(sensors.len() * 2);
 
         for sensor in sensors {
             let Sensor {
@@ -391,19 +255,17 @@ impl<'b> Lines<'b> {
                 continue;
             }
 
-            let event = LineEvent {
+            let start = LineEvent {
                 x: pos.x - diff,
                 kind: LineEventKind::Start,
             };
 
-            events.push(event);
-
-            let event = LineEvent {
+            let end = LineEvent {
                 x: pos.x + diff,
                 kind: LineEventKind::End,
             };
 
-            events.push(event);
+            events.extend([start, end]);
         }
 
         events.sort_unstable();
@@ -411,7 +273,7 @@ impl<'b> Lines<'b> {
         let mut active = 0;
         let mut start = 0;
 
-        let mut events = events.drain(..);
+        let mut events = events.into_iter();
 
         while let Some(LineEvent { x, kind }) = events.next() {
             match kind {
@@ -436,14 +298,8 @@ impl<'b> Lines<'b> {
             }
         }
 
-        Ok(Self(lines))
+        Ok(lines)
     }
-}
-
-#[derive(Default)]
-struct LinesBufEvents {
-    lines: Vec<Line>,
-    events: Vec<LineEvent>,
 }
 
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord)]
@@ -471,10 +327,10 @@ impl Quadrant {
         let top_r = Pos::new(bot_r.x, top_l.y);
         let bot_l = Pos::new(top_l.x, bot_r.y);
 
-        let a = sensor.pos.manhatten_dist(top_l);
-        let b = sensor.pos.manhatten_dist(top_r);
-        let c = sensor.pos.manhatten_dist(bot_l);
-        let d = sensor.pos.manhatten_dist(bot_r);
+        let a = sensor.pos.dist(top_l);
+        let b = sensor.pos.dist(top_r);
+        let c = sensor.pos.dist(bot_l);
+        let d = sensor.pos.dist(bot_r);
 
         a.max(b).max(c).max(d) > sensor.radius
     }
