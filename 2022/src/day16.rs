@@ -1,13 +1,12 @@
 use std::{
-    collections::{hash_map::Entry, HashMap, HashSet},
+    cmp::Ordering,
+    collections::{hash_map::Entry, BinaryHeap, HashMap, HashSet},
     fmt::{Debug, Display, Formatter, Result as FmtResult},
     hash::{Hash, Hasher},
     str::FromStr,
 };
 
 use crate::prelude::*;
-
-// TODO: cargo add regex & once_cell
 
 pub fn run(input: &str) -> Result<Solution> {
     // run_naive(input)
@@ -17,42 +16,41 @@ pub fn run(input: &str) -> Result<Solution> {
 type Valves = HashMap<ValveName, Valve>;
 
 fn parse_valves(input: &str) -> Result<Valves> {
-    let mut valves = HashMap::new();
+    input
+        .lines()
+        .map(|line| {
+            let rest = line.strip_prefix("Valve ").wrap_err("invalid line")?;
+            let (name, rest) = rest.split_once(' ').wrap_err("invalid name")?;
 
-    for line in input.lines() {
-        let rest = line.strip_prefix("Valve ").wrap_err("invalid line")?;
-        let (name, rest) = rest.split_once(' ').wrap_err("invalid name")?;
+            let rest = rest
+                .strip_prefix("has flow rate=")
+                .wrap_err("invalid line `flow rate`")?;
 
-        let rest = rest
-            .strip_prefix("has flow rate=")
-            .wrap_err("invalid line `flow rate`")?;
+            let (n, rest) = rest.split_once(';').wrap_err("invalid line `;`")?;
+            let flow_rate = n.parse().wrap_err("invalid flow rate")?;
 
-        let (n, rest) = rest.split_once(';').wrap_err("invalid line `;`")?;
-        let flow_rate = n.parse().wrap_err("invalid flow rate")?;
+            let rest = rest
+                .strip_prefix(" tunnel leads to valve ")
+                .or_else(|| rest.strip_prefix(" tunnels lead to valves "))
+                .wrap_err("invalid line")?;
 
-        let rest = rest
-            .strip_prefix(" tunnel leads to valve ")
-            .or_else(|| rest.strip_prefix(" tunnels lead to valves "))
-            .wrap_err("invalid line")?;
+            let name = ValveName::from_str(name).wrap_err("invalid valve name")?;
 
-        let name = ValveName::from_str(name).wrap_err("invalid valve name")?;
+            let tunnels = rest
+                .split(", ")
+                .map(ValveName::from_str)
+                .collect::<Result<_, _>>()
+                .wrap_err("invalid tunnel name")?;
 
-        let tunnels = rest
-            .split(", ")
-            .map(ValveName::from_str)
-            .collect::<Result<_, _>>()
-            .wrap_err("invalid tunnel name")?;
+            let valve = Valve {
+                name,
+                flow_rate,
+                tunnels,
+            };
 
-        let valve = Valve {
-            name,
-            flow_rate,
-            tunnels,
-        };
-
-        valves.insert(name, valve);
-    }
-
-    Ok(valves)
+            Ok((name, valve))
+        })
+        .collect()
 }
 
 struct Graph {
@@ -200,7 +198,7 @@ pub fn run_floyd_warshall(input: &str) -> Result<Solution> {
     valves.retain(|_, valve| valve.flow_rate > 0 || valve.name.as_str() == "AA");
 
     let p1 = part1_floyd_warshall(&valves, &graph);
-    let p2 = part2_floyd_warshall(&valves, &graph);
+    let p2 = part2_floyd_warshall(&valves, &graph)?;
 
     Ok(Solution::new().part1(p1).part2(p2))
 }
@@ -266,17 +264,26 @@ fn part1_floyd_warshall(valves: &Valves, graph: &Graph) -> i16 {
     best
 }
 
-fn part2_floyd_warshall(valves: &Valves, graph: &Graph) -> i16 {
-    #[derive(Copy, Clone)]
+fn part2_floyd_warshall(valves: &Valves, graph: &Graph) -> Result<i16> {
+    #[derive(Copy, Clone, Eq)]
     struct Runner {
         target: ValveName,
+        flow_rate: i16,
         steps_left: u8,
+    }
+
+    impl PartialEq for Runner {
+        #[inline]
+        fn eq(&self, other: &Self) -> bool {
+            self.target == other.target && self.steps_left == other.steps_left
+        }
     }
 
     impl Runner {
         fn max() -> Self {
             Self {
                 target: b"AA".into(),
+                flow_rate: 0,
                 steps_left: u8::MAX,
             }
         }
@@ -286,6 +293,7 @@ fn part2_floyd_warshall(valves: &Valves, graph: &Graph) -> i16 {
         }
     }
 
+    #[derive(PartialEq, Eq)]
     struct State {
         you: Runner,
         elephant: Runner,
@@ -294,16 +302,42 @@ fn part2_floyd_warshall(valves: &Valves, graph: &Graph) -> i16 {
         remaining: Vec<ValveName>,
     }
 
+    impl State {
+        fn value(&self) -> i16 {
+            let gain_you = (self.time - self.you.steps_left as i16) * self.you.flow_rate;
+            let gain_elephant =
+                (self.time - self.elephant.steps_left as i16) * self.elephant.flow_rate;
+
+            gain_you.max(0) + gain_elephant.max(0) + self.pressure
+        }
+    }
+
+    impl Ord for State {
+        #[inline]
+        fn cmp(&self, other: &Self) -> Ordering {
+            self.value().cmp(&other.value())
+        }
+    }
+
+    impl PartialOrd for State {
+        #[inline]
+        fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+            Some(self.cmp(other))
+        }
+    }
+
     let mut remaining: Vec<_> = valves.values().map(|valve| valve.name).collect();
     remaining.retain(|name| name.as_str() != "AA");
 
     let you = Runner {
         target: b"AA".into(),
+        flow_rate: 0,
         steps_left: 0,
     };
 
     let elephant = Runner {
         target: b"AA".into(),
+        flow_rate: 0,
         steps_left: 0,
     };
 
@@ -315,16 +349,17 @@ fn part2_floyd_warshall(valves: &Valves, graph: &Graph) -> i16 {
         remaining,
     };
 
-    let mut stack = vec![start];
+    let mut heap = BinaryHeap::new();
+    heap.push(start);
+
     let mut best = 0;
+    let mut iters = 0_u64;
 
-    let mut iters = 0;
-
-    while let Some(state) = stack.pop() {
+    while let Some(state) = heap.pop() {
         iters += 1;
 
         if iters % 10_000_000 == 0 {
-            println!("ITERS={iters} | LEN={}", stack.len());
+            println!("ITERS={iters} | LEN={} | BEST={best}", heap.len());
         }
 
         let State {
@@ -358,68 +393,80 @@ fn part2_floyd_warshall(valves: &Valves, graph: &Graph) -> i16 {
                 pressure += time * (you_target.flow_rate + elephant_target.flow_rate);
                 let time = time - 1;
 
-                #[allow(clippy::comparison_chain)]
-                if remaining.len() == 1 {
-                    let next = *remaining.last().unwrap();
-                    let Some(shortest_path) = graph.shortest_path(you.target, next) else { continue };
+                match remaining.as_slice() {
+                    [] => {}
+                    [next] => {
+                        let next = *next;
+                        let Some(shortest_path) = graph.shortest_path(you.target, next) else { continue };
 
-                    let you = Runner {
-                        target: next,
-                        steps_left: 0,
-                    };
+                        let you = Runner {
+                            target: next,
+                            flow_rate: valves.get(&next).wrap_err("missing next")?.flow_rate,
+                            steps_left: 0,
+                        };
 
-                    let state = State {
-                        you,
-                        elephant: Runner::max(),
-                        time: time - shortest_path as i16,
-                        pressure,
-                        remaining: Vec::new(),
-                    };
+                        let state = State {
+                            you,
+                            elephant: Runner::max(),
+                            time: time - shortest_path as i16,
+                            pressure,
+                            remaining: Vec::new(),
+                        };
 
-                    stack.push(state);
-                } else if remaining.len() > 1 {
-                    for i in 0..remaining.len() - 1 {
-                        for j in i + 1..remaining.len() {
-                            let mut remaining = remaining.clone();
-                            let you_next = remaining.swap_remove(j);
-                            let elephant_next = remaining.swap_remove(i);
+                        heap.push(state);
+                    }
+                    [_, _, ..] => {
+                        for i in 0..remaining.len() - 1 {
+                            for j in i + 1..remaining.len() {
+                                let mut remaining = remaining.clone();
+                                let you_next = remaining.swap_remove(j);
+                                let elephant_next = remaining.swap_remove(i);
 
-                            let Some(shortest_path) = graph.shortest_path(you.target, you_next) else { continue };
+                                let Some(shortest_path) = graph.shortest_path(you.target, you_next) else { continue };
 
-                            let mut you = Runner {
-                                target: you_next,
-                                steps_left: shortest_path,
-                            };
+                                let mut you = Runner {
+                                    target: you_next,
+                                    flow_rate: valves
+                                        .get(&you_next)
+                                        .wrap_err("missing you_next")?
+                                        .flow_rate,
+                                    steps_left: shortest_path,
+                                };
 
-                            let Some(shortest_path) = graph.shortest_path(elephant.target, elephant_next) else { continue };
+                                let Some(shortest_path) = graph.shortest_path(elephant.target, elephant_next) else { continue };
 
-                            let mut elephant = Runner {
-                                target: elephant_next,
-                                steps_left: shortest_path,
-                            };
+                                let mut elephant = Runner {
+                                    target: elephant_next,
+                                    flow_rate: valves
+                                        .get(&elephant_next)
+                                        .wrap_err("missing elephant_next")?
+                                        .flow_rate,
+                                    steps_left: shortest_path,
+                                };
 
-                            let min = you.steps_left.min(elephant.steps_left);
-                            you.steps_left -= min;
-                            elephant.steps_left -= min;
-                            let time = time - min as i16;
+                                let min = you.steps_left.min(elephant.steps_left);
+                                you.steps_left -= min;
+                                elephant.steps_left -= min;
+                                let time = time - min as i16;
 
-                            let state1 = State {
-                                you,
-                                elephant,
-                                time,
-                                pressure,
-                                remaining: remaining.clone(),
-                            };
+                                let state1 = State {
+                                    you,
+                                    elephant,
+                                    time,
+                                    pressure,
+                                    remaining: remaining.clone(),
+                                };
 
-                            let state2 = State {
-                                you: elephant,
-                                elephant: you,
-                                time,
-                                pressure,
-                                remaining,
-                            };
+                                let state2 = State {
+                                    you: elephant,
+                                    elephant: you,
+                                    time,
+                                    pressure,
+                                    remaining,
+                                };
 
-                            stack.extend([state1, state2]);
+                                heap.extend([state1, state2]);
+                            }
                         }
                     }
                 }
@@ -427,6 +474,7 @@ fn part2_floyd_warshall(valves: &Valves, graph: &Graph) -> i16 {
             (_, 0) => {
                 let you = Runner {
                     target: you.target,
+                    flow_rate: you.flow_rate,
                     steps_left: you.steps_left - 1,
                 };
 
@@ -443,7 +491,7 @@ fn part2_floyd_warshall(valves: &Valves, graph: &Graph) -> i16 {
                         remaining,
                     };
 
-                    stack.push(state);
+                    heap.push(state);
                 } else {
                     for i in 0..remaining.len() {
                         let mut remaining = remaining.clone();
@@ -453,6 +501,7 @@ fn part2_floyd_warshall(valves: &Valves, graph: &Graph) -> i16 {
 
                         let elephant = Runner {
                             target: next,
+                            flow_rate: valves.get(&next).wrap_err("missing next")?.flow_rate,
                             steps_left: shortest_path,
                         };
 
@@ -464,13 +513,14 @@ fn part2_floyd_warshall(valves: &Valves, graph: &Graph) -> i16 {
                             remaining,
                         };
 
-                        stack.push(state);
+                        heap.push(state);
                     }
                 }
             }
             (0, _) => {
                 let elephant = Runner {
                     target: elephant.target,
+                    flow_rate: elephant.flow_rate,
                     steps_left: elephant.steps_left - 1,
                 };
 
@@ -487,7 +537,7 @@ fn part2_floyd_warshall(valves: &Valves, graph: &Graph) -> i16 {
                         remaining,
                     };
 
-                    stack.push(state);
+                    heap.push(state);
                 } else {
                     for i in 0..remaining.len() {
                         let mut remaining = remaining.clone();
@@ -497,6 +547,7 @@ fn part2_floyd_warshall(valves: &Valves, graph: &Graph) -> i16 {
 
                         let you = Runner {
                             target: next,
+                            flow_rate: valves.get(&next).wrap_err("missing next")?.flow_rate,
                             steps_left: shortest_path,
                         };
 
@@ -508,7 +559,7 @@ fn part2_floyd_warshall(valves: &Valves, graph: &Graph) -> i16 {
                             remaining,
                         };
 
-                        stack.push(state);
+                        heap.push(state);
                     }
                 }
             }
@@ -517,11 +568,13 @@ fn part2_floyd_warshall(valves: &Valves, graph: &Graph) -> i16 {
 
                 let you = Runner {
                     target: you.target,
+                    flow_rate: you.flow_rate,
                     steps_left: you.steps_left - min,
                 };
 
                 let elephant = Runner {
                     target: elephant.target,
+                    flow_rate: elephant.flow_rate,
                     steps_left: elephant.steps_left - min,
                 };
 
@@ -533,14 +586,14 @@ fn part2_floyd_warshall(valves: &Valves, graph: &Graph) -> i16 {
                     remaining,
                 };
 
-                stack.push(state);
+                heap.push(state);
             }
         }
     }
 
     println!("ITERS={iters}");
 
-    best
+    Ok(best)
 }
 
 pub fn run_naive(input: &str) -> Result<Solution> {
