@@ -11,15 +11,15 @@ pub fn run(input: &str) -> Result<Solution> {
     Ok(Solution::new().part1(p1).part2(p2))
 }
 
-fn part1(blueprints: &[Blueprint]) -> i32 {
+fn part1(blueprints: &[Blueprint]) -> u16 {
     blueprints
         .iter()
-        .enumerate()
-        .map(|(i, blueprint)| blueprint.quality_level::<24>(i as i32 + 1))
+        .zip(1..)
+        .map(|(blueprint, id)| blueprint.quality_level::<24>(id))
         .sum()
 }
 
-fn part2(blueprints: &[Blueprint]) -> i32 {
+fn part2(blueprints: &[Blueprint]) -> u16 {
     blueprints
         .iter()
         .take(3)
@@ -31,28 +31,55 @@ fn parse_blueprints(input: &str) -> Result<Box<[Blueprint]>> {
     input.lines().map(Blueprint::from_str).collect()
 }
 
-#[derive(Clone, Debug, Default)]
+#[derive(Copy, Clone, Default)]
 struct State {
-    minute: i32,
+    minute: u8,
 
-    ore: i32,
-    clay: i32,
-    obsidian: i32,
-    geodes: i32,
+    ore: u16,
+    clay: u16,
+    obsidian: u16,
+    geodes: u16,
 
-    ore_robots: i32,
-    clay_robots: i32,
-    obsidian_robots: i32,
-    geode_robots: i32,
+    ore_robots: u16,
+    clay_robots: u16,
+    obsidian_robots: u16,
+    geode_robots: u16,
 
-    dont_buy_ore: bool,
-    dont_buy_clay: bool,
-    dont_buy_obsidian: bool,
-    dont_buy_geode: bool,
+    dont_buy: DontBuy,
+}
+
+#[derive(Copy, Clone, Default)]
+struct DontBuy {
+    bitset: u8,
+}
+
+macro_rules! dont_buy_ore {
+    ( $( $const_name:ident: $const_val:literal, $set:ident, $get:ident ;)* ) => {
+        impl DontBuy {
+            $(
+                const $const_name: u8 = $const_val;
+
+                fn $set(&mut self, flag: bool) {
+                    self.bitset |= Self:: $const_name * flag as u8;
+                }
+
+                fn $get(self) -> bool {
+                    self.bitset & Self:: $const_name > 0
+                }
+            )*
+        }
+    }
+}
+
+dont_buy_ore! {
+    ORE:      0b0001, set_ore,      ore;
+    CLAY:     0b0010, set_clay,     clay;
+    OBSIDIAN: 0b0100, set_obsidian, obsidian;
+    GEODE:    0b1000, set_geode,    geode;
 }
 
 impl State {
-    fn step(&mut self) {
+    fn collect_resources(&mut self) {
         self.minute += 1;
         self.ore += self.ore_robots;
         self.clay += self.clay_robots;
@@ -61,23 +88,23 @@ impl State {
     }
 
     fn buy_ore(&self, blueprint: &Blueprint) -> bool {
-        self.ore >= blueprint.ore.cost_ore && !self.dont_buy_ore
+        self.ore >= blueprint.ore.cost_ore && !self.dont_buy.ore()
     }
 
     fn buy_clay(&self, blueprint: &Blueprint) -> bool {
-        self.ore >= blueprint.clay.cost_ore && !self.dont_buy_clay
+        self.ore >= blueprint.clay.cost_ore && !self.dont_buy.clay()
     }
 
     fn buy_obsidian(&self, blueprint: &Blueprint) -> bool {
         self.ore >= blueprint.obsidian.cost_ore
             && self.clay >= blueprint.obsidian.cost_clay
-            && !self.dont_buy_obsidian
+            && !self.dont_buy.obsidian()
     }
 
     fn buy_geode(&self, blueprint: &Blueprint) -> bool {
         self.ore >= blueprint.geode.cost_ore
             && self.obsidian >= blueprint.geode.cost_obsidian
-            && !self.dont_buy_geode
+            && !self.dont_buy.geode()
     }
 }
 
@@ -89,11 +116,11 @@ struct Blueprint {
 }
 
 impl Blueprint {
-    fn quality_level<const DEADLINE: i32>(&self, id: i32) -> i32 {
+    fn quality_level<const DEADLINE: u8>(&self, id: u16) -> u16 {
         self.max_geodes::<DEADLINE>() * id
     }
 
-    fn max_geodes<const DEADLINE: i32>(&self) -> i32 {
+    fn max_geodes<const DEADLINE: u8>(&self) -> u16 {
         let max_cost_ore = self
             .ore
             .cost_ore
@@ -104,95 +131,81 @@ impl Blueprint {
         let max_cost_clay = self.obsidian.cost_clay;
         let max_cost_obsidian = self.geode.cost_obsidian;
 
-        let mut stack = Vec::new();
-
-        stack.push(State {
+        let mut stack = vec![State {
             ore_robots: 1,
             ..Default::default()
-        });
+        }];
 
         let mut max_geodes = 0;
 
-        while let Some(mut inventory) = stack.pop() {
-            if inventory.geodes > max_geodes {
-                max_geodes = inventory.geodes;
+        while let Some(mut state) = stack.pop() {
+            if state.geodes > max_geodes {
+                max_geodes = state.geodes;
             }
 
-            if inventory.minute == DEADLINE {
+            if state.minute == DEADLINE {
                 continue;
             }
 
-            let ore = inventory.buy_ore(self) && inventory.ore_robots < max_cost_ore;
-            let clay = inventory.buy_clay(self) && inventory.clay_robots < max_cost_clay;
-            let obsidian =
-                inventory.buy_obsidian(self) && inventory.obsidian_robots < max_cost_obsidian;
-            let geode = inventory.buy_geode(self);
+            let ore = state.buy_ore(self) && state.ore_robots < max_cost_ore;
+            let clay = state.buy_clay(self) && state.clay_robots < max_cost_clay;
+            let obsidian = state.buy_obsidian(self) && state.obsidian_robots < max_cost_obsidian;
+            let geode = state.buy_geode(self);
 
-            inventory.step();
+            state.collect_resources();
 
             if ore {
-                let inventory = State {
-                    ore_robots: inventory.ore_robots + 1,
-                    ore: inventory.ore - self.ore.cost_ore,
-                    dont_buy_ore: false,
-                    dont_buy_clay: false,
-                    dont_buy_obsidian: false,
-                    dont_buy_geode: false,
-                    ..inventory
+                let state = State {
+                    ore_robots: state.ore_robots + 1,
+                    ore: state.ore - self.ore.cost_ore,
+                    dont_buy: DontBuy::default(),
+                    ..state
                 };
 
-                stack.push(inventory);
+                stack.push(state);
             }
 
             if clay {
-                let inventory = State {
-                    clay_robots: inventory.clay_robots + 1,
-                    ore: inventory.ore - self.clay.cost_ore,
-                    dont_buy_ore: false,
-                    dont_buy_clay: false,
-                    dont_buy_obsidian: false,
-                    dont_buy_geode: false,
-                    ..inventory
+                let state = State {
+                    clay_robots: state.clay_robots + 1,
+                    ore: state.ore - self.clay.cost_ore,
+                    dont_buy: DontBuy::default(),
+                    ..state
                 };
 
-                stack.push(inventory);
+                stack.push(state);
             }
 
             if obsidian {
-                let inventory = State {
-                    obsidian_robots: inventory.obsidian_robots + 1,
-                    ore: inventory.ore - self.obsidian.cost_ore,
-                    clay: inventory.clay - self.obsidian.cost_clay,
-                    dont_buy_ore: false,
-                    dont_buy_clay: false,
-                    dont_buy_obsidian: false,
-                    dont_buy_geode: false,
-                    ..inventory
+                let state = State {
+                    obsidian_robots: state.obsidian_robots + 1,
+                    ore: state.ore - self.obsidian.cost_ore,
+                    clay: state.clay - self.obsidian.cost_clay,
+                    dont_buy: DontBuy::default(),
+                    ..state
                 };
 
-                stack.push(inventory);
+                stack.push(state);
             }
 
             if geode {
-                let inventory = State {
-                    geode_robots: inventory.geode_robots + 1,
-                    ore: inventory.ore - self.geode.cost_ore,
-                    obsidian: inventory.obsidian - self.geode.cost_obsidian,
-                    dont_buy_ore: false,
-                    dont_buy_clay: false,
-                    dont_buy_obsidian: false,
-                    dont_buy_geode: false,
-                    ..inventory
+                let state = State {
+                    geode_robots: state.geode_robots + 1,
+                    ore: state.ore - self.geode.cost_ore,
+                    obsidian: state.obsidian - self.geode.cost_obsidian,
+                    dont_buy: DontBuy::default(),
+                    ..state
                 };
 
-                stack.push(inventory);
+                stack.push(state);
             }
 
-            inventory.dont_buy_ore |= ore;
-            inventory.dont_buy_clay |= clay;
-            inventory.dont_buy_obsidian |= obsidian;
-            inventory.dont_buy_geode |= geode;
-            stack.push(inventory);
+            state.dont_buy.set_ore(ore);
+            state.dont_buy.set_clay(clay);
+            state.dont_buy.set_obsidian(obsidian);
+            state.dont_buy.set_geode(geode);
+
+            stack.push(state);
         }
 
         max_geodes
@@ -242,7 +255,7 @@ impl FromStr for Blueprint {
 }
 
 struct OreRobot {
-    cost_ore: i32,
+    cost_ore: u16,
 }
 
 impl FromStr for OreRobot {
@@ -260,7 +273,7 @@ impl FromStr for OreRobot {
 }
 
 struct ClayRobot {
-    cost_ore: i32,
+    cost_ore: u16,
 }
 
 impl FromStr for ClayRobot {
@@ -278,8 +291,8 @@ impl FromStr for ClayRobot {
 }
 
 struct ObsidianRobot {
-    cost_ore: i32,
-    cost_clay: i32,
+    cost_ore: u16,
+    cost_clay: u16,
 }
 
 impl FromStr for ObsidianRobot {
@@ -306,8 +319,8 @@ impl FromStr for ObsidianRobot {
 }
 
 struct GeodeRobot {
-    cost_ore: i32,
-    cost_obsidian: i32,
+    cost_ore: u16,
+    cost_obsidian: u16,
 }
 
 impl FromStr for GeodeRobot {
