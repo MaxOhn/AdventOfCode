@@ -1,5 +1,5 @@
 use std::{
-    cmp::Ordering,
+    cmp::{Ordering, Reverse},
     collections::{
         btree_map::Entry as BTreeEntry, hash_map::Entry as HashEntry, BTreeMap, BTreeSet,
         BinaryHeap, HashMap,
@@ -14,14 +14,95 @@ use crate::prelude::*;
 pub fn run(input: &str) -> Result<Solution> {
     let valves = Valves::from_str(input)?;
 
-    let p1 = part1_bitset(&valves);
+    let p1 = part1_bound_branch(&valves);
 
     Ok(Solution::new().part1(p1))
 
     // run_floyd_warshall(input)
 }
 
-fn part1_bitset(valves: &Valves) -> i16 {
+fn part1_bound_branch(valves: &Valves) -> i16 {
+    struct State {
+        valve: u8,
+        pressure: i16,
+        time: u8,
+        opened: Opened,
+    }
+
+    impl State {
+        fn bound(&self, valves: &Valves) -> i16 {
+            let flow_rates = valves
+                .sorted_flow_rate_indices
+                .iter()
+                .copied()
+                .filter(|&idx| !self.opened.is_open(idx))
+                .map(|idx| valves.flow_rates[idx]);
+
+            let upper_pressure = (0..=self.time)
+                .rev()
+                .step_by(2)
+                .skip(1)
+                .zip(flow_rates)
+                .map(|(time, flow_rate)| time as i16 * flow_rate)
+                .sum::<i16>();
+
+            self.pressure + upper_pressure
+        }
+
+        fn branches<'a>(&'a self, valves: &'a Valves) -> impl Iterator<Item = Self> + 'a {
+            valves
+                .shortest_paths(self.valve)
+                .iter()
+                .enumerate()
+                .filter(|(next, _)| !self.opened.is_open(*next))
+                .filter_map(|(next, dist)| {
+                    let time = self.time.checked_sub(*dist + 1)?;
+                    let pressure = self.pressure + time as i16 * valves.flow_rates[next as usize];
+                    let opened = self.opened.open(next);
+
+                    Some(Self {
+                        valve: next as u8,
+                        pressure,
+                        time,
+                        opened,
+                    })
+                })
+        }
+    }
+
+    let start = State {
+        valve: 0,
+        pressure: 0,
+        time: 30,
+        opened: Opened::new(valves.len()),
+    };
+
+    let mut stack = vec![start];
+    let mut best = 0;
+
+    let mut next_buf = Vec::new();
+
+    while let Some(state) = stack.pop() {
+        if state.pressure > best {
+            best = state.pressure;
+        }
+
+        let next_states = state
+            .branches(valves)
+            .map(|state| (state.bound(valves), state))
+            .filter(|(bound, _)| *bound > best);
+
+        next_buf.extend(next_states);
+        next_buf.sort_unstable_by_key(|(bound, _)| *bound);
+
+        stack.extend(next_buf.drain(..).map(|(_, state)| state));
+    }
+
+    best
+}
+
+#[allow(unused)]
+fn part1_dfs(valves: &Valves) -> i16 {
     struct State {
         valve: u8,
         pressure: i16,
@@ -29,14 +110,11 @@ fn part1_bitset(valves: &Valves) -> i16 {
         opened: Opened,
     }
 
-    let mut opened = Opened::new(valves.len());
-    opened.open(0);
-
     let start = State {
         valve: 0,
         pressure: 0,
         time: 30,
-        opened,
+        opened: Opened::new(valves.len()),
     };
 
     let mut stack = vec![start];
@@ -55,18 +133,17 @@ fn part1_bitset(valves: &Valves) -> i16 {
             continue;
         }
 
-        for (shortest_path, next_valve) in valves.shortest_paths(state.valve).iter().zip(0..) {
+        for (next_valve, shortest_path) in valves.shortest_paths(state.valve).iter().enumerate() {
             if state.opened.is_open(next_valve) {
                 continue;
             }
 
             let next_time = state.time - *shortest_path as i16 - 1;
-            let next_pressure = state.pressure + next_time * valves.flow_rates[next_valve as usize];
-            let mut next_opened = state.opened;
-            next_opened.open(next_valve);
+            let next_pressure = state.pressure + next_time * valves.flow_rates[next_valve];
+            let next_opened = state.opened.open(next_valve);
 
             let state = State {
-                valve: next_valve,
+                valve: next_valve as u8,
                 pressure: next_pressure,
                 time: next_time,
                 opened: next_opened,
@@ -87,21 +164,24 @@ struct Opened {
 impl Opened {
     fn new(count: usize) -> Self {
         Self {
-            bitset: !((1 << count) - 1),
+            bitset: (!((1 << count) - 1)) | 1,
         }
     }
 
-    fn open(&mut self, idx: u8) {
-        self.bitset |= 1 << idx;
+    fn open(self, idx: usize) -> Self {
+        Self {
+            bitset: self.bitset | (1 << idx),
+        }
     }
 
-    fn is_open(self, idx: u8) -> bool {
+    fn is_open(self, idx: usize) -> bool {
         (self.bitset & (1 << idx)) > 0
     }
 }
 
 struct Valves {
     flow_rates: Box<[i16]>,
+    sorted_flow_rate_indices: Box<[usize]>,
     shortest_paths: Box<[u8]>,
 }
 
@@ -228,8 +308,16 @@ impl FromStr for Valves {
             flow_rates.len(),
         );
 
+        let mut sorted_flow_rate_tuples: Vec<_> = flow_rates.iter().copied().enumerate().collect();
+        sorted_flow_rate_tuples.sort_unstable_by_key(|(_, flow_rate)| Reverse(*flow_rate));
+
+        removed.clear();
+        let mut sorted_flow_rate_indices = removed;
+        sorted_flow_rate_indices.extend(sorted_flow_rate_tuples.into_iter().map(|(i, _)| i));
+
         Ok(Self {
             flow_rates: flow_rates.into(),
+            sorted_flow_rate_indices: sorted_flow_rate_indices.into(),
             shortest_paths: adjacency.into(),
         })
     }
