@@ -88,17 +88,22 @@ impl State {
     }
 
     fn buy_ore(&self, blueprint: &Blueprint) -> bool {
-        self.ore >= blueprint.ore.cost_ore && !self.dont_buy.ore()
+        self.ore >= blueprint.ore.cost_ore
+            && !self.dont_buy.ore()
+            && self.ore_robots < blueprint.max_cost_ore
     }
 
     fn buy_clay(&self, blueprint: &Blueprint) -> bool {
-        self.ore >= blueprint.clay.cost_ore && !self.dont_buy.clay()
+        self.ore >= blueprint.clay.cost_ore
+            && !self.dont_buy.clay()
+            && self.clay_robots < blueprint.max_cost_clay
     }
 
     fn buy_obsidian(&self, blueprint: &Blueprint) -> bool {
         self.ore >= blueprint.obsidian.cost_ore
             && self.clay >= blueprint.obsidian.cost_clay
             && !self.dont_buy.obsidian()
+            && self.obsidian_robots < blueprint.max_cost_obsidian
     }
 
     fn buy_geode(&self, blueprint: &Blueprint) -> bool {
@@ -113,6 +118,10 @@ struct Blueprint {
     clay: ClayRobot,
     obsidian: ObsidianRobot,
     geode: GeodeRobot,
+
+    max_cost_ore: u16,
+    max_cost_clay: u16,
+    max_cost_obsidian: u16,
 }
 
 impl Blueprint {
@@ -121,16 +130,6 @@ impl Blueprint {
     }
 
     fn max_geodes<const DEADLINE: u8>(&self) -> u16 {
-        let max_cost_ore = self
-            .ore
-            .cost_ore
-            .max(self.clay.cost_ore)
-            .max(self.obsidian.cost_ore)
-            .max(self.geode.cost_ore);
-
-        let max_cost_clay = self.obsidian.cost_clay;
-        let max_cost_obsidian = self.geode.cost_obsidian;
-
         let mut stack = vec![State {
             ore_robots: 1,
             ..Default::default()
@@ -147,9 +146,18 @@ impl Blueprint {
                 continue;
             }
 
-            let ore = state.buy_ore(self) && state.ore_robots < max_cost_ore;
-            let clay = state.buy_clay(self) && state.clay_robots < max_cost_clay;
-            let obsidian = state.buy_obsidian(self) && state.obsidian_robots < max_cost_obsidian;
+            let remaining = (DEADLINE - state.minute) as u16;
+
+            let max_geodes_possible =
+                ((remaining - 1) * remaining) / 2 + remaining * state.geode_robots + state.geodes;
+
+            if max_geodes_possible < max_geodes {
+                continue;
+            }
+
+            let ore = state.buy_ore(self);
+            let clay = state.buy_clay(self);
+            let obsidian = state.buy_obsidian(self);
             let geode = state.buy_geode(self);
 
             state.collect_resources();
@@ -212,8 +220,6 @@ impl Blueprint {
     }
 }
 
-// 1472 < x
-
 impl FromStr for Blueprint {
     type Err = Report;
 
@@ -221,35 +227,48 @@ impl FromStr for Blueprint {
         let (_, rest) = s.split_once(": ").wrap_err("missing `: `")?;
         let mut robots = rest.split(". ");
 
-        let ore = robots
+        let ore: OreRobot = robots
             .next()
             .wrap_err("missing line")?
             .parse()
             .wrap_err("invalid ore robot")?;
 
-        let clay = robots
+        let clay: ClayRobot = robots
             .next()
             .wrap_err("missing line")?
             .parse()
             .wrap_err("invalid clay robot")?;
 
-        let obsidian = robots
+        let obsidian: ObsidianRobot = robots
             .next()
             .wrap_err("missing line")?
             .parse()
             .wrap_err("invalid obsidian robot")?;
 
-        let geode = robots
+        let geode: GeodeRobot = robots
             .next()
             .wrap_err("missing line")?
             .parse()
             .wrap_err("invalid geode robot")?;
+
+        let max_cost_ore = ore
+            .cost_ore
+            .max(clay.cost_ore)
+            .max(obsidian.cost_ore)
+            .max(geode.cost_ore);
+
+        let max_cost_clay = obsidian.cost_clay;
+        let max_cost_obsidian = geode.cost_obsidian;
 
         Ok(Self {
             ore,
             clay,
             obsidian,
             geode,
+
+            max_cost_ore,
+            max_cost_clay,
+            max_cost_obsidian,
         })
     }
 }
