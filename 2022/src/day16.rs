@@ -1,6 +1,9 @@
 use std::{
     cmp::Ordering,
-    collections::{hash_map::Entry, BinaryHeap, HashMap, HashSet},
+    collections::{
+        btree_map::Entry as BTreeEntry, hash_map::Entry as HashEntry, BTreeMap, BTreeSet,
+        BinaryHeap, HashMap,
+    },
     fmt::{Debug, Display, Formatter, Result as FmtResult},
     hash::{Hash, Hasher},
     str::FromStr,
@@ -9,13 +12,232 @@ use std::{
 use crate::prelude::*;
 
 pub fn run(input: &str) -> Result<Solution> {
-    // run_naive(input)
-    run_floyd_warshall(input)
+    let valves = Valves::from_str(input)?;
+
+    let p1 = part1_bitset(&valves);
+
+    Ok(Solution::new().part1(p1))
+
+    // run_floyd_warshall(input)
 }
 
-type Valves = HashMap<ValveName, Valve>;
+fn part1_bitset(valves: &Valves) -> i16 {
+    struct State {
+        valve: u8,
+        pressure: i16,
+        time: i16,
+        opened: Opened,
+    }
 
-fn parse_valves(input: &str) -> Result<Valves> {
+    let mut opened = Opened::new(valves.len());
+    opened.open(0);
+
+    let start = State {
+        valve: 0,
+        pressure: 0,
+        time: 30,
+        opened,
+    };
+
+    let mut stack = vec![start];
+    let mut best = 0;
+
+    while let Some(state) = stack.pop() {
+        if state.time < 0 {
+            continue;
+        }
+
+        if state.pressure > best {
+            best = state.pressure;
+        }
+
+        if state.time == 0 {
+            continue;
+        }
+
+        for (shortest_path, next_valve) in valves.shortest_paths(state.valve).iter().zip(0..) {
+            if state.opened.is_open(next_valve) {
+                continue;
+            }
+
+            let next_time = state.time - *shortest_path as i16 - 1;
+            let next_pressure = state.pressure + next_time * valves.flow_rates[next_valve as usize];
+            let mut next_opened = state.opened;
+            next_opened.open(next_valve);
+
+            let state = State {
+                valve: next_valve,
+                pressure: next_pressure,
+                time: next_time,
+                opened: next_opened,
+            };
+
+            stack.push(state);
+        }
+    }
+
+    best
+}
+
+#[derive(Copy, Clone)]
+struct Opened {
+    bitset: u32,
+}
+
+impl Opened {
+    fn new(count: usize) -> Self {
+        Self {
+            bitset: !((1 << count) - 1),
+        }
+    }
+
+    fn open(&mut self, idx: u8) {
+        self.bitset |= 1 << idx;
+    }
+
+    fn is_open(self, idx: u8) -> bool {
+        (self.bitset & (1 << idx)) > 0
+    }
+}
+
+struct Valves {
+    flow_rates: Box<[i16]>,
+    shortest_paths: Box<[u8]>,
+}
+
+impl Valves {
+    fn len(&self) -> usize {
+        self.flow_rates.len()
+    }
+
+    fn shortest_paths(&self, valve: u8) -> &[u8] {
+        let len = self.len();
+        let idx = (valve as usize) * len;
+
+        &self.shortest_paths[idx..idx + len]
+    }
+}
+
+impl FromStr for Valves {
+    type Err = Report;
+
+    fn from_str(input: &str) -> Result<Self, Self::Err> {
+        let mut indices = HashMap::new();
+        indices.insert("AA", 0);
+        let mut next_idx = 1;
+
+        let mut get_idx = |name| match indices.entry(name) {
+            HashEntry::Occupied(e) => *e.get(),
+            HashEntry::Vacant(e) => {
+                let idx = *e.insert(next_idx);
+                next_idx += 1;
+
+                idx
+            }
+        };
+
+        let mut valves = input
+            .lines()
+            .map(|line| {
+                let rest = line.strip_prefix("Valve ").wrap_err("invalid line")?;
+                let (name, rest) = rest.split_once(' ').wrap_err("invalid name")?;
+                let idx = get_idx(name);
+
+                let rest = rest
+                    .strip_prefix("has flow rate=")
+                    .wrap_err("invalid line `flow rate`")?;
+
+                let (n, rest) = rest.split_once(';').wrap_err("invalid line `;`")?;
+                let flow_rate: i16 = n.parse().wrap_err("invalid flow rate")?;
+
+                let tunnels = rest
+                    .strip_prefix(" tunnel leads to valve ")
+                    .or_else(|| rest.strip_prefix(" tunnels lead to valves "))
+                    .wrap_err("invalid line")?;
+
+                Ok((idx, flow_rate, tunnels))
+            })
+            .collect::<Result<Vec<_>>>()
+            .wrap_err("invalid input")?;
+
+        valves.sort_unstable_by_key(|(idx, ..)| *idx);
+
+        let mut width = valves.len();
+        let mut adjacency = vec![u8::MAX; width * width];
+
+        let mut flow_rates: Vec<_> = valves
+            .into_iter()
+            .map(|(i, flow_rate, tunnels)| {
+                let idx = i * width + i;
+                adjacency[idx] = 0;
+
+                for j in tunnels.split(", ").map(&mut get_idx) {
+                    let idx = i * width + j;
+                    adjacency[idx] = 1;
+                }
+
+                flow_rate
+            })
+            .collect();
+
+        for k in 0..width {
+            for i in 0..width {
+                for j in 0..width {
+                    let i_j_idx = i * width + j;
+                    let i_k_idx = i * width + k;
+                    let k_j_idx = k * width + j;
+
+                    let i_k = adjacency[i_k_idx];
+                    let k_j = adjacency[k_j_idx];
+                    let i_j = &mut adjacency[i_j_idx];
+
+                    if let Some(i_k_j) = i_k.checked_add(k_j).filter(|i_k_j| *i_j > *i_k_j) {
+                        *i_j = i_k_j;
+                    }
+                }
+            }
+        }
+
+        let mut removed = Vec::new();
+
+        for (name, idx) in indices {
+            let adjusted = idx - removed.iter().filter(|&n| *n < idx).count();
+
+            if flow_rates[adjusted] > 0 || name == "AA" {
+                continue;
+            }
+
+            let start = adjusted * width;
+            let end = start + width;
+
+            adjacency.drain(start..end);
+
+            for j in (0..width - 1).rev() {
+                let i = j * width + adjusted;
+                adjacency.remove(i);
+            }
+
+            width -= 1;
+            removed.push(idx);
+            flow_rates.remove(adjusted);
+        }
+
+        assert!(
+            flow_rates.len() <= 32,
+            "got {} valves after reducing but we can't have more than 32",
+            flow_rates.len(),
+        );
+
+        Ok(Self {
+            flow_rates: flow_rates.into(),
+            shortest_paths: adjacency.into(),
+        })
+    }
+}
+
+type Valves_ = HashMap<ValveName, Valve>;
+
+fn parse_valves(input: &str) -> Result<Valves_> {
     input
         .lines()
         .map(|line| {
@@ -54,13 +276,13 @@ fn parse_valves(input: &str) -> Result<Valves> {
 }
 
 struct Graph {
-    matrix: Box<[Option<u8>]>,
+    matrix: Box<[u8]>,
     vertex_count: usize,
-    indices: HashMap<ValveName, usize>,
+    indices: BTreeMap<ValveName, usize>,
 }
 
 impl Graph {
-    fn from_valves(valves: &Valves) -> Self {
+    fn from_valves(valves: &Valves_) -> Self {
         // Adjacency list
         let mut reduced: HashMap<ValveName, HashMap<ValveName, u8>> = valves
             .values()
@@ -120,14 +342,28 @@ impl Graph {
 
         // Convert adjacency list to adjacency matrix
         let len = reduced.len();
-        let mut matrix = vec![None; len * len].into_boxed_slice();
+        let mut matrix = vec![255; len * len].into_boxed_slice();
 
         let mut next_idx = 0;
-        let mut indices = HashMap::new();
+
+        // sort stuff, not necessary but makes things nicer
+        let mut set = BTreeSet::new();
+
+        for valve in valves.values() {
+            if valve.flow_rate > 0 || valve.name.as_str() == "AA" {
+                set.insert(valve.name);
+            }
+        }
+
+        let mut indices: BTreeMap<_, _> = set
+            .into_iter()
+            .enumerate()
+            .map(|(i, name)| (name, i))
+            .collect();
 
         let mut get_idx = |name| match indices.entry(name) {
-            Entry::Occupied(e) => *e.get(),
-            Entry::Vacant(e) => {
+            BTreeEntry::Occupied(e) => *e.get(),
+            BTreeEntry::Vacant(e) => {
                 let i = *e.insert(next_idx);
                 next_idx += 1;
 
@@ -141,7 +377,7 @@ impl Graph {
             for (tunnel, cost) in costs {
                 let j = get_idx(tunnel);
                 let idx = i * len + j;
-                matrix[idx] = Some(cost);
+                matrix[idx] = cost;
             }
         }
 
@@ -167,23 +403,17 @@ impl Graph {
                     let i_k = self.matrix[i_k_idx];
                     let k_j = self.matrix[k_j_idx];
 
-                    let new_cost = match (i_k, k_j) {
-                        (Some(i_k), Some(k_j)) => i_k + k_j,
-                        _ => continue,
-                    };
-
-                    match i_j {
-                        Some(i_j) if i_j < new_cost => {}
-                        Some(_) | None => self.matrix[i_j_idx] = Some(new_cost),
+                    if let Some(i_k_j) = i_k.checked_add(k_j).filter(|i_k_j| *i_k_j < i_j) {
+                        self.matrix[i_j_idx] = i_k_j;
                     }
                 }
             }
         }
     }
 
-    fn shortest_path(&self, from: ValveName, to: ValveName) -> Option<u8> {
-        let i = self.indices.get(&from)?;
-        let j = self.indices.get(&to)?;
+    fn shortest_path(&self, from: ValveName, to: ValveName) -> u8 {
+        let i = self.indices[&from];
+        let j = self.indices[&to];
         let len = self.indices.len();
 
         self.matrix[i * len + j]
@@ -203,7 +433,7 @@ pub fn run_floyd_warshall(input: &str) -> Result<Solution> {
     Ok(Solution::new().part1(p1).part2(p2))
 }
 
-fn part1_floyd_warshall(valves: &Valves, graph: &Graph) -> i16 {
+fn part1_floyd_warshall(valves: &Valves_, graph: &Graph) -> i16 {
     struct State {
         valve: ValveName,
         time: i16,
@@ -244,7 +474,7 @@ fn part1_floyd_warshall(valves: &Valves, graph: &Graph) -> i16 {
             let mut remaining = remaining.clone();
             let next = remaining.swap_remove(i);
 
-            let Some(shortest_path) = graph.shortest_path(valve, next) else { continue };
+            let shortest_path = graph.shortest_path(valve, next);
             let Some(Valve { flow_rate, .. }) = valves.get(&next) else { continue };
 
             let time = time - shortest_path as i16 - 1;
@@ -264,7 +494,7 @@ fn part1_floyd_warshall(valves: &Valves, graph: &Graph) -> i16 {
     best
 }
 
-fn part2_floyd_warshall(valves: &Valves, graph: &Graph) -> Result<i16> {
+fn part2_floyd_warshall(valves: &Valves_, graph: &Graph) -> Result<i16> {
     #[derive(Copy, Clone, Eq)]
     struct Runner {
         target: ValveName,
@@ -397,7 +627,7 @@ fn part2_floyd_warshall(valves: &Valves, graph: &Graph) -> Result<i16> {
                     [] => {}
                     [next] => {
                         let next = *next;
-                        let Some(shortest_path) = graph.shortest_path(you.target, next) else { continue };
+                        let shortest_path = graph.shortest_path(you.target, next);
 
                         let you = Runner {
                             target: next,
@@ -422,7 +652,7 @@ fn part2_floyd_warshall(valves: &Valves, graph: &Graph) -> Result<i16> {
                                 let you_next = remaining.swap_remove(j);
                                 let elephant_next = remaining.swap_remove(i);
 
-                                let Some(shortest_path) = graph.shortest_path(you.target, you_next) else { continue };
+                                let shortest_path = graph.shortest_path(you.target, you_next);
 
                                 let mut you = Runner {
                                     target: you_next,
@@ -433,7 +663,8 @@ fn part2_floyd_warshall(valves: &Valves, graph: &Graph) -> Result<i16> {
                                     steps_left: shortest_path,
                                 };
 
-                                let Some(shortest_path) = graph.shortest_path(elephant.target, elephant_next) else { continue };
+                                let shortest_path =
+                                    graph.shortest_path(elephant.target, elephant_next);
 
                                 let mut elephant = Runner {
                                     target: elephant_next,
@@ -497,7 +728,7 @@ fn part2_floyd_warshall(valves: &Valves, graph: &Graph) -> Result<i16> {
                         let mut remaining = remaining.clone();
                         let next = remaining.swap_remove(i);
 
-                        let Some(shortest_path) = graph.shortest_path(elephant.target, next) else { continue };
+                        let shortest_path = graph.shortest_path(elephant.target, next);
 
                         let elephant = Runner {
                             target: next,
@@ -543,7 +774,7 @@ fn part2_floyd_warshall(valves: &Valves, graph: &Graph) -> Result<i16> {
                         let mut remaining = remaining.clone();
                         let next = remaining.swap_remove(i);
 
-                        let Some(shortest_path) = graph.shortest_path(you.target, next) else { continue };
+                        let shortest_path = graph.shortest_path(you.target, next);
 
                         let you = Runner {
                             target: next,
@@ -594,407 +825,6 @@ fn part2_floyd_warshall(valves: &Valves, graph: &Graph) -> Result<i16> {
     println!("ITERS={iters}");
 
     Ok(best)
-}
-
-pub fn run_naive(input: &str) -> Result<Solution> {
-    let valves = parse_valves(input)?;
-
-    let p1 = part1(&valves)?;
-    let p2 = part2(&valves)?;
-
-    Ok(Solution::new().part1(p1).part2(p2))
-}
-
-fn part1(valves: &Valves) -> Result<i16> {
-    #[derive(Clone)]
-    struct State<'v> {
-        valve: &'v Valve,
-        time: i16,
-        pressure: i16,
-        opened: Vec<ValveName>,
-        path: Vec<(ValveName, i16, i16, Action)>,
-    }
-
-    let start = State {
-        valve: valves.get(&b"AA".into()).wrap_err("missing valve `AA`")?,
-        time: 30,
-        pressure: 0,
-        opened: Vec::new(),
-        path: Vec::new(),
-    };
-
-    let mut stack = Vec::new();
-    stack.push(start.clone());
-
-    let mut seen = HashSet::new();
-
-    let mut best = start;
-
-    while let Some(state) = stack.pop() {
-        if state.pressure > best.pressure {
-            best = state.clone();
-        }
-
-        let State {
-            valve,
-            time,
-            pressure,
-            opened,
-            path,
-        } = state;
-
-        for tunnel in valve.tunnels.iter() {
-            let next_valve = valves.get(tunnel).wrap_err("missing tunnel")?;
-
-            let next_time = time - 1;
-
-            if next_time >= 0 && seen.insert((next_valve.name, next_time, pressure)) {
-                let mut path = path.clone();
-                path.push((next_valve.name, next_time, pressure, Action::DontOpen));
-
-                let dont_open = State {
-                    valve: next_valve,
-                    time: next_time,
-                    pressure,
-                    opened: opened.clone(),
-                    path,
-                };
-
-                stack.push(dont_open);
-            }
-
-            let next_time = time - 2;
-
-            if next_time >= 0 && next_valve.flow_rate > 0 && !opened.contains(&next_valve.name) {
-                let next_pressure = pressure + next_time * next_valve.flow_rate;
-
-                if seen.insert((next_valve.name, next_time, next_pressure)) {
-                    let mut path = path.clone();
-                    path.push((next_valve.name, next_time, next_pressure, Action::Open));
-
-                    let mut opened = opened.clone();
-                    opened.push(next_valve.name);
-
-                    let open = State {
-                        valve: next_valve,
-                        time: next_time,
-                        pressure: next_pressure,
-                        opened,
-                        path,
-                    };
-
-                    stack.push(open);
-                }
-            }
-        }
-    }
-
-    for (name, time, pressure, action) in best.path {
-        println!("[{time}] {action:?} {name}: {pressure}");
-    }
-
-    Ok(best.pressure)
-}
-
-fn part2(valves: &Valves) -> Result<i16> {
-    #[derive(Clone)]
-    struct State<'v> {
-        valve_you: &'v Valve,
-        valve_elephant: &'v Valve,
-        status_you: Status,
-        status_elephant: Status,
-        time: i16,
-        pressure: i16,
-        opened: Vec<ValveName>,
-    }
-
-    #[derive(Copy, Clone, PartialEq, Eq, Hash)]
-    enum Status {
-        Opening,
-        Ready,
-    }
-
-    let aa = valves.get(&b"AA".into()).wrap_err("missing valve `AA`")?;
-
-    let start = State {
-        valve_you: aa,
-        valve_elephant: aa,
-        status_you: Status::Ready,
-        status_elephant: Status::Ready,
-        time: 26,
-        pressure: 0,
-        opened: Vec::new(),
-    };
-
-    let mut stack = Vec::new();
-    stack.push(start.clone());
-
-    let mut seen = HashSet::new();
-    let mut best = start;
-
-    let mut next_you = Vec::new();
-    let mut next_elephant = Vec::new();
-
-    while let Some(state) = stack.pop() {
-        if state.pressure > best.pressure {
-            best = state.clone();
-
-            println!(
-                "New Best: {:?} -> {} [seen: {}]",
-                best.opened,
-                best.pressure,
-                seen.len(),
-            );
-        }
-
-        let State {
-            valve_you,
-            valve_elephant,
-            status_you,
-            status_elephant,
-            time,
-            pressure,
-            opened,
-        } = state;
-
-        enum Next<'v> {
-            Wait,
-            DontOpen {
-                valve: &'v Valve,
-            },
-            Open {
-                valve: &'v Valve,
-                added_pressure: i16,
-            },
-        }
-
-        if status_you == Status::Ready {
-            for tunnel in valve_you.tunnels.iter() {
-                let next_valve = valves.get(tunnel).wrap_err("missing tunnel")?;
-
-                let next_time = time - 1;
-
-                if next_time >= 0 {
-                    next_you.push(Next::DontOpen { valve: next_valve });
-                }
-
-                let next_time = time - 2;
-
-                if next_time >= 0 && next_valve.flow_rate > 0 && !opened.contains(&next_valve.name)
-                {
-                    let added_pressure = next_time * next_valve.flow_rate;
-
-                    let next = Next::Open {
-                        valve: next_valve,
-                        added_pressure,
-                    };
-
-                    next_you.push(next);
-                }
-            }
-        } else {
-            next_you.push(Next::Wait);
-        }
-
-        if status_elephant == Status::Ready {
-            for tunnel in valve_elephant.tunnels.iter() {
-                let next_valve = valves.get(tunnel).wrap_err("missing tunnel")?;
-
-                let next_time = time - 1;
-
-                if next_time >= 0 {
-                    next_elephant.push(Next::DontOpen { valve: next_valve });
-                }
-
-                let next_time = time - 2;
-
-                if next_time >= 0 && next_valve.flow_rate > 0 && !opened.contains(&next_valve.name)
-                {
-                    let added_pressure = next_time * next_valve.flow_rate;
-
-                    let next = Next::Open {
-                        valve: next_valve,
-                        added_pressure,
-                    };
-
-                    next_elephant.push(next);
-                }
-            }
-        } else {
-            next_elephant.push(Next::Wait);
-        }
-
-        for next_you in next_you.drain(..) {
-            for next_eleph in next_elephant.iter() {
-                let state = match (&next_you, next_eleph) {
-                    (
-                        Next::Open {
-                            valve: valve_you,
-                            added_pressure: pressure_you,
-                        },
-                        Next::Open {
-                            valve: valve_elephant,
-                            added_pressure: pressure_eleph,
-                        },
-                    ) => {
-                        let mut opened = opened.clone();
-                        opened.push(valve_you.name);
-                        opened.push(valve_elephant.name);
-
-                        State {
-                            valve_you,
-                            valve_elephant,
-                            status_you: Status::Ready,
-                            status_elephant: Status::Ready,
-                            time: time - 2,
-                            pressure: pressure
-                                + pressure_you
-                                + (valve_you.name != valve_elephant.name) as i16 * pressure_eleph,
-                            opened,
-                        }
-                    }
-                    (
-                        Next::Open {
-                            valve: valve_you,
-                            added_pressure,
-                        },
-                        Next::DontOpen {
-                            valve: valve_elephant,
-                        },
-                    ) => {
-                        let mut opened = opened.clone();
-                        opened.push(valve_you.name);
-
-                        State {
-                            valve_you,
-                            valve_elephant,
-                            status_you: Status::Opening,
-                            status_elephant: Status::Ready,
-                            time: time - 1,
-                            pressure: pressure + added_pressure,
-                            opened,
-                        }
-                    }
-                    (
-                        Next::Open {
-                            valve,
-                            added_pressure,
-                        },
-                        Next::Wait,
-                    ) => {
-                        let mut opened = opened.clone();
-                        opened.push(valve.name);
-
-                        State {
-                            valve_you: valve,
-                            valve_elephant,
-                            status_you: Status::Opening,
-                            status_elephant: Status::Ready,
-                            time: time - 1,
-                            pressure: pressure + added_pressure,
-                            opened,
-                        }
-                    }
-                    (
-                        Next::DontOpen { valve: valve_you },
-                        Next::Open {
-                            valve: valve_elephant,
-                            added_pressure,
-                        },
-                    ) => {
-                        let mut opened = opened.clone();
-                        opened.push(valve_elephant.name);
-
-                        State {
-                            valve_you,
-                            valve_elephant,
-                            status_you: Status::Ready,
-                            status_elephant: Status::Opening,
-                            time: time - 1,
-                            pressure: pressure + added_pressure,
-                            opened,
-                        }
-                    }
-                    (
-                        Next::DontOpen { valve: valve_you },
-                        Next::DontOpen {
-                            valve: valve_elephant,
-                        },
-                    ) => State {
-                        valve_you,
-                        valve_elephant,
-                        status_you: Status::Ready,
-                        status_elephant: Status::Ready,
-                        time: time - 1,
-                        pressure,
-                        opened: opened.clone(),
-                    },
-                    (Next::DontOpen { valve }, Next::Wait) => State {
-                        valve_you: valve,
-                        valve_elephant,
-                        status_you: Status::Ready,
-                        status_elephant: Status::Ready,
-                        time: time - 1,
-                        pressure,
-                        opened: opened.clone(),
-                    },
-                    (
-                        Next::Wait,
-                        Next::Open {
-                            valve,
-                            added_pressure,
-                        },
-                    ) => {
-                        let mut opened = opened.clone();
-                        opened.push(valve.name);
-
-                        State {
-                            valve_you,
-                            valve_elephant: valve,
-                            status_you: Status::Ready,
-                            status_elephant: Status::Opening,
-                            time: time - 1,
-                            pressure: pressure + added_pressure,
-                            opened,
-                        }
-                    }
-                    (Next::Wait, Next::DontOpen { valve }) => State {
-                        valve_you,
-                        valve_elephant: valve,
-                        status_you: Status::Ready,
-                        status_elephant: Status::Ready,
-                        time: time - 1,
-                        pressure,
-                        opened: opened.clone(),
-                    },
-                    (Next::Wait, Next::Wait) => unreachable!(),
-                };
-
-                let key = (
-                    state.valve_you,
-                    state.valve_elephant,
-                    state.status_you,
-                    state.status_elephant,
-                    state.time,
-                    state.pressure,
-                );
-
-                if state.time >= 0 && seen.insert(key) {
-                    stack.push(state);
-                }
-            }
-        }
-
-        next_elephant.clear();
-    }
-
-    Ok(best.pressure)
-}
-
-#[derive(Copy, Clone, Debug, PartialEq, Eq)]
-enum Action {
-    DontOpen,
-    Open,
 }
 
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -1066,19 +896,19 @@ impl Hash for Valve {
 
 impl Display for Graph {
     fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
-        fn fmt_row(row: &[Option<u8>], f: &mut Formatter<'_>) -> FmtResult {
+        fn fmt_row(row: &[u8], f: &mut Formatter<'_>) -> FmtResult {
             let mut iter = row.iter();
 
             if let Some(n) = iter.next() {
                 match n {
-                    Some(n) => write!(f, "{n}")?,
-                    None => f.write_str("x")?,
+                    255 => f.write_str(" x ")?,
+                    n => write!(f, "{n:^3}")?,
                 }
 
                 for n in iter {
                     match n {
-                        Some(n) => write!(f, "{n}")?,
-                        None => f.write_str("x")?,
+                        255 => f.write_str(" x ")?,
+                        n => write!(f, "{n:^3}")?,
                     }
                 }
             }
