@@ -40,6 +40,7 @@ macro_rules! day_from_str {
 }
 
 day_from_str! {
+    19: day19,
     18: day18,
     // TODO: optimize / improve 16 & 17
     15: day15,
