@@ -1,7 +1,9 @@
 use std::{
-    collections::HashSet,
-    ops::{Add, Sub},
+    collections::{hash_map::Entry, HashMap},
+    iter,
 };
+
+use ahash::RandomState;
 
 use crate::prelude::*;
 
@@ -13,269 +15,184 @@ pub fn run(input: &str) -> Result<Solution> {
 }
 
 pub fn part1(input: &str) -> Result<u64> {
-    let rocks = ROCKS.iter().cycle().take(2022);
+    let mut cave = vec![0b00000001; 9000];
+    cave[0] = u8::MAX;
+    let mut max_height = 0;
+
     let mut jets = input.bytes().cycle();
 
-    let mut total_height = 0;
-    let mut stopped = HashSet::new();
-    let mut buf = Vec::new();
-
-    for rock in rocks {
-        let offset = Pos {
-            x: 2,
-            y: total_height + 3,
-        };
-
-        buf.extend(rock.shape.iter().map(|&pos| pos + offset));
+    for mut rock in ROCKS.iter().cycle().take(2022).copied() {
+        let mut rock_bottom = max_height + 4;
 
         for jet in &mut jets {
             match jet {
-                b'>' => shift_right(&mut buf, &stopped),
-                b'<' => shift_left(&mut buf, &stopped),
+                b'<' => shift_left(&mut rock, &cave, rock_bottom),
+                b'>' => shift_right(&mut rock, &cave, rock_bottom),
                 _ => bail!("invalid jet"),
             }
 
-            if !shift_down(&mut buf, &stopped) {
+            if shift_down(rock, &mut cave, rock_bottom) {
+                rock_bottom -= 1;
+            } else {
+                let rock_height = rock.iter().rev().take_while(|&&row| row > 0).count();
+                max_height = max_height.max(rock_height + rock_bottom - 1);
+
                 break;
             }
         }
-
-        let rock_height = buf.iter().map(|pos| pos.y).max().unwrap() + 1;
-        total_height = rock_height.max(total_height);
-
-        stopped.extend(buf.drain(..));
     }
 
-    Ok(total_height)
+    Ok(max_height as u64)
 }
 
 pub fn part2(input: &str) -> Result<u64> {
-    const THRESHOLD: usize = 10_000;
+    const ROCKS_COUNT: u64 = 1_000_000_000_000;
 
-    let mut heights = Vec::with_capacity(THRESHOLD);
+    let mut cave = vec![0b00000001; 10_000];
+    cave[0] = u8::MAX;
+    let mut max_height = 0;
 
-    let mut jets = input.bytes().cycle();
+    let rocks = ROCKS.iter().copied().zip(0..).cycle();
+    let mut jets = input.bytes().zip(0..).cycle();
 
-    let mut total_height = 0;
-    let mut stopped = HashSet::new();
-    let mut buf = Vec::new();
+    let mut rock_count = 0;
+    let mut height_from_cycles = 0;
+    let mut cache = HashMap::with_capacity_and_hasher(2048, RandomState::new());
 
-    for rock in ROCKS.iter().cycle().take(THRESHOLD) {
-        let offset = Pos {
-            x: 2,
-            y: total_height + 3,
-        };
+    for (mut rock, rock_idx) in rocks {
+        rock_count += 1;
 
-        buf.extend(rock.shape.iter().map(|&pos| pos + offset));
+        if rock_count > ROCKS_COUNT {
+            break;
+        }
 
-        for jet in &mut jets {
+        let mut rock_bottom = max_height + 4;
+
+        for (jet, jet_idx) in &mut jets {
             match jet {
-                b'>' => shift_right(&mut buf, &stopped),
-                b'<' => shift_left(&mut buf, &stopped),
+                b'<' => shift_left(&mut rock, &cave, rock_bottom),
+                b'>' => shift_right(&mut rock, &cave, rock_bottom),
                 _ => bail!("invalid jet"),
             }
 
-            if !shift_down(&mut buf, &stopped) {
-                break;
+            if shift_down(rock, &mut cave, rock_bottom) {
+                rock_bottom -= 1;
+                continue;
             }
-        }
 
-        let rock_height = buf.iter().map(|pos| pos.y).max().unwrap() + 1;
-        total_height = rock_height.max(total_height);
+            let rock_height = rock.iter().rev().take_while(|&&row| row > 0).count();
 
-        stopped.extend(buf.drain(..));
-        heights.push(total_height);
-    }
+            if rock_height + rock_bottom - 1 > max_height {
+                max_height = rock_height + rock_bottom - 1;
 
-    let mut buf1 = Vec::new();
-    let mut buf2 = Vec::new();
-
-    for skip in 0..THRESHOLD / 2 {
-        let suffix = &heights[skip..];
-
-        'cycle_len: for cycle_len in 2..(THRESHOLD - skip) / 2 {
-            buf1.clear();
-
-            let mut chunks = suffix.chunks_exact(cycle_len);
-            let Some(first) = chunks.next() else { continue };
-
-            let offset = first[0];
-            buf1.extend(first.iter().map(|height| height - offset));
-
-            for chunk in chunks {
-                buf2.clear();
-                let offset = chunk[0];
-                buf2.extend(chunk.iter().map(|height| height - offset));
-
-                if buf1 != buf2 {
-                    continue 'cycle_len;
+                if cave.len() - max_height < 10 {
+                    cave.extend(iter::repeat(0b00000001).take(1000));
                 }
             }
 
-            println!("Found cycle: skip={skip} | cycle_len={cycle_len}");
+            if max_height < 8 {
+                break;
+            }
 
-            let height_per_cycle = heights[skip + cycle_len] - heights[skip];
+            let last_8 = cave[max_height - 8..max_height]
+                .try_into()
+                .map(u64::from_le_bytes)
+                .unwrap();
 
-            const ROCKS_COUNT: u64 = 1_000_000_000_000;
+            match cache.entry((rock_idx, jet_idx, last_8)) {
+                Entry::Occupied(e) => {
+                    let (old_rock_count, old_height) = e.get();
+                    let rocks_per_cycle = rock_count - old_rock_count;
+                    let remaining_cycles = (ROCKS_COUNT - rock_count) / rocks_per_cycle;
+                    rock_count += rocks_per_cycle * remaining_cycles;
+                    height_from_cycles += remaining_cycles * (max_height - old_height) as u64;
+                }
+                Entry::Vacant(e) => {
+                    e.insert((rock_count, max_height));
+                }
+            }
 
-            let rocks_in_cycles = ROCKS_COUNT - skip as u64;
-            let cycles = rocks_in_cycles / cycle_len as u64;
-            let remaining_rocks = rocks_in_cycles % cycle_len as u64;
-
-            let init_height = heights[skip - 1];
-            let cycles_height = cycles * height_per_cycle;
-            let remaining_height = heights[skip + remaining_rocks as usize] - heights[skip];
-
-            let total_height = init_height + cycles_height + remaining_height;
-
-            return Ok(total_height);
+            break;
         }
     }
 
-    bail!("missing cycle")
+    Ok(max_height as u64 + height_from_cycles)
 }
 
-fn shift_left(rock: &mut [Pos], stopped: &HashSet<Pos>) {
-    let any_hit = rock.iter().any(|pos| {
-        if pos.x == 0 {
-            return true;
-        }
+fn shift_left(rock: &mut Rock, cave: &[Row], rock_bottom: usize) {
+    let hits_other = rock
+        .iter()
+        .zip(cave[rock_bottom..rock_bottom + 4].iter().rev())
+        .any(|(&rock, row)| (0b1000_0000 <= rock) || ((rock << 1) & row) > 0);
 
-        let next = *pos - Pos { x: 1, y: 0 };
-
-        stopped.contains(&next)
-    });
-
-    if !any_hit {
-        rock.iter_mut().for_each(|pos| pos.x -= 1);
+    if !hits_other {
+        rock.iter_mut().for_each(|row| *row <<= 1);
     }
 }
 
-fn shift_right(rock: &mut [Pos], stopped: &HashSet<Pos>) {
-    let any_hit = rock.iter().any(|pos| {
-        if pos.x == 6 {
-            return true;
-        }
+fn shift_right(rock: &mut Rock, cave: &[Row], rock_bottom: usize) {
+    let hits_other = rock
+        .iter()
+        .zip(cave[rock_bottom..rock_bottom + 4].iter().rev())
+        // out of bounds check handled through row's right-most wall
+        .any(|(rock, row)| ((rock >> 1) & row) > 0);
 
-        let next = *pos + Pos { x: 1, y: 0 };
-
-        stopped.contains(&next)
-    });
-
-    if !any_hit {
-        rock.iter_mut().for_each(|pos| pos.x += 1);
+    if !hits_other {
+        rock.iter_mut().for_each(|row| *row >>= 1);
     }
 }
 
-fn shift_down(rock: &mut [Pos], stopped: &HashSet<Pos>) -> bool {
-    let any_hit = rock.iter().any(|pos| {
-        if pos.y == 0 {
-            return true;
-        }
+fn shift_down(rock: Rock, cave: &mut [Row], rock_bottom: usize) -> bool {
+    let hits_down = rock
+        .iter()
+        .zip(cave[rock_bottom - 1..rock_bottom + 3].iter().rev())
+        .map(|(rock, row)| rock & row)
+        .any(|byte| byte > 0);
 
-        let next = *pos - Pos { x: 0, y: 1 };
+    if hits_down {
+        rock.iter()
+            .zip(cave[rock_bottom..rock_bottom + 4].iter_mut().rev())
+            .for_each(|(rock, row)| *row |= rock);
 
-        stopped.contains(&next)
-    });
-
-    if any_hit {
         false
     } else {
-        rock.iter_mut().for_each(|pos| pos.y -= 1);
-
         true
     }
 }
 
-#[derive(Copy, Clone, PartialEq, Eq)]
-struct Rock {
-    shape: &'static [Pos],
-}
+type Row = u8;
+type Rock = [Row; 4];
 
+#[rustfmt::skip]
 const ROCKS: [Rock; 5] = [
-    // ####
-    Rock {
-        shape: &[
-            Pos { x: 0, y: 0 },
-            Pos { x: 1, y: 0 },
-            Pos { x: 2, y: 0 },
-            Pos { x: 3, y: 0 },
-        ],
-    },
-    // .#.
-    // ###
-    // .#.
-    Rock {
-        shape: &[
-            Pos { x: 1, y: 2 },
-            Pos { x: 0, y: 1 },
-            Pos { x: 1, y: 1 },
-            Pos { x: 2, y: 1 },
-            Pos { x: 1, y: 0 },
-        ],
-    },
-    // ..#
-    // ..#
-    // ###
-    Rock {
-        shape: &[
-            Pos { x: 2, y: 2 },
-            Pos { x: 2, y: 1 },
-            Pos { x: 2, y: 0 },
-            Pos { x: 1, y: 0 },
-            Pos { x: 0, y: 0 },
-        ],
-    },
-    // #
-    // #
-    // #
-    // #
-    Rock {
-        shape: &[
-            Pos { x: 0, y: 3 },
-            Pos { x: 0, y: 2 },
-            Pos { x: 0, y: 1 },
-            Pos { x: 0, y: 0 },
-        ],
-    },
-    // ##
-    // ##
-    Rock {
-        shape: &[
-            Pos { x: 0, y: 1 },
-            Pos { x: 1, y: 1 },
-            Pos { x: 0, y: 0 },
-            Pos { x: 1, y: 0 },
-        ],
-    },
+    [
+        0b00000000,
+        0b00000000,
+        0b00000000,
+        0b00111100,
+    ],
+    [
+        0b00000000,
+        0b00010000,
+        0b00111000,
+        0b00010000,
+    ],
+    [
+        0b00000000,
+        0b00001000,
+        0b00001000,
+        0b00111000,
+    ],
+    [
+        0b00100000,
+        0b00100000,
+        0b00100000,
+        0b00100000,
+    ],
+    [
+        0b00000000,
+        0b00000000,
+        0b00110000,
+        0b00110000,
+    ],
 ];
-
-#[derive(Copy, Clone, PartialEq, Eq, Hash)]
-struct Pos {
-    x: u8,
-    y: u64,
-}
-
-impl Add for Pos {
-    type Output = Pos;
-
-    #[inline]
-    fn add(self, rhs: Self) -> Self::Output {
-        Self {
-            x: self.x + rhs.x,
-            y: self.y + rhs.y,
-        }
-    }
-}
-
-impl Sub for Pos {
-    type Output = Pos;
-
-    #[inline]
-    fn sub(self, rhs: Self) -> Self::Output {
-        Self {
-            x: self.x - rhs.x,
-            y: self.y - rhs.y,
-        }
-    }
-}
