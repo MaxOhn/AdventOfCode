@@ -19,14 +19,6 @@ pub fn run(input: &str) -> Result<Solution> {
 }
 
 fn part1(valves: &Valves) -> u16 {
-    #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
-    struct State {
-        valve: u8,
-        pressure: u16,
-        time: u8,
-        opened: Opened,
-    }
-
     let start = State {
         valve: 0,
         pressure: 0,
@@ -40,6 +32,7 @@ fn part1(valves: &Valves) -> u16 {
 
     while let Some((bound, state)) = heap.pop() {
         if bound < best {
+            // the best value from the heap is worse than the current best, stop iterating
             break;
         } else if state.pressure > best {
             best = state.pressure;
@@ -54,6 +47,8 @@ fn part1(valves: &Valves) -> u16 {
             let next_pressure = state.pressure + next_time as u16 * valves.flow_rates[next_valve];
             let next_opened = state.opened.open(next_valve);
 
+            // calculate upper bound by assuming from now on we get all remaining
+            // valves in best-case order with cheap distances between them
             let flow_rates = valves
                 .sorted_flow_rate_indices
                 .iter()
@@ -71,6 +66,7 @@ fn part1(valves: &Valves) -> u16 {
 
             let next_bound = next_pressure + upper_pressure;
 
+            // the upper bound is already less than the current best, ignore state
             if next_bound < best {
                 continue;
             }
@@ -90,13 +86,6 @@ fn part1(valves: &Valves) -> u16 {
 }
 
 fn part2(valves: &Valves) -> u16 {
-    struct State {
-        valve: u8,
-        pressure: u16,
-        time: u8,
-        opened: Opened,
-    }
-
     let start = State {
         valve: 0,
         pressure: 0,
@@ -111,6 +100,7 @@ fn part2(valves: &Valves) -> u16 {
     let mut cache = HashMap::new();
 
     while let Some(state) = stack.pop() {
+        // cache values so the elephant can make use of the same calculation
         cache
             .entry(state.opened)
             .and_modify(|pressure| *pressure = state.pressure.max(*pressure))
@@ -143,25 +133,29 @@ fn part2(valves: &Valves) -> u16 {
     let mut pressures: Vec<_> = cache.into_iter().collect();
     pressures.sort_unstable_by_key(|(_, pressure)| Reverse(*pressure));
 
-    let mut best = 0;
-
-    for (i, &(my_opened, my_pressure)) in pressures.iter().enumerate() {
-        for &(elephant_opened, elephant_pressure) in pressures[i + 1..].iter() {
-            let pressure = my_pressure + elephant_pressure;
-
-            if pressure <= best {
-                break;
-            }
-
-            if !(my_opened & elephant_opened).any() {
-                best = pressure;
-
-                break;
-            }
-        }
-    }
+    // find the best pair with a disjoint set of opened valves
+    let best = pressures
+        .iter()
+        .enumerate()
+        .fold(0, |best, (i, (my_opened, my_pressure))| {
+            pressures[i + 1..]
+                .iter()
+                .map(|(eleph_opened, eleph_pressure)| (eleph_opened, my_pressure + eleph_pressure))
+                .take_while(|(_, pressure)| *pressure > best)
+                .find(|(&eleph_opened, _)| my_opened.is_disjoint(eleph_opened))
+                .map(|(_, pressure)| pressure)
+                .unwrap_or(best)
+        });
 
     best
+}
+
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+struct State {
+    valve: u8,
+    pressure: u16,
+    time: u8,
+    opened: Opened,
 }
 
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -171,11 +165,12 @@ struct Opened {
 
 impl Opened {
     fn new() -> Self {
+        // the first bit is always set to denote valve `AA`
         Self { bitset: 0x00000001 }
     }
 
-    fn any(self) -> bool {
-        self.bitset.count_ones() > 1
+    fn is_disjoint(self, other: Self) -> bool {
+        self.bitset & other.bitset == 1
     }
 
     fn open(self, idx: usize) -> Self {
@@ -237,6 +232,7 @@ impl FromStr for Valves {
             }
         };
 
+        // validate input and pick out key data
         let mut valves = input
             .lines()
             .map(|line| {
@@ -266,6 +262,7 @@ impl FromStr for Valves {
         let mut width = valves.len();
         let mut adjacency = vec![u8::MAX; width * width];
 
+        // parse tunnels and initialize adjacency matrix in one go
         let mut flow_rates: Vec<_> = valves
             .into_iter()
             .map(|(i, flow_rate, tunnels)| {
@@ -281,16 +278,13 @@ impl FromStr for Valves {
             })
             .collect();
 
+        // floyd-warshall to calculate shortest distances
         for k in 0..width {
             for i in 0..width {
                 for j in 0..width {
-                    let i_j_idx = i * width + j;
-                    let i_k_idx = i * width + k;
-                    let k_j_idx = k * width + j;
-
-                    let i_k = adjacency[i_k_idx];
-                    let k_j = adjacency[k_j_idx];
-                    let i_j = &mut adjacency[i_j_idx];
+                    let i_k = adjacency[i * width + k];
+                    let k_j = adjacency[k * width + j];
+                    let i_j = &mut adjacency[i * width + j];
 
                     if let Some(i_k_j) = i_k.checked_add(k_j).filter(|i_k_j| *i_j > *i_k_j) {
                         *i_j = i_k_j;
@@ -299,6 +293,7 @@ impl FromStr for Valves {
             }
         }
 
+        // remove all adjacency entries that belong to a valve with 0 flow rate
         let mut removed = Vec::new();
 
         for (name, idx) in indices {
@@ -330,6 +325,7 @@ impl FromStr for Valves {
             mem::size_of::<Opened>() * 8,
         );
 
+        // pre-calculate a sorted list for flow rates for later use
         let mut sorted_flow_rate_tuples: Vec<_> = flow_rates.iter().copied().enumerate().collect();
         sorted_flow_rate_tuples.sort_unstable_by_key(|(_, flow_rate)| Reverse(*flow_rate));
 
