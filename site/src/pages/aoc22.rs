@@ -43,7 +43,7 @@ day_from_str! {
     20: day20,
     19: day19,
     18: day18,
-    // TODO: optimize / improve 17
+    17: day17,
     16: day16,
     15: day15,
     14: day14,
