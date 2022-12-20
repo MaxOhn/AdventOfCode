@@ -320,7 +320,7 @@ impl FromStr for ObsidianRobot {
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         let mut iter = s.split(' ');
 
-        let cost_clay = (&mut iter)
+        let cost_clay = iter
             .nth_back(1)
             .and_then(|n| n.parse().ok())
             .wrap_err("invalid clay cost")?;
@@ -348,7 +348,7 @@ impl FromStr for GeodeRobot {
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         let mut iter = s.split(' ');
 
-        let cost_obsidian = (&mut iter)
+        let cost_obsidian = iter
             .nth_back(1)
             .and_then(|n| n.parse().ok())
             .wrap_err("invalid obsidian cost")?;
