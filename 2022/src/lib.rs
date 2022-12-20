@@ -31,7 +31,7 @@ modules! {
 }
 
 pub mod prelude {
-    pub use super::{solution::Solution, util::Parseable};
+    pub use super::solution::Solution;
 
     pub use eyre::{ContextCompat, Report, Result, WrapErr};
 }
