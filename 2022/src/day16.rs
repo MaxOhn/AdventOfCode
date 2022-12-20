@@ -3,9 +3,10 @@ use std::{
     collections::{hash_map::Entry, BinaryHeap, HashMap},
     hash::Hash,
     mem,
-    ops::BitAnd,
     str::FromStr,
 };
+
+use ahash::RandomState;
 
 use crate::prelude::*;
 
@@ -94,10 +95,10 @@ fn part2(valves: &Valves) -> u16 {
     };
 
     // no bound checking because it could prune away "bad"
-    // states that the elephant would have taken
+    // states that the elephant may take
     let mut stack = vec![start];
     let mut best = 0;
-    let mut cache = HashMap::new();
+    let mut cache: HashMap<_, _, RandomState> = HashMap::default();
 
     while let Some(state) = stack.pop() {
         // cache values so the elephant can make use of the same calculation
@@ -184,17 +185,6 @@ impl Opened {
     }
 }
 
-impl BitAnd for Opened {
-    type Output = Self;
-
-    #[inline]
-    fn bitand(self, rhs: Self) -> Self::Output {
-        Self {
-            bitset: self.bitset & rhs.bitset,
-        }
-    }
-}
-
 struct Valves {
     flow_rates: Box<[u16]>,
     sorted_flow_rate_indices: Box<[usize]>,
@@ -218,7 +208,7 @@ impl FromStr for Valves {
     type Err = Report;
 
     fn from_str(input: &str) -> Result<Self, Self::Err> {
-        let mut indices = HashMap::new();
+        let mut indices: HashMap<_, _, RandomState> = HashMap::default();
         indices.insert("AA", 0);
         let mut next_idx = 1;
 
