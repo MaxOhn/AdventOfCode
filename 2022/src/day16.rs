@@ -6,6 +6,8 @@ use std::{
     str::FromStr,
 };
 
+use ahash::RandomState;
+
 use crate::prelude::*;
 
 pub fn run(input: &str) -> Result<Solution> {
@@ -96,7 +98,7 @@ fn part2(valves: &Valves) -> u16 {
     // states that the elephant may take
     let mut stack = vec![start];
     let mut best = 0;
-    let mut cache = HashMap::new();
+    let mut cache: HashMap<_, _, RandomState> = HashMap::default();
 
     while let Some(state) = stack.pop() {
         // cache values so the elephant can make use of the same calculation
@@ -206,7 +208,7 @@ impl FromStr for Valves {
     type Err = Report;
 
     fn from_str(input: &str) -> Result<Self, Self::Err> {
-        let mut indices = HashMap::new();
+        let mut indices: HashMap<_, _, RandomState> = HashMap::default();
         indices.insert("AA", 0);
         let mut next_idx = 1;
 
