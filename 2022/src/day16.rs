@@ -3,7 +3,6 @@ use std::{
     collections::{hash_map::Entry, BinaryHeap, HashMap},
     hash::Hash,
     mem,
-    ops::BitAnd,
     str::FromStr,
 };
 
@@ -94,7 +93,7 @@ fn part2(valves: &Valves) -> u16 {
     };
 
     // no bound checking because it could prune away "bad"
-    // states that the elephant would have taken
+    // states that the elephant may take
     let mut stack = vec![start];
     let mut best = 0;
     let mut cache = HashMap::new();
@@ -181,17 +180,6 @@ impl Opened {
 
     fn is_open(self, idx: usize) -> bool {
         (self.bitset & (1 << idx)) > 0
-    }
-}
-
-impl BitAnd for Opened {
-    type Output = Self;
-
-    #[inline]
-    fn bitand(self, rhs: Self) -> Self::Output {
-        Self {
-            bitset: self.bitset & rhs.bitset,
-        }
     }
 }
 
