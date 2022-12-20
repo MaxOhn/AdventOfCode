@@ -1,11 +1,7 @@
 use std::{
-    cmp::{Ordering, Reverse},
-    collections::{
-        btree_map::Entry as BTreeEntry, hash_map::Entry as HashEntry, BTreeMap, BTreeSet,
-        BinaryHeap, HashMap,
-    },
-    fmt::{Debug, Display, Formatter, Result as FmtResult},
-    hash::{Hash, Hasher},
+    cmp::Reverse,
+    collections::{hash_map::Entry, BinaryHeap, HashMap},
+    hash::Hash,
     mem,
     ops::BitAnd,
     str::FromStr,
@@ -232,8 +228,8 @@ impl FromStr for Valves {
         let mut next_idx = 1;
 
         let mut get_idx = |name| match indices.entry(name) {
-            HashEntry::Occupied(e) => *e.get(),
-            HashEntry::Vacant(e) => {
+            Entry::Occupied(e) => *e.get(),
+            Entry::Vacant(e) => {
                 let idx = *e.insert(next_idx);
                 next_idx += 1;
 

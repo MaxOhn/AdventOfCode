@@ -180,7 +180,7 @@ fn part2(cubes: &mut HashSet<Pos3>) -> Result<i32> {
     // Use p1 and subtract the sides of the block
     // except the ones on the outside of the block
     let p1 = sides_hori + sides_verti + sides_depth;
-    let block_sides = part1(&cubes)?;
+    let block_sides = part1(cubes)?;
 
     let wx = (maxx - minx) as i32 + 1;
     let wy = (maxy - miny) as i32 + 1;
