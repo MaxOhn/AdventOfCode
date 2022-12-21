@@ -17,7 +17,7 @@ pub fn run(input: &str) -> Result<Solution> {
         })
         .collect::<Result<Monkeys<'_>>>()?;
 
-    // assert monkeys to justify unwraps
+    // assert monkeys to justify later unwraps
     let invalid_monkey = monkeys.values().find_map(|monkey| match monkey {
         Monkey::Value(_) => None,
         Monkey::Add(a, b) | Monkey::Sub(a, b) | Monkey::Mul(a, b) | Monkey::Div(a, b) => (!monkeys
@@ -32,23 +32,32 @@ pub fn run(input: &str) -> Result<Solution> {
 
     let p1 = eval("root", &monkeys);
 
+    let humans = count_humans("root", &monkeys);
+
+    ensure!(
+        humans == 1,
+        "expected exactly one path to `humn`, found {humans}",
+    );
+
     let (a, b) = match monkeys.remove("root").wrap_err("missing root")? {
         Monkey::Value(_) => bail!("root must be binary operation"),
         Monkey::Add(a, b) | Monkey::Sub(a, b) | Monkey::Mul(a, b) | Monkey::Div(a, b) => (a, b),
     };
 
-    let p2 = if humans(a, &monkeys) == 1 {
-        solve(a, eval(b, &monkeys), &monkeys)
-    } else if humans(b, &monkeys) == 1 {
-        solve(b, eval(a, &monkeys), &monkeys)
+    let mut chain = Vec::new();
+
+    let p2 = if find_human(a, &monkeys, &mut chain) {
+        part2(eval(b, &monkeys), &monkeys, &chain)
+    } else if find_human(b, &monkeys, &mut chain) {
+        part2(eval(a, &monkeys), &monkeys, &chain)
     } else {
-        bail!("humn must occur exactly once")
+        unreachable!()
     };
 
     Ok(Solution::new().part1(p1).part2(p2))
 }
 
-fn eval(name: &str, monkeys: &Monkeys) -> i64 {
+fn eval<'m>(name: &'m str, monkeys: &Monkeys<'m>) -> i64 {
     match monkeys.get(name).unwrap() {
         Monkey::Value(n) => *n,
         Monkey::Add(a, b) => eval(a, monkeys) + eval(b, monkeys),
@@ -58,36 +67,66 @@ fn eval(name: &str, monkeys: &Monkeys) -> i64 {
     }
 }
 
-fn humans(name: &str, monkeys: &Monkeys) -> usize {
-    if name == "humn" {
-        1
-    } else {
-        match monkeys.get(name).unwrap() {
-            Monkey::Value(_) => 0,
-            Monkey::Add(n1, n2)
-            | Monkey::Sub(n1, n2)
-            | Monkey::Mul(n1, n2)
-            | Monkey::Div(n1, n2) => humans(n1, monkeys) + humans(n2, monkeys),
+fn count_humans(name: &str, monkeys: &Monkeys<'_>) -> usize {
+    match monkeys.get(name).unwrap() {
+        Monkey::Value(_) => (name == "humn") as usize,
+        Monkey::Add(n1, n2) | Monkey::Sub(n1, n2) | Monkey::Mul(n1, n2) | Monkey::Div(n1, n2) => {
+            count_humans(n1, monkeys) + count_humans(n2, monkeys)
         }
     }
 }
 
-fn solve(name: &str, v: i64, monkeys: &Monkeys<'_>) -> i64 {
+enum Side {
+    Left,
+    Right,
+}
+
+fn find_human<'m>(
+    name: &'m str,
+    monkeys: &'m Monkeys<'m>,
+    chain: &mut Vec<(&'m Monkey<'m>, Side)>,
+) -> bool {
     if name == "humn" {
-        v
-    } else {
-        match monkeys.get(name).unwrap() {
-            Monkey::Value(n) => *n,
-            Monkey::Add(a, b) if humans(a, monkeys) == 1 => solve(a, v - eval(b, monkeys), monkeys),
-            Monkey::Add(a, b) => solve(b, v - eval(a, monkeys), monkeys),
-            Monkey::Sub(a, b) if humans(a, monkeys) == 1 => solve(a, v + eval(b, monkeys), monkeys),
-            Monkey::Sub(a, b) => solve(b, eval(a, monkeys) - v, monkeys),
-            Monkey::Mul(a, b) if humans(a, monkeys) == 1 => solve(a, v / eval(b, monkeys), monkeys),
-            Monkey::Mul(a, b) => solve(b, v / eval(a, monkeys), monkeys),
-            Monkey::Div(a, b) if humans(a, monkeys) == 1 => solve(a, v * eval(b, monkeys), monkeys),
-            Monkey::Div(a, b) => solve(b, eval(a, monkeys) / v, monkeys),
+        return true;
+    }
+
+    match monkeys.get(name).unwrap() {
+        Monkey::Value(_) => false,
+        monkey
+        @ (Monkey::Add(a, b) | Monkey::Sub(a, b) | Monkey::Mul(a, b) | Monkey::Div(a, b)) => {
+            if find_human(a, monkeys, chain) {
+                chain.push((monkey, Side::Left));
+
+                true
+            } else if find_human(b, monkeys, chain) {
+                chain.push((monkey, Side::Right));
+
+                true
+            } else {
+                false
+            }
         }
     }
+}
+
+fn part2(mut solution: i64, monkeys: &Monkeys<'_>, chain: &[(&Monkey<'_>, Side)]) -> i64 {
+    for entry in chain.iter().rev() {
+        match entry {
+            (Monkey::Add(_, m), Side::Left) | (Monkey::Add(m, _), Side::Right) => {
+                solution -= eval(m, monkeys)
+            }
+            (Monkey::Mul(_, m), Side::Left) | (Monkey::Mul(m, _), Side::Right) => {
+                solution /= eval(m, monkeys)
+            }
+            (Monkey::Sub(_, m), Side::Left) => solution += eval(m, monkeys),
+            (Monkey::Div(_, m), Side::Left) => solution *= eval(m, monkeys),
+            (Monkey::Sub(m, _), Side::Right) => solution = eval(m, monkeys) - solution,
+            (Monkey::Div(m, _), Side::Right) => solution = eval(m, monkeys) / solution,
+            (Monkey::Value(_), _) => unreachable!(),
+        }
+    }
+
+    solution
 }
 
 enum Monkey<'m> {
