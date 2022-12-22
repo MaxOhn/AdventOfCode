@@ -25,7 +25,7 @@ type WrapFn = fn(&Board, &mut Pos, &mut Direction, &mut Pos) -> Wrap;
 
 fn solve(board: &Board, mut path: Path, start: Pos, wrap: WrapFn) -> Result<i32> {
     let mut pos = start;
-    let mut direction = Direction::Right;
+    let mut direction = RIGHT;
 
     while let Some(next) = path.next() {
         match next? {
@@ -35,7 +35,7 @@ fn solve(board: &Board, mut path: Path, start: Pos, wrap: WrapFn) -> Result<i32>
         }
     }
 
-    Ok(1000 * (pos.y + 1) + 4 * (pos.x + 1) + direction as i32)
+    Ok(1000 * (pos.y + 1) + 4 * (pos.x + 1) + direction.0 as i32)
 }
 
 struct Board {
@@ -49,7 +49,7 @@ enum Wrap {
 }
 
 impl Board {
-    fn steps(&self, pos: &mut Pos, count: i32, direction: &mut Direction, wrap: WrapFn) {
+    fn steps(&self, pos: &mut Pos, count: i16, direction: &mut Direction, wrap: WrapFn) {
         let mut delta = direction.delta();
 
         for _ in 0..count {
@@ -57,11 +57,7 @@ impl Board {
 
             match self.get(next) {
                 Tile::Wall => return,
-                Tile::Open => {
-                    *pos = next;
-
-                    continue;
-                }
+                Tile::Open => *pos = next,
                 Tile::Closed => match (wrap)(self, pos, direction, &mut delta) {
                     Wrap::Continue => {}
                     Wrap::Stop => break,
@@ -95,65 +91,67 @@ impl Board {
 
         // draw faces on paper, connect sides with lines, hardcode those lines
         let (face, next_direction) = match (pos.x / SIDE_LEN, pos.y / SIDE_LEN, *direction) {
-            (0, 2, Direction::Up) => (Pos::new(1, 1), Direction::Right),
-            (0, 3, Direction::Down) => (Pos::new(2, 0), Direction::Down),
+            (0, 2, UP) => (Pos::new(1, 1), RIGHT),
+            (0, 3, DOWN) => (Pos::new(2, 0), DOWN),
 
-            (1, 0, Direction::Up) => (Pos::new(0, 3), Direction::Right),
-            (1, 2, Direction::Down) => (Pos::new(0, 3), Direction::Left),
+            (1, 0, UP) => (Pos::new(0, 3), RIGHT),
+            (1, 2, DOWN) => (Pos::new(0, 3), LEFT),
 
-            (2, 0, Direction::Up) => (Pos::new(0, 3), Direction::Up),
-            (2, 0, Direction::Down) => (Pos::new(1, 1), Direction::Left),
+            (2, 0, UP) => (Pos::new(0, 3), UP),
+            (2, 0, DOWN) => (Pos::new(1, 1), LEFT),
 
-            (1, 0, Direction::Left) => (Pos::new(0, 2), Direction::Right),
-            (2, 0, Direction::Right) => (Pos::new(1, 2), Direction::Left),
+            (1, 0, LEFT) => (Pos::new(0, 2), RIGHT),
+            (2, 0, RIGHT) => (Pos::new(1, 2), LEFT),
 
-            (1, 1, Direction::Left) => (Pos::new(0, 2), Direction::Down),
-            (1, 1, Direction::Right) => (Pos::new(2, 0), Direction::Up),
+            (1, 1, LEFT) => (Pos::new(0, 2), DOWN),
+            (1, 1, RIGHT) => (Pos::new(2, 0), UP),
 
-            (0, 2, Direction::Left) => (Pos::new(1, 0), Direction::Right),
-            (1, 2, Direction::Right) => (Pos::new(2, 0), Direction::Left),
+            (0, 2, LEFT) => (Pos::new(1, 0), RIGHT),
+            (1, 2, RIGHT) => (Pos::new(2, 0), LEFT),
 
-            (0, 3, Direction::Left) => (Pos::new(1, 0), Direction::Down),
-            (0, 3, Direction::Right) => (Pos::new(1, 2), Direction::Up),
+            (0, 3, LEFT) => (Pos::new(1, 0), DOWN),
+            (0, 3, RIGHT) => (Pos::new(1, 2), UP),
 
             // EXAMPLE:
-            // (0, 1, Direction::Up) => (Pos::new(2, 0), Direction::Down),
-            // (0, 1, Direction::Down) => (Pos::new(2, 2), Direction::Up),
+            // (0, 1, UP) => (Pos::new(2, 0), DOWN),
+            // (0, 1, DOWN) => (Pos::new(2, 2), UP),
 
-            // (1, 1, Direction::Up) => (Pos::new(2, 0), Direction::Right),
-            // (1, 1, Direction::Down) => (Pos::new(2, 2), Direction::Right),
+            // (1, 1, UP) => (Pos::new(2, 0), RIGHT),
+            // (1, 1, DOWN) => (Pos::new(2, 2), RIGHT),
 
-            // (2, 0, Direction::Up) => (Pos::new(0, 1), Direction::Down),
-            // (2, 2, Direction::Down) => (Pos::new(0, 1), Direction::Up),
+            // (2, 0, UP) => (Pos::new(0, 1), DOWN),
+            // (2, 2, DOWN) => (Pos::new(0, 1), UP),
 
-            // (3, 2, Direction::Up) => (Pos::new(2, 1), Direction::Left),
-            // (3, 2, Direction::Down) => (Pos::new(0, 1), Direction::Right),
+            // (3, 2, UP) => (Pos::new(2, 1), LEFT),
+            // (3, 2, DOWN) => (Pos::new(0, 1), RIGHT),
 
-            // (2, 0, Direction::Left) => (Pos::new(1, 1), Direction::Down),
-            // (2, 0, Direction::Right) => (Pos::new(3, 2), Direction::Left),
+            // (2, 0, LEFT) => (Pos::new(1, 1), DOWN),
+            // (2, 0, RIGHT) => (Pos::new(3, 2), LEFT),
 
-            // (0, 1, Direction::Left) => (Pos::new(3, 2), Direction::Up),
-            // (2, 1, Direction::Right) => (Pos::new(3, 2), Direction::Down),
+            // (0, 1, LEFT) => (Pos::new(3, 2), UP),
+            // (2, 1, RIGHT) => (Pos::new(3, 2), DOWN),
 
-            // (2, 2, Direction::Left) => (Pos::new(1, 1), Direction::Up),
-            // (3, 2, Direction::Right) => (Pos::new(2, 0), Direction::Right),
+            // (2, 2, LEFT) => (Pos::new(1, 1), UP),
+            // (3, 2, RIGHT) => (Pos::new(2, 0), RIGHT),
             _ => unreachable!(),
         };
 
         let in_face = *pos % SIDE_LEN;
 
         let i = match *direction {
-            Direction::Right => in_face.y,
-            Direction::Down => SIDE_LEN - 1 - in_face.x,
-            Direction::Left => SIDE_LEN - 1 - in_face.y,
-            Direction::Up => in_face.x,
+            RIGHT => in_face.y,
+            DOWN => SIDE_LEN - 1 - in_face.x,
+            LEFT => SIDE_LEN - 1 - in_face.y,
+            UP => in_face.x,
+            _ => unreachable!(),
         };
 
         let in_face_delta = match next_direction {
-            Direction::Right => Pos::new(0, i),
-            Direction::Down => Pos::new(SIDE_LEN - 1 - i, 0),
-            Direction::Left => Pos::new(SIDE_LEN - 1, SIDE_LEN - 1 - i),
-            Direction::Up => Pos::new(i, SIDE_LEN - 1),
+            RIGHT => Pos::new(0, i),
+            DOWN => Pos::new(SIDE_LEN - 1 - i, 0),
+            LEFT => Pos::new(SIDE_LEN - 1, SIDE_LEN - 1 - i),
+            UP => Pos::new(i, SIDE_LEN - 1),
+            _ => unreachable!(),
         };
 
         let next = face * SIDE_LEN + in_face_delta;
@@ -187,21 +185,15 @@ impl Board {
     }
 
     fn parse(input: &str) -> Result<(Self, Path<'_>)> {
-        let (height, width) = input
-            .lines()
-            .take_while(|line| !line.is_empty())
-            .fold((0, 0), |(height, width), line| {
-                (height + 1, width.max(line.len()))
-            });
+        let (board, path) = input.split_once("\n\n").wrap_err("missing blank line")?;
+
+        let (height, width) = board.lines().fold((0, 0), |(height, width), line| {
+            (height + 1, width.max(line.len()))
+        });
 
         let mut tiles = Vec::with_capacity(height * width);
-        let mut lines = input.lines().map(str::as_bytes);
 
-        for line in &mut lines {
-            if line.is_empty() {
-                break;
-            }
-
+        for line in board.lines().map(str::as_bytes) {
             for &byte in line.iter() {
                 tiles.push(Tile::try_from(byte)?);
             }
@@ -213,14 +205,12 @@ impl Board {
             }
         }
 
-        let path = lines.next().wrap_err("missing path")?;
-
         let this = Self {
-            tiles: tiles.into(),
+            tiles: tiles.into_boxed_slice(),
             width: width as i32,
         };
 
-        Ok((this, Path(path)))
+        Ok((this, Path(path.as_bytes())))
     }
 }
 
@@ -228,7 +218,7 @@ impl Board {
 struct Path<'p>(&'p [u8]);
 
 enum Move {
-    Distance(i32),
+    Distance(i16),
     Turn(Turn),
 }
 
@@ -238,6 +228,7 @@ enum Turn {
 }
 
 impl Path<'_> {
+    #[inline]
     fn next(&mut self) -> Option<Result<Move>> {
         let [first, rest @ ..] = self.0 else { return None };
         self.0 = rest;
@@ -246,18 +237,16 @@ impl Path<'_> {
             b'L' => Some(Ok(Move::Turn(Turn::Left))),
             b'R' => Some(Ok(Move::Turn(Turn::Right))),
             b'0'..=b'9' => {
-                let mut n = (*first & 0xF) as i32;
+                let mut n = (*first & 0xF) as i16;
 
                 loop {
-                    let [next, rest @ ..] = self.0 else { break };
-
-                    match next {
-                        b'L' | b'R' => break,
-                        b'0'..=b'9' => {
-                            n = n * 10 + (*next & 0xF) as i32;
+                    match self.0 {
+                        [b'L' | b'R', ..] | [] => break,
+                        [next @ b'0'..=b'9', rest @ ..] => {
+                            n = n * 10 + (*next & 0xF) as i16;
                             self.0 = rest;
                         }
-                        _ => return Some(Err(eyre!("invalid move `{}`", *first as char))),
+                        [next, ..] => return Some(Err(eyre!("invalid digit `{}`", *next as char))),
                     }
                 }
 
@@ -289,40 +278,32 @@ impl TryFrom<u8> for Tile {
     }
 }
 
-#[derive(Copy, Clone, Debug)]
-enum Direction {
-    Right = 0,
-    Down = 1,
-    Left = 2,
-    Up = 3,
-}
+#[derive(Copy, Clone, PartialEq, Eq)]
+struct Direction(u8);
+
+const RIGHT: Direction = Direction(0);
+const DOWN: Direction = Direction(1);
+const LEFT: Direction = Direction(2);
+const UP: Direction = Direction(3);
 
 impl Direction {
-    fn turn_left(self) -> Self {
-        match self {
-            Self::Right => Self::Up,
-            Self::Down => Self::Right,
-            Self::Left => Self::Down,
-            Self::Up => Self::Left,
-        }
+    fn turn_right(self) -> Self {
+        Self((self.0 + 1) % 4)
     }
 
-    fn turn_right(self) -> Self {
-        match self {
-            Self::Right => Self::Down,
-            Self::Down => Self::Left,
-            Self::Left => Self::Up,
-            Self::Up => Self::Right,
-        }
+    fn turn_left(self) -> Self {
+        Self((self.0 + 3) % 4)
     }
 
     fn delta(self) -> Pos {
-        match self {
-            Self::Right => Pos::new(1, 0),
-            Self::Down => Pos::new(0, 1),
-            Self::Left => Pos::new(-1, 0),
-            Self::Up => Pos::new(0, -1),
-        }
+        const DELTAS: [Pos; 4] = [
+            Pos::new(1, 0),
+            Pos::new(0, 1),
+            Pos::new(-1, 0),
+            Pos::new(0, -1),
+        ];
+
+        get!(DELTAS[self.0 as usize])
     }
 }
 
@@ -333,7 +314,7 @@ struct Pos {
 }
 
 impl Pos {
-    fn new(x: i32, y: i32) -> Self {
+    const fn new(x: i32, y: i32) -> Self {
         Self { x, y }
     }
 }
