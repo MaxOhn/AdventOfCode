@@ -33,11 +33,16 @@ fn parse_elves(input: &str) -> HashSet<Pos, RandomState> {
 
 fn part1(state: &mut State) -> i16 {
     for _ in 0..10 {
-        state.borders = Borders::default();
         iteration(state);
     }
 
-    state.borders.area() - state.elves.len() as i16
+    let total_area = state
+        .elves
+        .iter()
+        .fold(Borders::default(), |borders, &elve| borders.update(elve))
+        .area();
+
+    total_area - state.elves.len() as i16
 }
 
 fn part2(state: &mut State) -> i32 {
@@ -59,7 +64,6 @@ fn iteration(state: &mut State) -> bool {
         bufs,
         plans,
         cases,
-        borders,
     } = state;
 
     let mut has_motion = false;
@@ -67,7 +71,6 @@ fn iteration(state: &mut State) -> bool {
     'next_elve: for &elve in elves.iter() {
         if Direction::iter().all(|dir| !elves.contains(&elve.neighbor(dir))) {
             bufs.elves.insert(elve);
-            borders.update(elve);
 
             continue;
         }
@@ -84,9 +87,6 @@ fn iteration(state: &mut State) -> bool {
 
                         bufs.elves.insert(prev);
                         bufs.elves.insert(elve);
-
-                        borders.update(prev);
-                        borders.update(elve);
                     }
                     Entry::Vacant(e) => {
                         e.insert(elve);
@@ -104,7 +104,6 @@ fn iteration(state: &mut State) -> bool {
         }
 
         bufs.elves.insert(elve);
-        borders.update(elve);
     }
 
     mem::swap(&mut bufs.elves, elves);
@@ -112,7 +111,6 @@ fn iteration(state: &mut State) -> bool {
 
     for (plan, _) in plans.drain() {
         elves.insert(plan);
-        borders.update(plan);
         has_motion = true;
     }
 
@@ -210,11 +208,13 @@ impl Default for Borders {
 }
 
 impl Borders {
-    fn update(&mut self, pos: Pos) {
-        self.top = self.top.max(pos.y);
-        self.bot = self.bot.min(pos.y);
-        self.left = self.left.min(pos.x);
-        self.right = self.right.max(pos.x);
+    fn update(self, pos: Pos) -> Self {
+        Self {
+            top: self.top.max(pos.y),
+            bot: self.bot.min(pos.y),
+            left: self.left.min(pos.x),
+            right: self.right.max(pos.x),
+        }
     }
 
     fn area(&self) -> i16 {
@@ -232,7 +232,6 @@ struct State {
     bufs: Buffers,
     plans: Plans,
     cases: [[Direction; 3]; 4],
-    borders: Borders,
 }
 
 impl State {
@@ -247,7 +246,6 @@ impl State {
                 [Direction::W, Direction::NW, Direction::SW],
                 [Direction::E, Direction::NE, Direction::SE],
             ],
-            borders: Borders::default(),
         }
     }
 }
