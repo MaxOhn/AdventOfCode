@@ -54,13 +54,13 @@ fn part2(state: &mut State) -> i32 {
 type Elves = HashSet<Pos, RandomState>;
 
 fn iteration(state: &mut State) -> bool {
-    let State { elves, bufs, cases } = state;
+    let State { elves, buf, cases } = state;
 
     let mut moved = 0;
 
     'next_elve: for &elve in elves.iter() {
         if Direction::iter().all(|dir| !elves.contains(&elve.neighbor(dir))) {
-            bufs.elves.insert(elve);
+            buf.insert(elve);
 
             continue;
         }
@@ -73,10 +73,10 @@ fn iteration(state: &mut State) -> bool {
             if is_empty {
                 let neighbor = elve.neighbor(directions[0]);
 
-                if !bufs.elves.insert(neighbor) {
-                    bufs.elves.remove(&neighbor);
-                    bufs.elves.insert(elve);
-                    bufs.elves.insert(Pos {
+                if !buf.insert(neighbor) {
+                    buf.remove(&neighbor);
+                    buf.insert(elve);
+                    buf.insert(Pos {
                         x: neighbor.x * 2 - elve.x,
                         y: neighbor.y * 2 - elve.y,
                     });
@@ -95,11 +95,11 @@ fn iteration(state: &mut State) -> bool {
             }
         }
 
-        bufs.elves.insert(elve);
+        buf.insert(elve);
     }
 
-    mem::swap(&mut bufs.elves, elves);
-    bufs.elves.clear();
+    mem::swap(buf, elves);
+    buf.clear();
     cases.rotate_left(1);
 
     moved > 0
@@ -208,14 +208,9 @@ impl Borders {
     }
 }
 
-#[derive(Default)]
-struct Buffers {
-    elves: Elves,
-}
-
 struct State {
     elves: Elves,
-    bufs: Buffers,
+    buf: Elves,
     cases: [[Direction; 3]; 4],
 }
 
@@ -223,7 +218,7 @@ impl State {
     fn new(elves: Elves) -> Self {
         Self {
             elves,
-            bufs: Buffers::default(),
+            buf: Elves::default(),
             cases: [
                 [Direction::N, Direction::NE, Direction::NW],
                 [Direction::S, Direction::SE, Direction::SW],
