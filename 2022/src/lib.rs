@@ -30,7 +30,8 @@ modules! {
     day19,
     day20,
     day21,
-    > day22,
+    day22,
+    > day23,
 }
 
 pub mod prelude {
