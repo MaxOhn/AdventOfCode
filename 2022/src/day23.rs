@@ -90,7 +90,9 @@ fn iteration(state: &mut State) -> bool {
                             e.insert(buf);
                         }
                         None => {
-                            e.insert(vec![elve]);
+                            let mut buf = Vec::with_capacity(2);
+                            buf.push(elve);
+                            e.insert(buf);
                         }
                     },
                 }
