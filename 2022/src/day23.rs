@@ -1,8 +1,4 @@
-use std::{
-    collections::{hash_map::Entry, HashMap, HashSet},
-    mem,
-    ops::Add,
-};
+use std::{collections::HashSet, mem, ops::Add};
 
 use ahash::RandomState;
 
@@ -56,17 +52,11 @@ fn part2(state: &mut State) -> i32 {
 }
 
 type Elves = HashSet<Pos, RandomState>;
-type Plans = HashMap<Pos, Pos, RandomState>;
 
 fn iteration(state: &mut State) -> bool {
-    let State {
-        elves,
-        bufs,
-        plans,
-        cases,
-    } = state;
+    let State { elves, bufs, cases } = state;
 
-    let mut has_motion = false;
+    let mut moved = 0;
 
     'next_elve: for &elve in elves.iter() {
         if Direction::iter().all(|dir| !elves.contains(&elve.neighbor(dir))) {
@@ -81,16 +71,18 @@ fn iteration(state: &mut State) -> bool {
                 .all(|direction| !elves.contains(&elve.neighbor(direction)));
 
             if is_empty {
-                match plans.entry(elve.neighbor(directions[0])) {
-                    Entry::Occupied(e) => {
-                        let prev = e.remove();
+                let neighbor = elve.neighbor(directions[0]);
 
-                        bufs.elves.insert(prev);
-                        bufs.elves.insert(elve);
-                    }
-                    Entry::Vacant(e) => {
-                        e.insert(elve);
-                    }
+                if !bufs.elves.insert(neighbor) {
+                    bufs.elves.remove(&neighbor);
+                    bufs.elves.insert(elve);
+                    bufs.elves.insert(Pos {
+                        x: neighbor.x * 2 - elve.x,
+                        y: neighbor.y * 2 - elve.y,
+                    });
+                    moved -= 2;
+                } else {
+                    moved += 1;
                 }
             }
 
@@ -108,15 +100,9 @@ fn iteration(state: &mut State) -> bool {
 
     mem::swap(&mut bufs.elves, elves);
     bufs.elves.clear();
-
-    for (plan, _) in plans.drain() {
-        elves.insert(plan);
-        has_motion = true;
-    }
-
     cases.rotate_left(1);
 
-    has_motion
+    moved > 0
 }
 
 #[derive(Copy, Clone)]
@@ -230,7 +216,6 @@ struct Buffers {
 struct State {
     elves: Elves,
     bufs: Buffers,
-    plans: Plans,
     cases: [[Direction; 3]; 4],
 }
 
@@ -239,7 +224,6 @@ impl State {
         Self {
             elves,
             bufs: Buffers::default(),
-            plans: Plans::default(),
             cases: [
                 [Direction::N, Direction::NE, Direction::NW],
                 [Direction::S, Direction::SE, Direction::SW],
