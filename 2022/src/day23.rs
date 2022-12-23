@@ -10,9 +10,10 @@ use crate::prelude::*;
 
 pub fn run(input: &str) -> Result<Solution> {
     let elves = parse_elves(input);
+    let mut state = State::new(elves);
 
-    let p1 = part1(elves.clone());
-    let p2 = part2(elves);
+    let p1 = part1(&mut state);
+    let p2 = part2(&mut state) + 10;
 
     Ok(Solution::new().part1(p1).part2(p2))
 }
@@ -30,22 +31,18 @@ fn parse_elves(input: &str) -> HashSet<Pos, RandomState> {
         .collect()
 }
 
-fn part1(elves: Elves) -> i16 {
-    let mut state = State::new(elves);
-
+fn part1(state: &mut State) -> i16 {
     for _ in 0..10 {
         state.borders = Borders::default();
-        iteration(&mut state);
+        iteration(state);
     }
 
     state.borders.area() - state.elves.len() as i16
 }
 
-fn part2(elves: Elves) -> i32 {
-    let mut state = State::new(elves);
-
+fn part2(state: &mut State) -> i32 {
     for round in 1.. {
-        if !iteration(&mut state) {
+        if !iteration(state) {
             return round;
         }
     }
