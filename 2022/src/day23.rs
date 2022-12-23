@@ -10,9 +10,10 @@ use crate::prelude::*;
 
 pub fn run(input: &str) -> Result<Solution> {
     let elves = parse_elves(input);
+    let mut state = State::new(elves);
 
-    let p1 = part1(elves.clone());
-    let p2 = part2(elves);
+    let p1 = part1(&mut state);
+    let p2 = part2(&mut state) + 10;
 
     Ok(Solution::new().part1(p1).part2(p2))
 }
@@ -30,22 +31,18 @@ fn parse_elves(input: &str) -> HashSet<Pos, RandomState> {
         .collect()
 }
 
-fn part1(elves: Elves) -> i16 {
-    let mut state = State::new(elves);
-
+fn part1(state: &mut State) -> i16 {
     for _ in 0..10 {
         state.borders = Borders::default();
-        iteration(&mut state);
+        iteration(state);
     }
 
     state.borders.area() - state.elves.len() as i16
 }
 
-fn part2(elves: Elves) -> i32 {
-    let mut state = State::new(elves);
-
+fn part2(state: &mut State) -> i32 {
     for round in 1.. {
-        if !iteration(&mut state) {
+        if !iteration(state) {
             return round;
         }
     }
@@ -54,7 +51,7 @@ fn part2(elves: Elves) -> i32 {
 }
 
 type Elves = HashSet<Pos, RandomState>;
-type Plans = HashMap<Pos, Vec<Pos>, RandomState>;
+type Plans = HashMap<Pos, Pos, RandomState>;
 
 fn iteration(state: &mut State) -> bool {
     let State {
@@ -76,29 +73,28 @@ fn iteration(state: &mut State) -> bool {
         }
 
         let mut steps = |directions: [Direction; 3]| {
-            if directions
+            let is_empty = directions
                 .into_iter()
-                .all(|direction| !elves.contains(&elve.neighbor(direction)))
-            {
-                let plan = directions[0];
+                .all(|direction| !elves.contains(&elve.neighbor(direction)));
 
-                match plans.entry(elve.neighbor(plan)) {
-                    Entry::Occupied(e) => e.into_mut().push(elve),
-                    Entry::Vacant(e) => match bufs.lists.pop() {
-                        Some(mut buf) => {
-                            buf.push(elve);
-                            e.insert(buf);
-                        }
-                        None => {
-                            e.insert(vec![elve]);
-                        }
-                    },
+            if is_empty {
+                match plans.entry(elve.neighbor(directions[0])) {
+                    Entry::Occupied(e) => {
+                        let prev = e.remove();
+
+                        bufs.elves.insert(prev);
+                        bufs.elves.insert(elve);
+
+                        borders.update(prev);
+                        borders.update(elve);
+                    }
+                    Entry::Vacant(e) => {
+                        e.insert(elve);
+                    }
                 }
-
-                true
-            } else {
-                false
             }
+
+            is_empty
         };
 
         for check in *cases {
@@ -114,20 +110,10 @@ fn iteration(state: &mut State) -> bool {
     mem::swap(&mut bufs.elves, elves);
     bufs.elves.clear();
 
-    for (plan, mut list) in plans.drain() {
-        if list.len() == 1 {
-            elves.insert(plan);
-            borders.update(plan);
-            has_motion = true;
-            list.clear();
-        } else {
-            for elve in list.drain(..) {
-                elves.insert(elve);
-                borders.update(elve);
-            }
-        }
-
-        bufs.lists.push(list);
+    for (plan, _) in plans.drain() {
+        elves.insert(plan);
+        borders.update(plan);
+        has_motion = true;
     }
 
     cases.rotate_left(1);
@@ -239,7 +225,6 @@ impl Borders {
 #[derive(Default)]
 struct Buffers {
     elves: Elves,
-    lists: Vec<Vec<Pos>>,
 }
 
 struct State {
