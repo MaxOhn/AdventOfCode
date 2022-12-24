@@ -1,8 +1,4 @@
-use std::{
-    collections::{hash_map::Entry, HashMap, HashSet},
-    mem,
-    ops::Add,
-};
+use std::{collections::HashSet, mem, ops::Add};
 
 use ahash::RandomState;
 
@@ -33,11 +29,16 @@ fn parse_elves(input: &str) -> HashSet<Pos, RandomState> {
 
 fn part1(state: &mut State) -> i16 {
     for _ in 0..10 {
-        state.borders = Borders::default();
         iteration(state);
     }
 
-    state.borders.area() - state.elves.len() as i16
+    let total_area = state
+        .elves
+        .iter()
+        .fold(Borders::default(), |borders, &elve| borders.update(elve))
+        .area();
+
+    total_area - state.elves.len() as i16
 }
 
 fn part2(state: &mut State) -> i32 {
@@ -51,23 +52,15 @@ fn part2(state: &mut State) -> i32 {
 }
 
 type Elves = HashSet<Pos, RandomState>;
-type Plans = HashMap<Pos, Pos, RandomState>;
 
 fn iteration(state: &mut State) -> bool {
-    let State {
-        elves,
-        bufs,
-        plans,
-        cases,
-        borders,
-    } = state;
+    let State { elves, buf, cases } = state;
 
-    let mut has_motion = false;
+    let mut moved = 0;
 
     'next_elve: for &elve in elves.iter() {
         if Direction::iter().all(|dir| !elves.contains(&elve.neighbor(dir))) {
-            bufs.elves.insert(elve);
-            borders.update(elve);
+            buf.insert(elve);
 
             continue;
         }
@@ -78,19 +71,18 @@ fn iteration(state: &mut State) -> bool {
                 .all(|direction| !elves.contains(&elve.neighbor(direction)));
 
             if is_empty {
-                match plans.entry(elve.neighbor(directions[0])) {
-                    Entry::Occupied(e) => {
-                        let prev = e.remove();
+                let neighbor = elve.neighbor(directions[0]);
 
-                        bufs.elves.insert(prev);
-                        bufs.elves.insert(elve);
-
-                        borders.update(prev);
-                        borders.update(elve);
-                    }
-                    Entry::Vacant(e) => {
-                        e.insert(elve);
-                    }
+                if !buf.insert(neighbor) {
+                    buf.remove(&neighbor);
+                    buf.insert(elve);
+                    buf.insert(Pos {
+                        x: neighbor.x * 2 - elve.x,
+                        y: neighbor.y * 2 - elve.y,
+                    });
+                    moved -= 2;
+                } else {
+                    moved += 1;
                 }
             }
 
@@ -103,22 +95,14 @@ fn iteration(state: &mut State) -> bool {
             }
         }
 
-        bufs.elves.insert(elve);
-        borders.update(elve);
+        buf.insert(elve);
     }
 
-    mem::swap(&mut bufs.elves, elves);
-    bufs.elves.clear();
-
-    for (plan, _) in plans.drain() {
-        elves.insert(plan);
-        borders.update(plan);
-        has_motion = true;
-    }
-
+    mem::swap(buf, elves);
+    buf.clear();
     cases.rotate_left(1);
 
-    has_motion
+    moved > 0
 }
 
 #[derive(Copy, Clone)]
@@ -210,11 +194,13 @@ impl Default for Borders {
 }
 
 impl Borders {
-    fn update(&mut self, pos: Pos) {
-        self.top = self.top.max(pos.y);
-        self.bot = self.bot.min(pos.y);
-        self.left = self.left.min(pos.x);
-        self.right = self.right.max(pos.x);
+    fn update(self, pos: Pos) -> Self {
+        Self {
+            top: self.top.max(pos.y),
+            bot: self.bot.min(pos.y),
+            left: self.left.min(pos.x),
+            right: self.right.max(pos.x),
+        }
     }
 
     fn area(&self) -> i16 {
@@ -222,32 +208,23 @@ impl Borders {
     }
 }
 
-#[derive(Default)]
-struct Buffers {
-    elves: Elves,
-}
-
 struct State {
     elves: Elves,
-    bufs: Buffers,
-    plans: Plans,
+    buf: Elves,
     cases: [[Direction; 3]; 4],
-    borders: Borders,
 }
 
 impl State {
     fn new(elves: Elves) -> Self {
         Self {
             elves,
-            bufs: Buffers::default(),
-            plans: Plans::default(),
+            buf: Elves::default(),
             cases: [
                 [Direction::N, Direction::NE, Direction::NW],
                 [Direction::S, Direction::SE, Direction::SW],
                 [Direction::W, Direction::NW, Direction::SW],
                 [Direction::E, Direction::NE, Direction::SE],
             ],
-            borders: Borders::default(),
         }
     }
 }
