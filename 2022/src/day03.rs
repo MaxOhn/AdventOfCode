@@ -22,12 +22,12 @@ pub fn run(input: &str) -> Result<Solution> {
         front
             .iter()
             .map(char_to_idx)
-            .for_each(|i| set!(p1_seen[i] = true));
+            .for_each(|i| set!(p1_seen, i, true));
 
         let dup = back
             .iter()
             .map(char_to_idx)
-            .find(|&i| get!(p1_seen[i]))
+            .find(|&i| get!(p1_seen, i))
             .wrap_err("missing duplicate character in front and back")?;
 
         p1_seen.iter_mut().for_each(|seen| *seen = false);
@@ -38,16 +38,16 @@ pub fn run(input: &str) -> Result<Solution> {
             0 => line
                 .iter()
                 .map(char_to_idx)
-                .for_each(|i| set!(p2_count1[i] += 1)),
+                .for_each(|i| *get_mut!(p2_count1, i) += 1),
             1 => line
                 .iter()
                 .map(char_to_idx)
-                .for_each(|i| set!(p2_count2[i] += 1)),
+                .for_each(|i| *get_mut!(p2_count2, i) += 1),
             2 => {
                 let dup = line
                     .iter()
                     .map(char_to_idx)
-                    .find(|&i| (get!(p2_count1[i]) > 0) && (get!(p2_count2[i]) > 0))
+                    .find(|&i| (get!(p2_count1, i) > 0) && (get!(p2_count2, i) > 0))
                     .wrap_err("missing duplicate character in the last three lines")?;
 
                 p2_count1

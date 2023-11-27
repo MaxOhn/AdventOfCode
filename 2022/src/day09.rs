@@ -18,7 +18,7 @@ fn simulate_rope<const N: usize>(input: &str) -> Result<usize> {
         let count = num.parse().wrap_err("invalid num")?;
 
         for _ in 0..count {
-            let head = get_mut!(rope[0]);
+            let head = get_mut!(rope, 0);
 
             match direction {
                 "R" => head.x += 1,
@@ -29,10 +29,10 @@ fn simulate_rope<const N: usize>(input: &str) -> Result<usize> {
             }
 
             for i in 1..N {
-                move_successor(get!(rope[i - 1]), get_mut!(rope[i]));
+                move_successor(get!(rope, i - 1), get_mut!(rope, i));
             }
 
-            seen.insert(get!(rope[N - 1]));
+            seen.insert(get!(rope, N - 1));
         }
     }
 

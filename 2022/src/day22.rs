@@ -230,7 +230,9 @@ enum Turn {
 impl Path<'_> {
     #[inline]
     fn next(&mut self) -> Option<Result<Move>> {
-        let [first, rest @ ..] = self.0 else { return None };
+        let [first, rest @ ..] = self.0 else {
+            return None;
+        };
         self.0 = rest;
 
         match first {
@@ -303,7 +305,7 @@ impl Direction {
             Pos::new(0, -1),
         ];
 
-        get!(DELTAS[self.0 as usize])
+        get!(DELTAS, self.0 as usize)
     }
 }
 

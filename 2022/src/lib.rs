@@ -1,12 +1,10 @@
 #![cfg_attr(feature = "nightly", feature(portable_simd))]
 
 #[macro_use]
-extern crate eyre;
+extern crate aoc_rust;
 
 #[macro_use]
-mod util;
-
-mod solution;
+extern crate eyre;
 
 modules! {
     day01,
@@ -37,8 +35,7 @@ modules! {
 }
 
 pub mod prelude {
-    pub use super::solution::Solution;
-
+    pub use aoc_rust::Solution;
     pub use eyre::{ContextCompat, Report, Result, WrapErr};
 }
 

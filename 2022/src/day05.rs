@@ -134,12 +134,12 @@ fn from_to(stacks: &mut [Vec<u8>], from: usize, to: usize) -> (&mut Vec<u8>, &mu
         Ordering::Less => {
             let (front, back) = stacks.split_at_mut(to);
 
-            (get_mut!(front[from]), &mut back[0])
+            (get_mut!(front, from), &mut back[0])
         }
         Ordering::Greater => {
             let (front, back) = stacks.split_at_mut(from);
 
-            (&mut back[0], get_mut!(front[to]))
+            (&mut back[0], get_mut!(front, to))
         }
         Ordering::Equal => unreachable!("from == to"),
     }

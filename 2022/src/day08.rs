@@ -116,7 +116,7 @@ impl Matrix {
     }
 
     fn get_unchecked(&self, x: isize, y: isize) -> u8 {
-        get!(self.inner[y as usize * self.width + x as usize])
+        get!(self.inner, y as usize * self.width + x as usize)
     }
 }
 

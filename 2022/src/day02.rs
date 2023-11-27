@@ -51,11 +51,11 @@ const LOOKUP_P1: [u16; 9] = gen_lookup_p1();
 #[allow(unused)]
 pub fn part1_const_lookup(input: &[u8]) -> u16 {
     input.chunks(4).fold(0, |score, chunk| {
-        let opponent = get!(chunk[0]) - b'A';
-        let mine = get!(chunk[2]) - b'X';
+        let opponent = get!(chunk, 0) - b'A';
+        let mine = get!(chunk, 2) - b'X';
         let idx = (opponent * 3 + mine) as usize;
 
-        score + get!(LOOKUP_P1[idx]) + mine as u16 + 1
+        score + get!(LOOKUP_P1, idx) + mine as u16 + 1
     })
 }
 

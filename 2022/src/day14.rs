@@ -50,7 +50,9 @@ fn fill_cave_dfs(input: &str, part: Part) -> Result<usize> {
                     None => break,
                     Some(false) => history.push(right),
                     Some(true) => {
-                        let Some(pos) = history.pop() else { unreachable!() };
+                        let Some(pos) = history.pop() else {
+                            unreachable!()
+                        };
                         cave[pos] = true;
                         sand += 1;
                     }
@@ -245,7 +247,7 @@ impl Cave {
                     let min = (start.y * w + start.x.min(end.x) - x_off) as usize;
                     let max = (start.y * w + start.x.max(end.x) - x_off) as usize;
 
-                    for square in get_mut!(inner[min..=max]) {
+                    for square in get_mut!(inner, min..=max) {
                         *square = true;
                     }
                 } else {

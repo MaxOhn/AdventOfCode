@@ -52,11 +52,11 @@ fn unique_idx_array(stream: &[u8], target_len: u8) -> Result<usize> {
         .iter()
         .zip(rest)
         .position(|(&out, &new)| {
-            let out = get_mut!(counts[out as usize]);
+            let out = get_mut!(counts, out as usize);
             *out -= 1;
             available -= (*out == 0) as u8;
 
-            let new = get_mut!(counts[new as usize]);
+            let new = get_mut!(counts, new as usize);
             *new += 1;
             available += (*new == 1) as u8;
 
@@ -72,7 +72,7 @@ fn unique_idx_dynamic(stream: &[u8], target_len: usize) -> Result<usize> {
 
     for (i, &byte) in stream.iter().enumerate() {
         if last_seen[byte as usize] > min_i {
-            min_i = get!(last_seen[byte as usize]);
+            min_i = get!(last_seen, byte as usize);
         } else if i - min_i >= target_len {
             return Ok(min_i + 1);
         }

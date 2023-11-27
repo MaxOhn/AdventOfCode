@@ -43,8 +43,8 @@ pub mod dyn_monkey_op {
     {
         for _ in 0..rounds {
             for i in 0..monkeys.len() {
-                while let Some((next_monkey, worry)) = simulate_monkey(get_mut!(monkeys[i]), f) {
-                    get_mut!(monkeys[next_monkey]).items.push_back(worry);
+                while let Some((next_monkey, worry)) = simulate_monkey(get_mut!(monkeys, i), f) {
+                    get_mut!(monkeys, next_monkey).items.push_back(worry);
                 }
             }
         }
@@ -226,10 +226,10 @@ pub mod dyn_monkey_op_no_pop {
 
         for _ in 0..rounds {
             for i in 0..monkeys.len() {
-                buf.append(&mut get_mut!(monkeys[i]).items);
+                buf.append(&mut get_mut!(monkeys, i).items);
 
                 for worry in buf.drain(..) {
-                    let monkey = get_mut!(monkeys[i]);
+                    let monkey = get_mut!(monkeys, i);
                     monkey.inspect_count += 1;
 
                     let mut worry = (monkey.op)(worry);
@@ -241,7 +241,7 @@ pub mod dyn_monkey_op_no_pop {
                         monkey.if_false
                     };
 
-                    get_mut!(monkeys[next_monkey]).items.push(worry);
+                    get_mut!(monkeys, next_monkey).items.push(worry);
                 }
             }
         }
@@ -407,10 +407,10 @@ pub mod enum_monkey_op_no_pop {
 
         for _ in 0..rounds {
             for i in 0..monkeys.len() {
-                buf.append(&mut get_mut!(monkeys[i]).items);
+                buf.append(&mut get_mut!(monkeys, i).items);
 
                 for worry in buf.drain(..) {
-                    let monkey = get_mut!(monkeys[i]);
+                    let monkey = get_mut!(monkeys, i);
                     monkey.inspect_count += 1;
 
                     let mut worry = monkey.op.exec(worry);
@@ -422,7 +422,7 @@ pub mod enum_monkey_op_no_pop {
                         monkey.if_false
                     };
 
-                    get_mut!(monkeys[next_monkey]).items.push(worry);
+                    get_mut!(monkeys, next_monkey).items.push(worry);
                 }
             }
         }

@@ -4,6 +4,7 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
+aoc-rust = { path = "../aoc-rust" }
 ahash = { version = "0.8.2", features = ["compile-time-rng"] }
 core_simd = { git = "https://github.com/rust-lang/portable-simd", optional = true }
 eyre = "0.6.8"
