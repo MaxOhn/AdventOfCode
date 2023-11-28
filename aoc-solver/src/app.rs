@@ -23,11 +23,9 @@ pub fn App() -> impl IntoView {
 
         <Router>
             <main>
-                <Routes base="AdventOfCode".to_owned()>
-                    <Route path=":year?" view=Solver/>
-                </Routes>
+                <Solver/>
+                <Footer/>
             </main>
-            <Footer/>
         </Router>
     }
 }

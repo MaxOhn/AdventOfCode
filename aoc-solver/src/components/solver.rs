@@ -3,7 +3,7 @@ use std::time::Duration;
 use aoc_rust::Solution;
 use eyre::Result;
 use leptos::{component, create_signal, view, IntoView, SignalGet};
-use leptos_router::use_params;
+use leptos_router::use_query;
 use wasm_timer::Instant;
 use web_sys::FormData;
 
@@ -15,7 +15,7 @@ use crate::{
 
 #[component]
 pub fn Solver() -> impl IntoView {
-    let year_param = use_params::<Year>();
+    let year_param = use_query::<Year>();
     let year = move || year_param.get().unwrap_or_default();
     let (solved, set_solved) = create_signal(None);
     let on_input = move |input| set_solved(Some(solve(input)));
