@@ -1,8 +1,9 @@
 [package]
 name = "day07"
 version = "0.1.0"
-authors = ["MaxOhn <ohn.m@hotmail.de>"]
-edition = "2018"
+edition = "2021"
 
 [dependencies]
+aoc-rust = { path = "../../aoc-rust" }
+eyre = "0.6.9"
 hashbrown = "0.11"
