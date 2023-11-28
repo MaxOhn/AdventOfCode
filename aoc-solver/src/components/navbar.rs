@@ -21,6 +21,7 @@ pub fn Navbar<Y: Fn() -> Year + 'static>(year: Y) -> impl IntoView {
                         </div>
                         <div class="navbar-dropdown">
                             <NavbarYear year=2015/>
+                            <NavbarYear year=2016/>
                             <NavbarYear year=2022/>
                             <NavbarYear year=2023/>
                         </div>

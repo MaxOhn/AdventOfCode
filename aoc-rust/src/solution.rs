@@ -1,6 +1,6 @@
 macro_rules! solution {
     ( $( $variant:ident($ty:ty) ,)* ) => {
-        #[derive(Clone, Default)]
+        #[derive(Clone, Debug, Default)]
         pub enum SolutionType {
             $( $variant($ty), )*
             #[default]
@@ -55,14 +55,14 @@ solution! {
     String(String),
 }
 
-impl PartialEq<str> for SolutionType {
+impl PartialEq<&str> for SolutionType {
     // the only way to compare non-strings with strings is to format them into
     // a string before comparing
     #[allow(clippy::cmp_owned)]
-    fn eq(&self, other: &str) -> bool {
+    fn eq(&self, other: &&str) -> bool {
         match self {
             Self::String(n) => n == other,
-            _ => self.to_string() == other,
+            _ => self.to_string() == *other,
         }
     }
 }

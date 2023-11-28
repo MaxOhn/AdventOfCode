@@ -17,6 +17,7 @@ impl Year {
     pub fn solved_days(self) -> SolvedDays {
         match self.0 {
             2015 => SolvedDays::new(0b0000000000000000001000000),
+            2016 => SolvedDays::new(0b0000000001111111111111100),
             2022 => SolvedDays::new_up_to(25),
             2023 => SolvedDays::new_up_to(0),
             _ => SolvedDays::default(),
@@ -24,43 +25,79 @@ impl Year {
     }
 
     pub fn solve_fn(self, day: SolvedDay) -> fn(&str) -> Result<Solution> {
-        match self.0 {
-            2015 => match day.0 {
-                7 => aoc15_07::run,
-                _ => |_| eyre::bail!("invalid day"),
+        macro_rules! match_year_day {
+            (
+                $(
+                    $year:literal: {
+                        $(
+                            $day:literal => $( $path:ident )::+
+                        ),* $(,)?
+                    }
+                ,)*
+            ) => {
+                match self.0 {
+                    $(
+                        $year => match day.0 {
+                            $(
+                                $day => $( $path :: )* run,
+                            )*
+                            _ => |_| eyre::bail!("invalid day"),
+                        }
+                    )*
+                    _ => |_| eyre::bail!("invalid year"),
+                }
+            };
+        }
+
+        match_year_day! {
+            2015: {
+                7 => aoc15_day07
             },
-            2022 => match day.0 {
-                1 => aoc22::day01::run,
-                2 => aoc22::day02::run,
-                3 => aoc22::day03::run,
-                4 => aoc22::day04::run,
-                5 => aoc22::day05::run,
-                6 => aoc22::day06::run,
-                7 => aoc22::day07::run,
-                8 => aoc22::day08::run,
-                9 => aoc22::day09::run,
-                10 => aoc22::day10::run,
-                11 => aoc22::day11::run,
-                12 => aoc22::day12::run,
-                13 => aoc22::day13::run,
-                14 => aoc22::day14::run,
-                15 => aoc22::day15::run,
-                16 => aoc22::day16::run,
-                17 => aoc22::day17::run,
-                18 => aoc22::day18::run,
-                19 => aoc22::day19::run,
-                20 => aoc22::day20::run,
-                21 => aoc22::day21::run,
-                22 => aoc22::day22::run,
-                23 => aoc22::day23::run,
-                24 => aoc22::day24::run,
-                25 => aoc22::day25::run,
-                _ => |_| eyre::bail!("invalid day"),
+            2016: {
+                3 => aoc16_day03,
+                4 => aoc16_day04,
+                5 => aoc16_day05,
+                6 => aoc16_day06,
+                7 => aoc16_day07,
+                8 => aoc16_day08,
+                9 => aoc16_day09,
+                10 => aoc16_day10,
+                11 => aoc16_day11,
+                12 => aoc16_day12,
+                13 => aoc16_day13,
+                14 => aoc16_day14,
+                15 => aoc16_day15,
+                16 => aoc16_day16,
             },
-            2023 => match day.0 {
-                _ => |_| eyre::bail!("invalid day"),
+            2022: {
+                1 => aoc22::day01,
+                2 => aoc22::day02,
+                3 => aoc22::day03,
+                4 => aoc22::day04,
+                5 => aoc22::day05,
+                6 => aoc22::day06,
+                7 => aoc22::day07,
+                8 => aoc22::day08,
+                9 => aoc22::day09,
+                10 => aoc22::day10,
+                11 => aoc22::day11,
+                12 => aoc22::day12,
+                13 => aoc22::day13,
+                14 => aoc22::day14,
+                15 => aoc22::day15,
+                16 => aoc22::day16,
+                17 => aoc22::day17,
+                18 => aoc22::day18,
+                19 => aoc22::day19,
+                20 => aoc22::day20,
+                21 => aoc22::day21,
+                22 => aoc22::day22,
+                23 => aoc22::day23,
+                24 => aoc22::day24,
+                25 => aoc22::day25,
             },
-            _ => |_| eyre::bail!("invalid year"),
+            2023: {
+            },
         }
     }
 }

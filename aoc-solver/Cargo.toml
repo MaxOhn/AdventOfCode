@@ -4,7 +4,21 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-aoc15_07 = { path = "../2015/day07", package = "day07" }
+aoc15_day07 = { path = "../2015/day07" }
+aoc16_day03 = { path = "../2016/day03" }
+aoc16_day04 = { path = "../2016/day04" }
+aoc16_day05 = { path = "../2016/day05" }
+aoc16_day06 = { path = "../2016/day06" }
+aoc16_day07 = { path = "../2016/day07" }
+aoc16_day08 = { path = "../2016/day08" }
+aoc16_day09 = { path = "../2016/day09" }
+aoc16_day10 = { path = "../2016/day10" }
+aoc16_day11 = { path = "../2016/day11" }
+aoc16_day12 = { path = "../2016/day12" }
+aoc16_day13 = { path = "../2016/day13" }
+aoc16_day14 = { path = "../2016/day14" }
+aoc16_day15 = { path = "../2016/day15" }
+aoc16_day16 = { path = "../2016/day16" }
 aoc22 = { path = "../2022" }
 
 aoc-rust = { path = "../aoc-rust" }
