@@ -1,10 +1,9 @@
 [package]
-name = "day05"
+name = "aoc16_day05"
 version = "0.1.0"
-authors = ["MaxOhn <ohn.m@hotmail.de>"]
-edition = "2018"
+edition = "2021"
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
-
-[dependencies.md5]
-version = "0.7"
+[dependencies]
+aoc-rust = { path = "../../aoc-rust" }
+eyre = "0.6.9"
+md5 = "0.7"

@@ -1,6 +1,5 @@
 [workspace]
 members = [
-    "util",
     "day03",
     "day04",
     "day05",
@@ -16,3 +15,7 @@ members = [
     "day15",
     "day16",
 ]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"

@@ -1,114 +1,16 @@
-#[macro_use]
-extern crate util;
-
-use std::collections::HashMap;
-use std::time::Instant;
+use std::{fs::read_to_string, time::Instant};
 
 fn main() {
-    let input = std::fs::read_to_string("./input").unwrap();
+    let input = read_to_string("./input.txt").unwrap();
 
     let start = Instant::now();
-    let p1 = part1(&input);
+    let p1 = aoc16_day07::part1(&input);
     println!("Part 1: {} [{:?}]", p1, start.elapsed());
 
     let start = Instant::now();
-    let p2 = part2(&input);
+    let p2 = aoc16_day07::part2(&input);
     println!("Part 2: {} [{:?}]", p2, start.elapsed());
 
     assert_eq!(p1, 110);
     assert_eq!(p2, 242);
-}
-
-fn part1(input: &str) -> usize {
-    input
-        .lines()
-        .filter(|line| {
-            let bytes = line.as_bytes();
-
-            let mut found_outside = false;
-            let mut in_brackets = false;
-            let mut i = 3;
-
-            while i < bytes.len() {
-                let byte = get!(bytes, i);
-
-                if byte == b'[' {
-                    in_brackets = true;
-                    i += 4;
-                    continue;
-                }
-
-                if byte == b']' {
-                    in_brackets = false;
-                    i += 4;
-                    continue;
-                }
-
-                if found_outside && !in_brackets
-                    || byte == get!(bytes, i - 1)
-                    || get!(bytes, i - 1) != get!(bytes, i - 2)
-                    || byte != get!(bytes, i - 3)
-                {
-                    i += 1;
-                    continue;
-                }
-
-                if in_brackets {
-                    return false;
-                }
-
-                found_outside = true;
-            }
-
-            found_outside
-        })
-        .count()
-}
-
-fn part2(input: &str) -> usize {
-    let mut letters = HashMap::new();
-    input
-        .lines()
-        .filter(|line| {
-            let bytes = line.as_bytes();
-
-            let mut in_brackets = false;
-            let mut i = 2;
-
-            while i < bytes.len() {
-                let byte = get!(bytes, i);
-
-                if byte == b'[' {
-                    in_brackets = true;
-                    i += 3;
-                    continue;
-                }
-
-                if byte == b']' {
-                    in_brackets = false;
-                    i += 3;
-                    continue;
-                }
-
-                if byte == get!(bytes, i - 1) || byte != get!(bytes, i - 2) {
-                    i += 1;
-                    continue;
-                }
-
-                let (key, val) = if in_brackets {
-                    ((get!(bytes, i - 1), byte), 2)
-                } else {
-                    ((byte, get!(bytes, i - 1)), 1)
-                };
-
-                *letters.entry(key).or_insert(0) |= val;
-                i += 1;
-            }
-
-            let valid = letters.values().any(|val: &u8| *val == 3);
-            letters.clear();
-
-            valid
-        })
-        .count()
 }
