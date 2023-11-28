@@ -17,8 +17,8 @@ impl TryFrom<JsValue> for SolvedDay {
 
     fn try_from(value: JsValue) -> Result<Self, Self::Error> {
         value
-            .as_f64()
-            .map(|n| Self(n as u8))
+            .as_string()
+            .and_then(|n| n.parse().ok().map(Self))
             .ok_or(eyre::eyre!("invalid day"))
     }
 }
