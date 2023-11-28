@@ -4,15 +4,19 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-console_error_panic_hook = "0.1"
+aoc-rust = { path = "../aoc-rust" }
+aoc22 = { path = "../2022" }
+console_error_panic_hook = { version = "0.1" }
+eyre = { version = "0.6.9" }
 leptos = { version = "0.5", features = ["csr", "nightly"] }
 leptos_meta = { version = "0.5", features = ["csr", "nightly"] }
 leptos_router = { version = "0.5", features = ["csr", "nightly"] }
 serde = { version = "1.0.193", features = ["derive"] }
+tracing = { version = "0.1.37" }
 tracing-subscriber = { version = "0.3.18", default-features = false, features = ["fmt", "std"] }
 tracing-subscriber-wasm = { version = "0.1.0" }
-wasm-bindgen = "=0.2.88"
-tracing = { version = "0.1.37" }
+wasm-bindgen = { version = "=0.2.88" }
+wasm-timer = { version = "0.2.5" }
 web-sys = { version = "0.3.65" } # required features will be included by leptos
 
 [features]

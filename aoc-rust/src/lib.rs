@@ -2,4 +2,4 @@ mod macros;
 mod solution;
 pub mod util;
 
-pub use solution::Solution;
+pub use solution::{Solution, SolutionType};

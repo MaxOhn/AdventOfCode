@@ -1,15 +1,19 @@
-use leptos::{component, view, IntoView, WriteSignal};
+use leptos::{component, view, IntoView};
 use leptos_router::FromFormData;
 use wasm_bindgen::{JsCast, UnwrapThrowExt};
 
-use crate::{components::SelectDays, year::Year};
+use crate::{
+    components::{solver::SolveInput, SelectDays},
+    year::Year,
+};
 
 #[component]
-pub fn SolverForm<Y>(year: Y, set_solved: WriteSignal<Option<Result<String, ()>>>) -> impl IntoView
+pub fn SolverForm<Y, I>(year: Y, on_input: I) -> impl IntoView
 where
     Y: Fn() -> Year + Copy + 'static,
+    I: Fn(SolveInput) + 'static,
 {
-    let last_day = move || year().last_day();
+    let solved_days = move || year().solved_days();
 
     let on_submit = move |ev: web_sys::SubmitEvent| {
         ev.prevent_default();
@@ -30,7 +34,7 @@ where
         let form_data = web_sys::FormData::new_with_form(form).unwrap_throw();
 
         match SolveInput::from_form_data(&form_data) {
-            Ok(input) => set_solved(Some(solve_day(input))),
+            Ok(input) => on_input(input),
             Err(err) => error!(%err, "Failed to create SolveInput"),
         }
     };
@@ -54,7 +58,7 @@ where
             <div class="field is-grouped">
                 <div class="control">
                     <div>
-                        <SelectDays last_day/>
+                        <SelectDays solved_days/>
                     </div>
                 </div>
                 <div class="control">
@@ -67,24 +71,4 @@ where
             </div>
         </form>
     }
-}
-
-#[derive(Clone, serde::Deserialize)]
-struct SolveInput {
-    year: Year,
-    day: u8,
-    input: String,
-}
-
-fn solve_day(input: SolveInput) -> Result<String, ()> {
-    let SolveInput { year, day, input } = input;
-
-    info!("solving for year={year} | day={day} | input={input}");
-
-    // synthetic delay
-    for i in 0..50_000_000_u64 {
-        let _ = i / 3;
-    }
-
-    Ok(format!("Solution: year={year} | day={day} | input={input}"))
 }

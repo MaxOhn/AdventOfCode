@@ -5,6 +5,7 @@ extern crate tracing;
 
 mod app;
 mod components;
+mod day;
 mod year;
 
 pub use app::App;
