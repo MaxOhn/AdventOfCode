@@ -20,16 +20,22 @@ pub fn Navbar<Y: Fn() -> Year + 'static>(year: Y) -> impl IntoView {
                             { year }
                         </div>
                         <div class="navbar-dropdown">
-                            <a href="/AdventOfCode/2022" class="navbar-item">
-                                "2022"
-                            </a>
-                            <a href="/AdventOfCode/2023" class="navbar-item">
-                                "2023"
-                            </a>
+                            <NavbarYear year=2015/>
+                            <NavbarYear year=2022/>
+                            <NavbarYear year=2023/>
                         </div>
                     </div>
                 </div>
             </div>
         </nav>
+    }
+}
+
+#[component]
+fn NavbarYear(year: u16) -> impl IntoView {
+    view! {
+        <a href=move || format!("/AdventOfCode/{year}") class="navbar-item">
+            { year }
+        </a>
     }
 }

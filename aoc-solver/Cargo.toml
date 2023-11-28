@@ -4,8 +4,10 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-aoc-rust = { path = "../aoc-rust" }
+aoc15_07 = { path = "../2015/day07", package = "day07" }
 aoc22 = { path = "../2022" }
+
+aoc-rust = { path = "../aoc-rust" }
 console_error_panic_hook = { version = "0.1" }
 eyre = { version = "0.6.9" }
 leptos = { version = "0.5", features = ["csr", "nightly"] }

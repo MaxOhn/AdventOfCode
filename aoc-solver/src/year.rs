@@ -16,6 +16,7 @@ impl Year {
 
     pub fn solved_days(self) -> SolvedDays {
         match self.0 {
+            2015 => SolvedDays::new(0b0000000000000000001000000),
             2022 => SolvedDays::new_up_to(25),
             2023 => SolvedDays::new_up_to(0),
             _ => SolvedDays::default(),
@@ -24,6 +25,10 @@ impl Year {
 
     pub fn solve_fn(self, day: SolvedDay) -> fn(&str) -> Result<Solution> {
         match self.0 {
+            2015 => match day.0 {
+                7 => aoc15_07::run,
+                _ => |_| eyre::bail!("invalid day"),
+            },
             2022 => match day.0 {
                 1 => aoc22::day01::run,
                 2 => aoc22::day02::run,
