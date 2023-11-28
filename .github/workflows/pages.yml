@@ -28,7 +28,7 @@ jobs:
           version: 'latest'
 
       - name: Build webapp
-        run: trunk build --release --no-default-features ./aoc-solver/index.html --dist ./docs
+        run: trunk build --release --no-default-features ./aoc-solver/index.html --dist ./docs --public-url "/AdventOfCode"
 
       - name: Deploy
         uses: peaceiris/actions-gh-pages@v3
