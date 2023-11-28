@@ -1,5 +1,4 @@
 use leptos::{component, view, IntoView};
-use leptos_router::FromFormData;
 use wasm_bindgen::{JsCast, UnwrapThrowExt};
 
 use crate::{
@@ -33,7 +32,7 @@ where
 
         let form_data = web_sys::FormData::new_with_form(form).unwrap_throw();
 
-        match SolveInput::from_form_data(&form_data) {
+        match SolveInput::new(&form_data) {
             Ok(input) => on_input(input),
             Err(err) => error!(%err, "Failed to create SolveInput"),
         }

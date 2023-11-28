@@ -4,8 +4,8 @@ use aoc_rust::Solution;
 use eyre::Result;
 use leptos::{component, create_signal, view, IntoView, SignalGet};
 use leptos_router::use_params;
-use serde::Deserialize;
 use wasm_timer::Instant;
+use web_sys::FormData;
 
 use crate::{
     components::{Navbar, Solution as SolutionComponent, SolverForm},
@@ -27,11 +27,24 @@ pub fn Solver() -> impl IntoView {
     }
 }
 
-#[derive(Clone, Deserialize)]
+#[derive(Clone)]
 pub struct SolveInput {
     year: Year,
     day: SolvedDay,
     input: String,
+}
+
+impl SolveInput {
+    pub fn new(form: &FormData) -> Result<Self> {
+        Ok(Self {
+            year: form.get("year").try_into()?,
+            day: form.get("day").try_into()?,
+            input: form
+                .get("input")
+                .as_string()
+                .ok_or(eyre::eyre!("invalid input"))?,
+        })
+    }
 }
 
 #[derive(Clone)]

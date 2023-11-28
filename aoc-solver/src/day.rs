@@ -1,11 +1,25 @@
 use std::fmt::{Display, Formatter, Result as FmtResult};
 
-#[derive(Copy, Clone, PartialEq, Eq, Hash, serde::Deserialize)]
+use eyre::Report;
+use wasm_bindgen::JsValue;
+
+#[derive(Copy, Clone, PartialEq, Eq, Hash)]
 pub struct SolvedDay(pub u8);
 
 impl Display for SolvedDay {
     fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
         Display::fmt(&self.0, f)
+    }
+}
+
+impl TryFrom<JsValue> for SolvedDay {
+    type Error = Report;
+
+    fn try_from(value: JsValue) -> Result<Self, Self::Error> {
+        value
+            .as_f64()
+            .map(|n| Self(n as u8))
+            .ok_or(eyre::eyre!("invalid day"))
     }
 }
 

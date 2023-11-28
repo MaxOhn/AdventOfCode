@@ -1,14 +1,14 @@
 use std::fmt::{Display, Formatter, Result as FmtResult};
 
 use aoc_rust::Solution;
-use eyre::Result;
+use eyre::{Report, Result};
 use leptos::{Attribute, IntoAttribute, IntoView, View};
 use leptos_router::{Params, ParamsError, ParamsMap};
-use serde::Deserialize;
+use wasm_bindgen::JsValue;
 
 use crate::day::{SolvedDay, SolvedDays};
 
-#[derive(Copy, Clone, Debug, PartialEq, Eq, Deserialize)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub struct Year(u16);
 
 impl Year {
@@ -95,5 +95,16 @@ impl IntoAttribute for Year {
 impl IntoView for Year {
     fn into_view(self) -> View {
         <u16 as IntoView>::into_view(self.0)
+    }
+}
+
+impl TryFrom<JsValue> for Year {
+    type Error = Report;
+
+    fn try_from(value: JsValue) -> Result<Self, Self::Error> {
+        value
+            .as_f64()
+            .map(|n| Self(n as u16))
+            .ok_or(eyre::eyre!("invalid year"))
     }
 }
