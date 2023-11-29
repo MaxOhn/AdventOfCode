@@ -1,8 +1,0 @@
-[package]
-name = "aoc16_day16"
-version = "0.1.0"
-edition = "2021"
-
-[dependencies]
-aoc-rust = { path = "../../aoc-rust" }
-eyre = "0.6.9"

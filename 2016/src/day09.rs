@@ -1,6 +1,3 @@
-#[macro_use]
-extern crate aoc_rust;
-
 use aoc_rust::Solution;
 
 pub fn run(input: &str) -> eyre::Result<Solution> {

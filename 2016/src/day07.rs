@@ -1,6 +1,3 @@
-#[macro_use]
-extern crate aoc_rust;
-
 use std::collections::HashMap;
 
 use aoc_rust::Solution;

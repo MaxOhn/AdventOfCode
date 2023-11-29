@@ -1,6 +1,3 @@
-#[macro_use]
-extern crate aoc_rust;
-
 use std::str::{from_utf8 as str_from_utf8, FromStr};
 
 use aoc_rust::Solution;

@@ -1,6 +1,3 @@
-#[macro_use]
-extern crate aoc_rust;
-
 use aoc_rust::Solution;
 
 const DISK_SIZE_PART1: usize = 272;
