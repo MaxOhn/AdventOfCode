@@ -1,7 +1,7 @@
 use criterion::*;
 
 fn bench(c: &mut Criterion) {
-    const INPUT: &[u8] = include_str!("../../day14/input").as_bytes();
+    const INPUT: &[u8] = include_str!("../../day14/input.txt").as_bytes();
     c.bench_function("d14p1 simple map pairs", |b| {
         b.iter(|| aoc_ferris::day14::part1::simple(INPUT))
     });

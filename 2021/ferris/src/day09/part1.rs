@@ -85,12 +85,12 @@ pub fn run(input: &[u8]) -> i64 {
         let mut x = 1;
 
         loop {
-            let curr = grid[(y * w + x)];
+            let curr = grid[y * w + x];
 
-            if grid[(y * w + (x - 1))] <= curr
-                || grid[(y * w + (x + 1))] <= curr
-                || grid[((y - 1) * w + x)] <= curr
-                || grid[((y + 1) * w + x)] <= curr
+            if grid[y * w + (x - 1)] <= curr
+                || grid[y * w + (x + 1)] <= curr
+                || grid[(y - 1) * w + x] <= curr
+                || grid[(y + 1) * w + x] <= curr
             {
                 x += 1;
 

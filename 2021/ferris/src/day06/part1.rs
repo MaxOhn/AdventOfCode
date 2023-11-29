@@ -1,6 +1,6 @@
 #![feature(portable_simd)]
 
-use core_simd::u8x64;
+use std::simd::u8x64;
 
 pub fn run(input: &[u8]) -> i64 {
     simd(input)

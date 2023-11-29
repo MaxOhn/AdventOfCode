@@ -2,7 +2,7 @@
 
 use std::intrinsics::unlikely;
 
-use core_simd::{u8x64, Simd};
+use std::simd::{u8x64, Simd};
 
 pub fn run(input: &[u8]) -> i64 {
     let new_line = memchr::memchr(b'\n', input).unwrap();

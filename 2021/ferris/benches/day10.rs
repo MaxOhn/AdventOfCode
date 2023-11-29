@@ -1,7 +1,7 @@
 use criterion::*;
 
 fn bench(c: &mut Criterion) {
-    const INPUT: &[u8] = include_str!("../../day10/input").as_bytes();
+    const INPUT: &[u8] = include_str!("../../day10/input.txt").as_bytes();
     c.bench_function("part1 arrayvec", |b| {
         b.iter(|| aoc_ferris::day10::part1::with_arrayvec(INPUT))
     });

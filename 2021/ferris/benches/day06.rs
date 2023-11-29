@@ -1,7 +1,7 @@
 use criterion::*;
 
 fn bench(c: &mut Criterion) {
-    const INPUT: &[u8] = include_str!("../../day06/input").as_bytes();
+    const INPUT: &[u8] = include_str!("../../day06/input.txt").as_bytes();
     c.bench_function("no simd", |b| {
         b.iter(|| aoc_ferris::day06::part1::no_simd(INPUT))
     });

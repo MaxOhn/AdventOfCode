@@ -1,6 +1,6 @@
 #![feature(portable_simd)]
 
-use core_simd::{u8x16, Simd};
+use std::simd::{u8x16, Simd, SimdPartialOrd};
 
 pub fn run(input: &[u8]) -> i64 {
     let mut simd = MySimd::new();
@@ -62,7 +62,7 @@ impl MySimd {
         };
 
         self.count += line;
-        let mask = self.count.lanes_lt(line);
+        let mask = self.count.simd_lt(line);
         self.wraps = mask.select(self.wraps + self.ones, self.wraps);
     }
 
@@ -71,7 +71,7 @@ impl MySimd {
         let wraps = Simd::splat((factor / 256) as u8);
         let remaining = Simd::splat((factor % 256) as u8);
 
-        let mask = self.count.lanes_lt(remaining);
+        let mask = self.count.simd_lt(remaining);
         self.wraps -= mask.select(wraps + self.ones, wraps);
         self.count -= remaining;
 

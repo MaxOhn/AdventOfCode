@@ -1,7 +1,7 @@
 use aoc_ferris::*;
 
 fn main() {
-    let bytes = include_str!("../../day18/input").as_bytes();
+    let bytes = include_str!("../../day18/input.txt").as_bytes();
 
     let p1 = day18::part1::run(bytes);
     let p2 = day18::part2::run(bytes);

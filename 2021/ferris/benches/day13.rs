@@ -1,7 +1,7 @@
 use criterion::*;
 
 fn bench(c: &mut Criterion) {
-    const INPUT: &[u8] = include_str!("../../day13/input").as_bytes();
+    const INPUT: &[u8] = include_str!("../../day13/input.txt").as_bytes();
     c.bench_function("part1 std", |b| {
         b.iter(|| aoc_ferris::day13::part1::stdhash(INPUT))
     });
