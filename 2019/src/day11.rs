@@ -5,12 +5,20 @@ use crate::{
 };
 use std::collections::HashMap;
 
-pub fn solve(input: String) -> Result<Solution<usize, String>, Error> {
+pub fn run(input: &str) -> eyre::Result<aoc_rust::Solution> {
+    let solution = solve(input)?;
+
+    Ok(aoc_rust::Solution::new()
+        .part1(solution.part1)
+        .part2(solution.part2))
+}
+
+pub fn solve(input: &str) -> Result<Solution<usize, String>, Error> {
     let mut grid = GridMap::new();
-    run(0, input.clone(), &mut grid)?;
+    execute(0, input.to_owned(), &mut grid)?;
     let p1 = grid.len();
     grid.clear();
-    run(1, input, &mut grid)?;
+    execute(1, input.to_owned(), &mut grid)?;
     let mut mapping = HashMap::new();
     mapping.insert(0, ' ');
     mapping.insert(1, '█');
@@ -24,7 +32,7 @@ pub fn solve(input: String) -> Result<Solution<usize, String>, Error> {
     Ok(Solution::new(p1, p2))
 } // 69.16ms
 
-fn run(start: i64, input: String, grid: &mut GridMap<i64>) -> Result<(), Error> {
+fn execute(start: i64, input: String, grid: &mut GridMap<i64>) -> Result<(), Error> {
     let mut brain = Computer::new(input)?;
     let mut pos = Point2::new(0, 0);
     grid.insert(pos, start);

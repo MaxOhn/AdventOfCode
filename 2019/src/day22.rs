@@ -1,21 +1,29 @@
 use crate::{Error, Solution};
 use std::str::FromStr;
 
-pub fn solve(input: String) -> Result<Solution<usize, usize>, Error> {
-    let p1 = part1(input.as_str());
-    let p2 = part2(input.as_str());
+pub fn run(input: &str) -> eyre::Result<aoc_rust::Solution> {
+    let solution = solve(input)?;
+
+    Ok(aoc_rust::Solution::new()
+        .part1(solution.part1)
+        .part2(solution.part2))
+}
+
+pub fn solve(input: &str) -> Result<Solution<u64, u64>, Error> {
+    let p1 = part1(input);
+    let p2 = part2(input);
 
     Ok(Solution::new(p1, p2))
 }
 
-fn part1(input: &str) -> usize {
+fn part1(input: &str) -> u64 {
     let mut shuffle: Vec<_> = input
         .lines()
         .map(Step::from_str)
         .map(Result::unwrap)
         .collect();
 
-    const LEN: usize = 10_007;
+    const LEN: u64 = 10_007;
 
     minimize_shuffle(&mut shuffle, LEN);
 
@@ -28,9 +36,9 @@ fn part1(input: &str) -> usize {
     p1
 }
 
-fn part2(input: &str) -> usize {
+fn part2(input: &str) -> u64 {
     let len = 119_315_717_514_047;
-    let mut iters: usize = 101_741_582_076_661;
+    let mut iters: u64 = 101_741_582_076_661;
 
     let mut shuffle: Vec<_> = input
         .lines()
@@ -75,7 +83,7 @@ fn part2(input: &str) -> usize {
 }
 
 // Swap & remove elements until the shuffle contains only one element per Step variant
-fn minimize_shuffle(shuffle: &mut Vec<Step>, len: usize) {
+fn minimize_shuffle(shuffle: &mut Vec<Step>, len: u64) {
     let mut changed = true;
 
     while changed {
@@ -93,32 +101,32 @@ fn minimize_shuffle(shuffle: &mut Vec<Step>, len: usize) {
                 }
                 (Step::Cut(a), Step::Cut(b)) => {
                     shuffle.remove(i + 1);
-                    shuffle[i] = Step::Cut((a + b) % len as isize);
+                    shuffle[i] = Step::Cut((a + b) % len as i64);
                     changed = true;
                 }
                 (Step::Increment(a), Step::Increment(b)) => {
                     shuffle.remove(i + 1);
-                    shuffle[i] = Step::Increment(usize::mul_mod(a, b, len));
+                    shuffle[i] = Step::Increment(u64::mul_mod(a, b, len));
                     changed = true;
                 }
 
                 // Cross cases
                 (Step::Cut(a), Step::Increment(b)) => {
                     shuffle.swap(i, i + 1);
-                    shuffle[i + 1] = Step::Cut(isize::mul_mod(a, b as isize, len as isize));
+                    shuffle[i + 1] = Step::Cut(i64::mul_mod(a, b as i64, len as i64));
                     changed = true;
                     i += 1;
                 }
                 (Step::NewStack, Step::Increment(a)) => {
                     shuffle.swap(i, i + 1);
-                    shuffle[i + 1] = Step::Cut((1 - a as isize) % len as isize);
+                    shuffle[i + 1] = Step::Cut((1 - a as i64) % len as i64);
                     shuffle.insert(i + 2, Step::NewStack);
                     changed = true;
                     i += 2;
                 }
                 (Step::NewStack, Step::Cut(a)) => {
                     shuffle.swap(i, i + 1);
-                    shuffle[i] = Step::Cut((len as isize - a) % len as isize);
+                    shuffle[i] = Step::Cut((len as i64 - a) % len as i64);
                     changed = true;
                     i += 1;
                 }
@@ -131,8 +139,8 @@ fn minimize_shuffle(shuffle: &mut Vec<Step>, len: usize) {
 #[derive(Copy, Clone, Debug)]
 enum Step {
     NewStack,
-    Cut(isize),
-    Increment(usize),
+    Cut(i64),
+    Increment(u64),
 }
 
 impl FromStr for Step {
@@ -168,7 +176,7 @@ impl Step {
             }
             Self::Increment(n) => {
                 for i in 0..cards.len() {
-                    buf[(n * i) % cards.len()] = cards[i];
+                    buf[(n as usize * i) % cards.len()] = cards[i];
                 }
                 cards.swap_with_slice(buf);
             }
@@ -176,20 +184,20 @@ impl Step {
     }
 
     // To which position will position `pos` be mapped after one shuffle
-    fn predict_next(self, pos: usize, len: usize) -> usize {
+    fn predict_next(self, pos: u64, len: u64) -> u64 {
         match self {
             Self::NewStack => len - pos - 1,
             Self::Increment(n) => (pos * n) % len,
-            Self::Cut(n) => ((pos as isize - n + len as isize) as usize) % len,
+            Self::Cut(n) => ((pos as i64 - n + len as i64) as u64) % len,
         }
     }
 
     // What position is being mapped to position `pos` after one shuffle
-    fn predict_prev(self, pos: usize, len: usize) -> usize {
+    fn predict_prev(self, pos: u64, len: u64) -> u64 {
         match self {
             Self::NewStack => len - pos - 1,
             Self::Increment(n) => linear_congruence(n, pos, len).unwrap(),
-            Self::Cut(n) => (pos as isize + n + len as isize) as usize % len,
+            Self::Cut(n) => (pos as i64 + n + len as i64) as u64 % len,
         }
     }
 }
@@ -221,24 +229,24 @@ macro_rules! impl_ops {
     };
 }
 
-impl_ops!(isize);
-impl_ops!(usize);
+impl_ops!(i64);
+impl_ops!(u64);
 
 // Thanks https://www.youtube.com/watch?v=XoTEKjS61kI
-fn linear_congruence(a: usize, b: usize, m: usize) -> Option<usize> {
-    mod_inv(a, m).map(|i| usize::mul_mod(b, i, m))
+fn linear_congruence(a: u64, b: u64, m: u64) -> Option<u64> {
+    mod_inv(a, m).map(|i| u64::mul_mod(b, i, m))
 }
 
-fn mod_inv(x: usize, n: usize) -> Option<usize> {
-    let (g, x, _) = egcd(x as isize, n as isize);
+fn mod_inv(x: u64, n: u64) -> Option<u64> {
+    let (g, x, _) = egcd(x as i64, n as i64);
     if g == 1 {
-        Some((x % n as isize + n as isize) as usize % n)
+        Some((x % n as i64 + n as i64) as u64 % n)
     } else {
         None
     }
 }
 
-fn egcd(a: isize, b: isize) -> (isize, isize, isize) {
+fn egcd(a: i64, b: i64) -> (i64, i64, i64) {
     if a == 0 {
         (b, 0, 1)
     } else {

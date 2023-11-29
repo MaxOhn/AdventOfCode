@@ -4,7 +4,15 @@ use crate::{
 };
 use pathfinding::directed::bfs::bfs;
 
-pub fn solve(input: String) -> Result<Solution<usize, usize>, Error> {
+pub fn run(input: &str) -> eyre::Result<aoc_rust::Solution> {
+    let solution = solve(input)?;
+
+    Ok(aoc_rust::Solution::new()
+        .part1(solution.part1)
+        .part2(solution.part2))
+}
+
+pub fn solve(input: &str) -> Result<Solution<usize, usize>, Error> {
     // let input = "\
     // #################\n\
     // #i.G..c...e..H.p#\n\
@@ -14,8 +22,7 @@ pub fn solve(input: String) -> Result<Solution<usize, usize>, Error> {
     // #k.E..a...g..B.n#\n\
     // ########.########\n\
     // #l.F..d...h..C.m#\n\
-    // #################"
-    //     .to_owned();
+    // #################";
     let (mut map, keys) = parse_input(input);
     let p1 = solve_part1(&map, keys)?;
     transform_map(&mut map);
@@ -108,7 +115,7 @@ fn solve_part2(map: &mut Vec<Vec<char>>, all_keys: u32) -> Result<usize, Error> 
     Ok(path.len() - 1)
 }
 
-fn parse_input(input: String) -> (Vec<Vec<char>>, u32) {
+fn parse_input(input: &str) -> (Vec<Vec<char>>, u32) {
     let map: Vec<Vec<char>> = input
         .lines()
         .map(|line| line.chars().collect::<Vec<_>>())
@@ -198,18 +205,15 @@ mod tests {
     #[test]
     fn test18() {
         let input =
-            "########################\n#f.D.E.e.C.b.A.@.a.B.c.#\n######################.#\n#d.....................#\n########################"
-            .to_owned();
+            "########################\n#f.D.E.e.C.b.A.@.a.B.c.#\n######################.#\n#d.....................#\n########################";
         let (map, keys) = parse_input(input);
         assert_eq!(solve_part1(&map, keys).unwrap(), 86);
         let input =
-            "########################\n#@..............ac.GI.b#\n###d#e#f################\n###A#B#C################\n###g#h#i################\n########################"
-            .to_owned();
+            "########################\n#@..............ac.GI.b#\n###d#e#f################\n###A#B#C################\n###g#h#i################\n########################";
         let (map, keys) = parse_input(input);
         assert_eq!(solve_part1(&map, keys).unwrap(), 81);
         let input =
-            "#############\n#g#f.D#..h#l#\n#F###e#E###.#\n#dCba@#@BcIJ#\n#############\n#nK.L@#@G...#\n#M###N#H###.#\n#o#m..#i#jk.#\n#############"
-            .to_owned();
+            "#############\n#g#f.D#..h#l#\n#F###e#E###.#\n#dCba@#@BcIJ#\n#############\n#nK.L@#@G...#\n#M###N#H###.#\n#o#m..#i#jk.#\n#############";
         let (mut map, keys) = parse_input(input);
         assert_eq!(solve_part2(&mut map, keys).unwrap(), 72);
     }

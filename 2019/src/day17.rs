@@ -2,7 +2,16 @@ use crate::{computer::Computer, Error, Solution};
 #[allow(unused_imports)]
 use itertools::Itertools;
 
-pub fn solve(mut input: String) -> Result<Solution<usize, i64>, Error> {
+pub fn run(input: &str) -> eyre::Result<aoc_rust::Solution> {
+    let solution = solve(input)?;
+
+    Ok(aoc_rust::Solution::new()
+        .part1(solution.part1)
+        .part2(solution.part2))
+}
+
+pub fn solve(input: &str) -> Result<Solution<usize, i64>, Error> {
+    let mut input = input.to_owned();
     input.replace_range(..1, "2");
     let mut computer = Computer::new(input)?;
     computer.run()?;

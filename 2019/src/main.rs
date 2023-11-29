@@ -16,7 +16,7 @@ fn main() {
 
 fn run() -> Result<(), Error> {
     let days = vec![
-        1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25
+        1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25,
     ];
 
     let day: i32 = if let Some(arg) = env::args().nth(1) {
@@ -26,6 +26,8 @@ fn run() -> Result<(), Error> {
     };
     let input =
         fs::read_to_string(format!("inputs/day{:02}.txt", day)).expect("Error: Invalid day");
+    let input = input.as_str();
+
     let start = Instant::now();
     let solution = match day {
         1 => day01::solve(input)?.to_string(),

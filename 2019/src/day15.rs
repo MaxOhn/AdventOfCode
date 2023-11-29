@@ -6,8 +6,16 @@ use crate::{
 
 use std::collections::HashSet;
 
-pub fn solve(input: String) -> Result<Solution<i32, i32>, Error> {
-    let mut computer = Computer::new(input)?;
+pub fn run(input: &str) -> eyre::Result<aoc_rust::Solution> {
+    let solution = solve(input)?;
+
+    Ok(aoc_rust::Solution::new()
+        .part1(solution.part1)
+        .part2(solution.part2))
+}
+
+pub fn solve(input: &str) -> Result<Solution<i32, i32>, Error> {
+    let mut computer = Computer::new(input.to_owned())?;
     let mut curr_pos = Point2i::new(0, 0);
     let mut curr_dir = Direction::N;
     // 0: Wall; 1: Path; 2: Blocked; 3: Oxygenated

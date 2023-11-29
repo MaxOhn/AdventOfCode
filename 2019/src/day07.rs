@@ -2,9 +2,17 @@ use crate::{computer::Computer, Error, Solution};
 
 use itertools::Itertools;
 
-pub fn solve(input: String) -> Result<Solution<i64, i64>, Error> {
-    let p1 = solve_part1(input.clone())?;
-    let p2 = solve_part2(input)?;
+pub fn run(input: &str) -> eyre::Result<aoc_rust::Solution> {
+    let solution = solve(input)?;
+
+    Ok(aoc_rust::Solution::new()
+        .part1(solution.part1)
+        .part2(solution.part2))
+}
+
+pub fn solve(input: &str) -> Result<Solution<i64, i64>, Error> {
+    let p1 = solve_part1(input.to_owned())?;
+    let p2 = solve_part2(input.to_owned())?;
     Ok(Solution::new(p1, p2))
 } // 230.73ms
 

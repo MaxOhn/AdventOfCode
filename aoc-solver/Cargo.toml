@@ -6,6 +6,7 @@ edition = "2021"
 [dependencies]
 aoc15 = { path = "../2015" }
 aoc16 = { path = "../2016" }
+aoc19 = { path = "../2019" }
 aoc22 = { path = "../2022" }
 
 aoc-rust = { path = "../aoc-rust" }

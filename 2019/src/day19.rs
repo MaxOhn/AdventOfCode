@@ -1,10 +1,18 @@
 use crate::{computer::Computer, Error, Solution};
 
-pub fn solve(input: String) -> Result<Solution<usize, i64>, Error> {
+pub fn run(input: &str) -> eyre::Result<aoc_rust::Solution> {
+    let solution = solve(input)?;
+
+    Ok(aoc_rust::Solution::new()
+        .part1(solution.part1)
+        .part2(solution.part2))
+}
+
+pub fn solve(input: &str) -> Result<Solution<usize, i64>, Error> {
     let mut p1 = 0;
     for x in 0..50 {
         for y in 0..50 {
-            if gets_pulled(input.clone(), x, y)? {
+            if gets_pulled(input.to_owned(), x, y)? {
                 p1 += 1;
             }
         }
@@ -12,10 +20,10 @@ pub fn solve(input: String) -> Result<Solution<usize, i64>, Error> {
     let mut x = 3;
     let mut y = 4;
     loop {
-        while gets_pulled(input.clone(), x, y)? {
+        while gets_pulled(input.to_owned(), x, y)? {
             x += 1;
         }
-        if x > 99 && gets_pulled(input.clone(), x - 100, y + 99)? {
+        if x > 99 && gets_pulled(input.to_owned(), x - 100, y + 99)? {
             return Ok(Solution::new(p1, (x - 100) * 10_000 + y));
         }
         y += 1;

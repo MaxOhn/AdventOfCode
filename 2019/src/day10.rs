@@ -3,7 +3,15 @@ use crate::{
     Error, Solution,
 };
 
-pub fn solve(input: String) -> Result<Solution<usize, i32>, Error> {
+pub fn run(input: &str) -> eyre::Result<aoc_rust::Solution> {
+    let solution = solve(input)?;
+
+    Ok(aoc_rust::Solution::new()
+        .part1(solution.part1)
+        .part2(solution.part2))
+}
+
+pub fn solve(input: &str) -> Result<Solution<usize, i32>, Error> {
     let asteroids: Vec<Vec<bool>> = input
         .lines()
         .map(|line| line.chars().map(|c| c == '#').collect())
@@ -151,7 +159,7 @@ mod tests {
             .collect();
         assert_eq!(solve_part1(&asteroids), (41, Point2::new(6, 3)));
         let input = ".#..##.###...#######\n##.############..##.\n.#.######.########.#\n.###.#######.####.#.\n#####.##.#.##.###.##\n..#####..#.#########\n####################\n#.####....###.#.#.##\n##.#################\n#####.##.###..####..\n..######..##.#######\n####.##.####...##..#\n.#####..#.######.###\n##...#.##########...\n#.##########.#######\n.####.#.###.###.#.##\n....##.##.###..#####\n.#.#.###########.###\n#.#.#.#####.####.###\n###.##.####.##.#..##";
-        assert_eq!(solve(input.to_owned()).unwrap(), Solution::new(210, 802));
+        assert_eq!(solve(input).unwrap(), Solution::new(210, 802));
         crate::util::tests::test_full_problem(10, solve, 344, 2732);
     }
 }

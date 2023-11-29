@@ -4,12 +4,20 @@ use itertools::Itertools;
 use std::collections::HashMap;
 use std::fmt;
 
-pub fn solve(input: String) -> Result<Solution<usize, String>, Error> {
+pub fn run(input: &str) -> eyre::Result<aoc_rust::Solution> {
+    let solution = solve(input)?;
+
+    Ok(aoc_rust::Solution::new()
+        .part1(solution.part1)
+        .part2(solution.part2))
+}
+
+pub fn solve(input: &str) -> Result<Solution<usize, String>, Error> {
     solve_with_dimensions(input, 25, 6)
 } // 14.96ms
 
 pub fn solve_with_dimensions(
-    input: String,
+    input: &str,
     width: usize,
     height: usize,
 ) -> Result<Solution<usize, String>, Error> {
@@ -94,7 +102,7 @@ mod tests {
 
     #[test]
     fn test08() {
-        let input = "0222112222120000".to_owned();
+        let input = "0222112222120000";
         assert_eq!(
             solve_with_dimensions(input, 2, 2).unwrap(),
             Solution::new(4, " █\n█ ".to_owned())

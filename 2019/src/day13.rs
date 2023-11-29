@@ -6,8 +6,16 @@ use crate::{
 use std::collections::HashMap;
 use std::io::{self, BufRead};
 
-pub fn solve(mut input: String) -> Result<Solution<usize, i64>, Error> {
-    let mut computer = Computer::new(input.clone())?;
+pub fn run(input: &str) -> eyre::Result<aoc_rust::Solution> {
+    let solution = solve(input)?;
+
+    Ok(aoc_rust::Solution::new()
+        .part1(solution.part1)
+        .part2(solution.part2))
+}
+
+pub fn solve(input: &str) -> Result<Solution<usize, i64>, Error> {
+    let mut computer = Computer::new(input.to_owned())?;
     computer.run()?;
     let mut grid = GridMap::new();
     while let Some(x) = computer.pop() {
@@ -26,6 +34,7 @@ pub fn solve(mut input: String) -> Result<Solution<usize, i64>, Error> {
     mapping.insert(2, 'X');
     mapping.insert(3, '-');
     mapping.insert(4, '•');
+    let mut input = input.to_owned();
     input.replace_range(..1, "2");
     let mut computer = Computer::new(input)?;
     let mut ready_to_play = false;

@@ -1,14 +1,22 @@
 use crate::{computer::Computer, Error, Solution};
 
-pub fn solve(input: String) -> Result<Solution<i64, i64>, Error> {
-    let mut computer = Computer::new(input.clone())?;
+pub fn run(input: &str) -> eyre::Result<aoc_rust::Solution> {
+    let solution = solve(input)?;
+
+    Ok(aoc_rust::Solution::new()
+        .part1(solution.part1)
+        .part2(solution.part2))
+}
+
+pub fn solve(input: &str) -> Result<Solution<i64, i64>, Error> {
+    let mut computer = Computer::new(input.to_owned())?;
     let p1 = computer
         .insert(1)
         .run()?
         .output_iter()
         .last()
         .ok_or_else(|| error!("No output produced for part 1"))?;
-    let mut computer = Computer::new(input)?;
+    let mut computer = Computer::new(input.to_owned())?;
     let p2 = computer
         .insert(5)
         .run()?

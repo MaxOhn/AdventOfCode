@@ -1,13 +1,17 @@
-use crate::{
-    Solution,
-    Error,
-    computer::Computer,
-};
+use crate::{computer::Computer, Error, Solution};
 
 use std::io::{self, BufRead};
 
-pub fn solve(input: String) -> Result<Solution<i32, i32>, Error> {
-    let mut robot = Computer::new(input)?;
+pub fn run(input: &str) -> eyre::Result<aoc_rust::Solution> {
+    let solution = solve(input)?;
+
+    Ok(aoc_rust::Solution::new()
+        .part1(solution.part1)
+        .part2(solution.part2))
+}
+
+pub fn solve(input: &str) -> Result<Solution<i32, i32>, Error> {
+    let mut robot = Computer::new(input.to_owned())?;
     robot.run()?.print();
     /* Play yourself
     // Take sand, fixed point, wreath, and space law space brochure

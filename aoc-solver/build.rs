@@ -69,11 +69,6 @@ fn handle_year(entry: fs::DirEntry, content: &mut Content) -> IoResult<()> {
         return Ok(());
     }
 
-    // TODO: remove
-    if year == "2019" {
-        return Ok(());
-    }
-
     let mut path = entry.path();
 
     path.push("Cargo.toml");

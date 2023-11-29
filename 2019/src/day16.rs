@@ -1,13 +1,21 @@
 use crate::{Error, Solution};
 
-pub fn solve(input: String) -> Result<Solution<i32, i32>, Error> {
+pub fn run(input: &str) -> eyre::Result<aoc_rust::Solution> {
+    let solution = solve(input)?;
+
+    Ok(aoc_rust::Solution::new()
+        .part1(solution.part1)
+        .part2(solution.part2))
+}
+
+pub fn solve(input: &str) -> Result<Solution<i32, i32>, Error> {
     let signal = parse_input(input)?;
     let p1 = solve_part1(signal.clone());
     let p2 = solve_part2(signal)?;
     Ok(Solution::new(p1, p2))
 } // 6.07s
 
-fn parse_input(input: String) -> Result<Vec<i32>, Error> {
+fn parse_input(input: &str) -> Result<Vec<i32>, Error> {
     Ok(input
         .chars()
         .map(|c| {
@@ -78,17 +86,17 @@ mod tests {
 
     #[test]
     fn test16() {
-        let signal = parse_input("80871224585914546619083218645595".to_owned()).unwrap();
+        let signal = parse_input("80871224585914546619083218645595").unwrap();
         assert_eq!(solve_part1(signal), 24_176_176);
-        let signal = parse_input("19617804207202209144916044189917".to_owned()).unwrap();
+        let signal = parse_input("19617804207202209144916044189917").unwrap();
         assert_eq!(solve_part1(signal), 73_745_418);
-        let signal = parse_input("69317163492948606335995924319873".to_owned()).unwrap();
+        let signal = parse_input("69317163492948606335995924319873").unwrap();
         assert_eq!(solve_part1(signal), 52_432_133);
-        let signal = parse_input("03036732577212944063491565474664".to_owned()).unwrap();
+        let signal = parse_input("03036732577212944063491565474664").unwrap();
         assert_eq!(solve_part2(signal).unwrap(), 84_462_026);
-        let signal = parse_input("02935109699940807407585447034323".to_owned()).unwrap();
+        let signal = parse_input("02935109699940807407585447034323").unwrap();
         assert_eq!(solve_part2(signal).unwrap(), 78_725_270);
-        let signal = parse_input("03081770884921959731165446850517".to_owned()).unwrap();
+        let signal = parse_input("03081770884921959731165446850517").unwrap();
         assert_eq!(solve_part2(signal).unwrap(), 53_553_731);
         crate::util::tests::test_full_problem(16, solve, 36627552, 79723033);
     }

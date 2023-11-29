@@ -5,6 +5,14 @@ use crate::{
 
 use std::collections::{HashSet, VecDeque};
 
+pub fn run(input: &str) -> eyre::Result<aoc_rust::Solution> {
+    let solution = solve(input)?;
+
+    Ok(aoc_rust::Solution::new()
+        .part1(solution.part1)
+        .part2(solution.part2))
+}
+
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
 struct Packet {
     dst: usize,
@@ -52,10 +60,10 @@ impl PacketBuffer {
     }
 }
 
-pub fn solve(input: String) -> Result<Solution<i64, i64>, Error> {
+pub fn solve(input: &str) -> Result<Solution<i64, i64>, Error> {
     let mut computers = Vec::with_capacity(50);
     for network_address in 0..50 {
-        let mut computer = Computer::new(input.clone())?;
+        let mut computer = Computer::new(input.to_owned())?;
         computer.insert(network_address).insert(-1);
         computers.push(computer);
     }

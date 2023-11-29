@@ -129,12 +129,12 @@ pub mod util {
         /// Check whether the solution of a day still gives the correct answer
         pub fn test_full_problem<F, U, V>(day: usize, solve_function: F, part1: U, part2: V)
         where
-            F: Fn(String) -> Result<Solution<U, V>, Error>,
+            F: Fn(&str) -> Result<Solution<U, V>, Error>,
             U: Eq + Debug,
             V: Eq + Debug,
         {
             let input = fs::read_to_string(format!("inputs/day{:02}.txt", day)).unwrap();
-            let solution = solve_function(input).unwrap();
+            let solution = solve_function(&input).unwrap();
             assert_eq!(solution.part1, part1);
             assert_eq!(solution.part2, part2);
         }

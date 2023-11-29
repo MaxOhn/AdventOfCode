@@ -2,9 +2,17 @@ use crate::{Error, Solution};
 
 use std::collections::{HashMap, HashSet, VecDeque};
 
+pub fn run(input: &str) -> eyre::Result<aoc_rust::Solution> {
+    let solution = solve(input)?;
+
+    Ok(aoc_rust::Solution::new()
+        .part1(solution.part1)
+        .part2(solution.part2))
+}
+
 type Relations = HashMap<usize, Vec<usize>>;
 
-pub fn solve(input: String) -> Result<Solution<usize, usize>, Error> {
+pub fn solve(input: &str) -> Result<Solution<usize, usize>, Error> {
     let (ids, directed, undirected) = prepare_maps(input)?;
     let p1 = solve_part1(
         &directed,
@@ -21,7 +29,7 @@ pub fn solve(input: String) -> Result<Solution<usize, usize>, Error> {
     Ok(Solution::new(p1, p2))
 } // 47.8ms
 
-fn prepare_maps(input: String) -> Result<(HashMap<String, usize>, Relations, Relations), Error> {
+fn prepare_maps(input: &str) -> Result<(HashMap<String, usize>, Relations, Relations), Error> {
     let mut ids: HashMap<String, usize> = HashMap::new();
     let mut directed: Relations = Relations::new();
     let mut undirected: Relations = Relations::new();
@@ -121,11 +129,10 @@ mod tests {
 
     #[test]
     fn test06() {
-        let input = "COM)B\nB)C\nC)D\nD)E\nE)F\nB)G\nG)H\nD)I\nE)J\nJ)K\nK)L".to_owned();
+        let input = "COM)B\nB)C\nC)D\nD)E\nE)F\nB)G\nG)H\nD)I\nE)J\nJ)K\nK)L";
         let (ids, map, _) = prepare_maps(input).unwrap();
         assert_eq!(solve_part1(&map, *ids.get("COM").unwrap()), 42);
-        let input =
-            "COM)B\nB)C\nC)D\nD)E\nE)F\nB)G\nG)H\nD)I\nE)J\nJ)K\nK)L\nK)YOU\nI)SAN".to_owned();
+        let input = "COM)B\nB)C\nC)D\nD)E\nE)F\nB)G\nG)H\nD)I\nE)J\nJ)K\nK)L\nK)YOU\nI)SAN";
         assert_eq!(solve(input).unwrap(), Solution::new(54, 4));
         crate::util::tests::test_full_problem(6, solve, 453028, 562);
     }

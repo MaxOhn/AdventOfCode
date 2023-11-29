@@ -2,7 +2,15 @@ use crate::{Error, Solution};
 
 use std::collections::HashSet;
 
-pub fn solve(input: String) -> Result<Solution<usize, usize>, Error> {
+pub fn run(input: &str) -> eyre::Result<aoc_rust::Solution> {
+    let solution = solve(input)?;
+
+    Ok(aoc_rust::Solution::new()
+        .part1(solution.part1)
+        .part2(solution.part2))
+}
+
+pub fn solve(input: &str) -> Result<Solution<usize, usize>, Error> {
     let area: Vec<char> = input.lines().flat_map(|line| line.chars()).collect();
     let p1 = solve_part1(area.clone());
     const STEPS: usize = 200;
