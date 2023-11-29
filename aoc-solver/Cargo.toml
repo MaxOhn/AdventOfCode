@@ -4,7 +4,7 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-aoc15_day07 = { path = "../2015/day07" }
+aoc15 = { path = "../2015" }
 aoc16_day03 = { path = "../2016/day03" }
 aoc16_day04 = { path = "../2016/day04" }
 aoc16_day05 = { path = "../2016/day05" }
