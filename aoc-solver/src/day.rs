@@ -29,14 +29,8 @@ pub struct SolvedDays(u32);
 impl SolvedDays {
     const MAX_DAY: u32 = 25;
 
-    // useful when days aren't solved in order
-    #[allow(unused)]
     pub fn new(bits: u32) -> Self {
         Self(bits)
-    }
-
-    pub fn new_up_to(day: u8) -> Self {
-        Self((1 << day) - 1)
     }
 
     pub fn last_day(self) -> Option<SolvedDay> {

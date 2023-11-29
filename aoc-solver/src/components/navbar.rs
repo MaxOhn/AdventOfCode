@@ -1,4 +1,4 @@
-use leptos::{component, view, IntoView, Memo, SignalWith};
+use leptos::{component, view, For, IntoView, Memo, SignalWith};
 use leptos_router::{use_navigate, use_router, NavigateOptions};
 use web_sys::MouseEvent;
 
@@ -24,10 +24,11 @@ pub fn Navbar<Y: Fn() -> Year + 'static>(year: Y) -> impl IntoView {
                             { year }
                         </div>
                         <div class="navbar-dropdown">
-                            <NavbarYear year=2015 path/>
-                            <NavbarYear year=2016 path/>
-                            <NavbarYear year=2022 path/>
-                            <NavbarYear year=2023 path/>
+                            <For
+                                each = crate::generated::years
+                                key = |year| *year
+                                children = move |&year| view! { <NavbarYear year path/> }
+                            />
                         </div>
                     </div>
                 </div>
