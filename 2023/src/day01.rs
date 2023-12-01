@@ -1,3 +1,5 @@
+use std::str::Chars;
+
 use aoc_rust::Solution;
 use eyre::Result;
 
@@ -11,60 +13,58 @@ pub fn run(input: &str) -> Result<Solution> {
 }
 
 fn part1(input: &str) -> u32 {
-    let mut sum = 0;
-
-    for line in input.lines() {
-        fn find_digit<I: Iterator<Item = char>>(mut iter: I) -> Option<u32> {
-            iter.find_map(|c| c.to_digit(10))
-        }
-
-        let mut iter = line.chars();
-
-        let Some(first) = find_digit(&mut iter) else {
-            continue;
-        };
-
-        let second = find_digit(iter.rev()).unwrap_or(first);
-
-        sum += first * 10 + second;
+    fn make_iter(line: &str) -> Chars<'_> {
+        line.chars()
     }
 
-    sum
+    let find_digit = |c: char| c.to_digit(10);
+
+    solve(input, make_iter, find_digit)
 }
 
 fn part2(input: &str) -> u32 {
+    fn make_iter(line: &str) -> impl DoubleEndedIterator<Item = &str> {
+        (0..line.len()).map(|i| &line[i..])
+    }
+
+    let find_digit = |s: &str| {
+        static KV_MAP: &'static [(u8, &'static str)] = &[
+            (b'0', "zero"),
+            (b'1', "one"),
+            (b'2', "two"),
+            (b'3', "three"),
+            (b'4', "four"),
+            (b'5', "five"),
+            (b'6', "six"),
+            (b'7', "seven"),
+            (b'8', "eight"),
+            (b'9', "nine"),
+        ];
+
+        KV_MAP.iter().find_map(|(digit, word)| {
+            (s.starts_with(*digit as char) || s.starts_with(word)).then_some((*digit - b'0') as u32)
+        })
+    };
+
+    solve(input, make_iter, find_digit)
+}
+
+fn solve<'i, M, I, T, F>(input: &'i str, make_iter: M, find_digit: F) -> u32
+where
+    M: Fn(&'i str) -> I,
+    I: DoubleEndedIterator<Item = T>,
+    F: Copy + Fn(T) -> Option<u32>,
+{
     let mut sum = 0;
 
-    for line in input.lines().map(str::as_bytes) {
-        fn find_digit<'a, I: Iterator<Item = &'a [u8]>>(mut iter: I) -> Option<u32> {
-            static KV_MAP: &'static [(u8, &'static [u8])] = &[
-                (b'0', b"zero"),
-                (b'1', b"one"),
-                (b'2', b"two"),
-                (b'3', b"three"),
-                (b'4', b"four"),
-                (b'5', b"five"),
-                (b'6', b"six"),
-                (b'7', b"seven"),
-                (b'8', b"eight"),
-                (b'9', b"nine"),
-            ];
+    for line in input.lines() {
+        let mut iter = make_iter(line);
 
-            iter.find_map(|slice| {
-                KV_MAP.iter().find(|(digit, word)| {
-                    slice.starts_with(std::slice::from_ref(digit)) || slice.starts_with(word)
-                })
-            })
-            .map(|(d, _)| (*d - b'0') as u32)
-        }
-
-        let mut iter = (0..line.len()).map(|i| &line[i..]);
-
-        let Some(first) = find_digit(&mut iter) else {
+        let Some(first) = iter.find_map(find_digit) else {
             continue;
         };
 
-        let second = find_digit(iter.rev()).unwrap_or(first);
+        let second = iter.rev().find_map(find_digit).unwrap_or(first);
 
         sum += first * 10 + second;
     }
