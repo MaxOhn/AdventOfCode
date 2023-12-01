@@ -14,17 +14,17 @@ fn part1(input: &str) -> u32 {
     let mut sum = 0;
 
     for line in input.lines() {
-        let mut chars = line.chars();
-
-        fn find_digit<I: Iterator<Item = char>>(iter: &mut I) -> Option<u32> {
+        fn find_digit<I: Iterator<Item = char>>(mut iter: I) -> Option<u32> {
             iter.find_map(|c| c.to_digit(10))
         }
 
-        let Some(first) = find_digit(&mut chars) else {
+        let mut iter = line.chars();
+
+        let Some(first) = find_digit(&mut iter) else {
             continue;
         };
 
-        let second = find_digit(&mut chars.rev()).unwrap_or(first);
+        let second = find_digit(iter.rev()).unwrap_or(first);
 
         sum += first * 10 + second;
     }
@@ -36,35 +36,35 @@ fn part2(input: &str) -> u32 {
     let mut sum = 0;
 
     for line in input.lines().map(str::as_bytes) {
-        fn find_digit<'a, I: Iterator<Item = &'a [u8]>>(iter: &mut I) -> Option<u32> {
-            static KV_MAP: &'static [((u8, &'static [u8]), u32)] = &[
-                ((b'0', b"zero"), 0),
-                ((b'1', b"one"), 1),
-                ((b'2', b"two"), 2),
-                ((b'3', b"three"), 3),
-                ((b'4', b"four"), 4),
-                ((b'5', b"five"), 5),
-                ((b'6', b"six"), 6),
-                ((b'7', b"seven"), 7),
-                ((b'8', b"eight"), 8),
-                ((b'9', b"nine"), 9),
+        fn find_digit<'a, I: Iterator<Item = &'a [u8]>>(mut iter: I) -> Option<u32> {
+            static KV_MAP: &'static [(u8, &'static [u8])] = &[
+                (b'0', b"zero"),
+                (b'1', b"one"),
+                (b'2', b"two"),
+                (b'3', b"three"),
+                (b'4', b"four"),
+                (b'5', b"five"),
+                (b'6', b"six"),
+                (b'7', b"seven"),
+                (b'8', b"eight"),
+                (b'9', b"nine"),
             ];
 
             iter.find_map(|slice| {
-                KV_MAP.iter().find(|((digit, word), _)| {
+                KV_MAP.iter().find(|(digit, word)| {
                     slice.starts_with(std::slice::from_ref(digit)) || slice.starts_with(word)
                 })
             })
-            .map(|(_, v)| *v)
+            .map(|(d, _)| (*d - b'0') as u32)
         }
 
-        let mut slices = (0..line.len()).map(|i| &line[i..]);
+        let mut iter = (0..line.len()).map(|i| &line[i..]);
 
-        let Some(first) = find_digit(&mut slices) else {
+        let Some(first) = find_digit(&mut iter) else {
             continue;
         };
 
-        let second = find_digit(&mut slices.rev()).unwrap_or(first);
+        let second = find_digit(iter.rev()).unwrap_or(first);
 
         sum += first * 10 + second;
     }
