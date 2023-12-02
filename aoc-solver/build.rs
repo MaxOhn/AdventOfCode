@@ -22,7 +22,7 @@ use std::path::{Path, PathBuf};
 fn main() -> IoResult<()> {
     let out_dir = env::var_os("OUT_DIR").unwrap();
     let dest_path = Path::new(&out_dir).join("years.rs");
-    let mut dest = fs::File::create(&dest_path)?;
+    let mut dest = fs::File::create(dest_path)?;
 
     let mut content = Content::new();
 
@@ -150,20 +150,18 @@ struct Content {
 
 impl Content {
     fn new() -> Self {
-        let solve_fn = format!(
-            "pub fn solve_fn(year: u16, day: u8) -> fn(&str) -> eyre::Result<aoc_rust::Solution> {{
-    match year {{\n"
-        );
+        let solve_fn =
+            "pub fn solve_fn(year: u16, day: u8) -> fn(&str) -> eyre::Result<aoc_rust::Solution> {
+    match year {\n"
+                .to_owned();
 
-        let solved_days = format!(
-            "pub fn solved_days(year: u16) -> u32 {{
-    match year {{\n"
-        );
+        let solved_days = "pub fn solved_days(year: u16) -> u32 {
+    match year {\n"
+            .to_owned();
 
-        let years = format!(
-            "pub fn years() -> &'static [u16] {{
+        let years = "pub fn years() -> &'static [u16] {
     &["
-        );
+        .to_owned();
 
         Self {
             solve_fn,
