@@ -1,4 +1,4 @@
-use std::collections::HashSet;
+use std::{collections::HashSet, ops::Index};
 
 use aoc_rust::Solution;
 use eyre::Result;
@@ -15,101 +15,75 @@ pub fn run(input: &str) -> Result<Solution> {
     Ok(Solution::new().part1(p1).part2(p2))
 }
 
-fn part1(input: &str) -> u32 {
-    let mut plan = Vec::new();
+struct Schematic<'i> {
+    width: usize,
+    height: usize,
+    input: &'i [u8],
+}
 
-    for line in input.lines() {
-        let bytes = line.bytes().collect::<Vec<_>>();
-        let mut nums = Vec::new();
-
-        let mut i = 0;
-
-        while i < bytes.len() {
-            if bytes[i].is_ascii_digit() {
-                let mut end = i + 1;
-
-                while end < bytes.len() && bytes[end].is_ascii_digit() {
-                    end += 1;
-                }
-
-                let num: u32 = line[i..end].parse().unwrap();
-
-                for _ in i..end {
-                    nums.push(Kind::Num(num));
-                }
-
-                i = end;
-            } else if bytes[i] == b'.' {
-                nums.push(Kind::Dot);
-                i += 1;
-            } else {
-                nums.push(Kind::Symbol(Symbol::Other));
-                i += 1;
-            }
+impl<'i> Schematic<'i> {
+    fn new(input: &'i str) -> Self {
+        Self {
+            width: input.find('\n').unwrap_or(input.len()),
+            height: input.lines().count(),
+            input: input.as_bytes(),
         }
-
-        plan.push(nums);
     }
+}
+
+impl Index<usize> for Schematic<'_> {
+    type Output = [u8];
+
+    fn index(&self, index: usize) -> &Self::Output {
+        let y = index * (self.width + 1);
+
+        &self.input[y..][..self.width]
+    }
+}
+
+fn part1(input: &str) -> u32 {
+    let schematic = Schematic::new(input);
 
     let mut sum = 0;
 
-    let mut x = 0;
+    for (i, line) in input.lines().enumerate() {
+        let bytes = line.as_bytes();
 
-    while x < plan.len() {
-        // println!("{:?}", plan[x]);
+        let mut start = 0;
 
-        let mut y = 0;
-
-        while y < plan[x].len() {
-            let Kind::Num(curr) = plan[x][y] else {
-                y += 1;
+        while start < line.len() - 1 {
+            if !bytes[start].is_ascii_digit() {
+                start += 1;
                 continue;
-            };
+            }
 
-            let mut end = y + 1;
+            let mut end = start + 1;
 
-            while end < plan[x].len() && plan[x][end] == Kind::Num(curr) {
+            while end < line.len() && bytes[end].is_ascii_digit() {
                 end += 1;
             }
 
-            // println!("{curr}: {y}..{end}");
+            let num: u32 = line[start..end].parse().unwrap();
 
-            'done: for yp in y..end {
-                // println!("{curr} >> {y}");
+            let x_range_start = if start == 0 { start } else { start - 1 };
+            let x_range_end = if end == line.len() { end - 1 } else { end };
 
-                for i in [-1, 0, 1] {
-                    for j in [-1, 0, 1] {
-                        if i == j && i == 0 {
-                            continue;
-                        }
+            let y_range_start = if i == 0 { i } else { i - 1 };
+            let y_range_end = if i == schematic.height - 1 { i } else { i + 1 };
 
-                        let nx = x as i32 + i;
-                        let ny = yp as i32 + j;
+            'neighbors: for ny in y_range_start..=y_range_end {
+                for nx in x_range_start..=x_range_end {
+                    let n = schematic[ny][nx];
 
-                        let Some(n) = (nx >= 0 && ny >= 0)
-                            .then(|| plan.get(nx as usize).and_then(|line| line.get(ny as usize)))
-                            .flatten()
-                            .copied()
-                        else {
-                            continue;
-                        };
-
-                        // println!("{curr} => {nx},{ny}");
-
-                        if matches!(n, Kind::Symbol(_)) {
-                            // println!("{curr} because ({x},{yp})-({nx},{ny})");
-                            sum += curr;
-
-                            break 'done;
-                        }
+                    if !n.is_ascii_digit() && n != b'.' {
+                        sum += num;
+                        break 'neighbors;
                     }
                 }
             }
 
-            y = end;
+            start = end + 1;
         }
-
-        x += 1;
     }
 
     sum
