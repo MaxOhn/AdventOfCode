@@ -7,3 +7,5 @@ edition = "2021"
 aoc-rust = { path = "../aoc-rust" }
 eyre = "0.6.9"
 hashbrown = "0.11"
+itoa = "1.0.9"
+md5 = "0.7.0"
