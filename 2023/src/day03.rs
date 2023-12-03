@@ -1,4 +1,4 @@
-use std::{collections::HashSet, ops::Index};
+use std::ops::Index;
 
 use aoc_rust::Solution;
 use eyre::Result;
@@ -8,9 +8,6 @@ pub fn run(input: &str) -> Result<Solution> {
 
     let p1 = part1(input);
     let p2 = part2(input);
-
-    assert_eq!(p1, 536576);
-    assert_eq!(p2, 75741499);
 
     Ok(Solution::new().part1(p1).part2(p2))
 }
@@ -46,29 +43,28 @@ fn part1(input: &str) -> u32 {
 
     let mut sum = 0;
 
-    for (i, line) in input.lines().enumerate() {
-        let bytes = line.as_bytes();
-
+    for (i, line) in input.lines().map(str::as_bytes).enumerate() {
         let mut start = 0;
 
         while start < line.len() - 1 {
-            if !bytes[start].is_ascii_digit() {
+            if !line[start].is_ascii_digit() {
                 start += 1;
+
                 continue;
             }
 
             let mut end = start + 1;
 
-            while end < line.len() && bytes[end].is_ascii_digit() {
+            while end < line.len() && line[end].is_ascii_digit() {
                 end += 1;
             }
 
-            let num: u32 = line[start..end].parse().unwrap();
+            let num = parse_num(&line[start..end]);
 
-            let x_range_start = if start == 0 { start } else { start - 1 };
+            let x_range_start = start.saturating_sub(1);
             let x_range_end = if end == line.len() { end - 1 } else { end };
 
-            let y_range_start = if i == 0 { i } else { i - 1 };
+            let y_range_start = i.saturating_sub(1);
             let y_range_end = if i == schematic.height - 1 { i } else { i + 1 };
 
             'neighbors: for ny in y_range_start..=y_range_end {
@@ -77,6 +73,7 @@ fn part1(input: &str) -> u32 {
 
                     if !n.is_ascii_digit() && n != b'.' {
                         sum += num;
+
                         break 'neighbors;
                     }
                 }
@@ -90,97 +87,73 @@ fn part1(input: &str) -> u32 {
 }
 
 fn part2(input: &str) -> u32 {
-    let mut plan = Vec::new();
-
-    for line in input.lines() {
-        let bytes = line.bytes().collect::<Vec<_>>();
-        let mut nums = Vec::new();
-
-        let mut i = 0;
-
-        while i < bytes.len() {
-            if bytes[i].is_ascii_digit() {
-                let mut end = i + 1;
-
-                while end < bytes.len() && bytes[end].is_ascii_digit() {
-                    end += 1;
-                }
-
-                let num: u32 = line[i..end].parse().unwrap();
-
-                for _ in i..end {
-                    nums.push(Kind::Num(num));
-                }
-
-                i = end;
-            } else if bytes[i] == b'.' {
-                nums.push(Kind::Dot);
-                i += 1;
-            } else if bytes[i] == b'*' {
-                nums.push(Kind::Symbol(Symbol::Gear));
-                i += 1;
-            } else {
-                nums.push(Kind::Symbol(Symbol::Other));
-                i += 1;
-            }
-        }
-
-        plan.push(nums);
-    }
+    let schematic = Schematic::new(input);
 
     let mut sum = 0;
 
-    for x in 0..plan.len() {
-        for y in 0..plan[x].len() {
-            let Kind::Symbol(Symbol::Gear) = plan[x][y] else {
-                continue;
-            };
-
-            let mut seen = HashSet::new();
-
-            for i in [-1, 0, 1] {
-                for j in [-1, 0, 1] {
-                    if i == j && i == 0 {
-                        continue;
-                    }
-
-                    let nx = x as i32 + i;
-                    let ny = y as i32 + j;
-
-                    let Some(Kind::Num(n)) = (nx >= 0 && ny >= 0)
-                        .then(|| plan.get(nx as usize).and_then(|line| line.get(ny as usize)))
-                        .flatten()
-                        .copied()
-                    else {
-                        continue;
-                    };
-
-                    seen.insert(n);
-                }
+    for (y, line) in input.lines().enumerate() {
+        for (x, byte) in line.bytes().enumerate() {
+            if byte == b'*' {
+                sum += handle_gear(&schematic, x, y);
             }
-
-            let mut seen = seen.into_iter();
-
-            let (Some(a), Some(b), None) = (seen.next(), seen.next(), seen.next()) else {
-                continue;
-            };
-
-            sum += a * b;
         }
     }
 
     sum
 }
 
-#[derive(Copy, Clone, Debug, PartialEq, Eq)]
-enum Kind {
-    Num(u32),
-    Dot,
-    Symbol(Symbol),
+fn handle_gear(schematic: &Schematic<'_>, x: usize, y: usize) -> u32 {
+    let mut first = None;
+    let mut second = None;
+
+    let x_range_start = x.saturating_sub(1);
+    let x_range_end = if x == schematic.width - 2 { x } else { x + 1 };
+
+    let y_range_start = y.saturating_sub(1);
+    let y_range_end = if y == schematic.height - 1 { y } else { y + 1 };
+
+    for ny in y_range_start..=y_range_end {
+        let mut nx = x_range_start;
+
+        while nx <= x_range_end {
+            let bytes = &schematic[ny];
+            let n = bytes[nx];
+
+            if !n.is_ascii_digit() {
+                nx += 1;
+
+                continue;
+            }
+
+            let mut start = nx;
+            let end = &mut nx;
+            *end += 1;
+
+            while start > 0 && bytes[start - 1].is_ascii_digit() {
+                start -= 1;
+            }
+
+            while *end < bytes.len() && bytes[*end].is_ascii_digit() {
+                *end += 1;
+            }
+
+            let num = parse_num(&bytes[start..*end]);
+
+            if first.is_none() {
+                first = Some(num);
+            } else if second.is_none() {
+                second = Some(num);
+            } else {
+                return 0;
+            }
+        }
+    }
+
+    first.zip(second).map_or(0, |(a, b)| a * b)
 }
 
-#[derive(Copy, Clone, Debug, PartialEq, Eq)]
-enum Symbol {
-    Gear,
-    Other,
+fn parse_num(slice: &[u8]) -> u32 {
+    slice
+        .iter()
+        .fold(0, |n, &byte| n * 10 + (byte & 0xF) as u32)
 }
