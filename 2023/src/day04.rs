@@ -1,52 +1,45 @@
 use aoc_rust::Solution;
-use eyre::Result;
+use eyre::{ContextCompat, Result, WrapErr};
 
 pub fn run(input: &str) -> Result<Solution> {
     let input = input.trim();
 
-    let p1 = part1(input);
+    let p1 = part1(input)?;
     let p2 = part2(input);
 
     Ok(Solution::new().part1(p1).part2(p2))
 }
 
-fn part1(input: &str) -> u32 {
+fn part1(input: &str) -> Result<u32> {
     let mut sum = 0;
 
     for line in input.lines() {
-        let line = line.strip_prefix("Card").unwrap();
-        let (id, suffix) = line.split_once(":").unwrap();
-        let _id = id.trim().parse::<u32>().unwrap();
-        let (winning, mine) = suffix.split_once(" | ").unwrap();
+        let line = line.trim_start_matches("Card").trim_start();
+        let (_, suffix) = line.split_once(":").wrap_err("missing colon")?;
+        let (winning, mine) = suffix.split_once(" | ").wrap_err("missing split")?;
 
         let winning = winning
             .split(' ')
             .filter(|n| !n.is_empty())
-            .map(|n| n.trim().parse::<u32>().unwrap())
-            .collect::<Vec<_>>();
+            .map(str::parse)
+            .collect::<Result<Vec<u8>, _>>()
+            .wrap_err("invalid number")?;
 
         let mine = mine
             .split(' ')
             .filter(|n| !n.is_empty())
-            .map(|n| n.trim().parse::<u32>().unwrap())
-            .collect::<Vec<_>>();
+            .map(str::parse::<u8>);
 
-        let mut points = 0;
+        let mut matches = 0;
 
         for n in mine {
-            if winning.contains(&n) {
-                if points == 0 {
-                    points = 1;
-                } else {
-                    points *= 2;
-                }
-            }
+            matches += winning.contains(&n?) as u8;
         }
 
-        sum += points;
+        sum += matches.checked_sub(1).map_or(0, |n| 1 << n);
     }
 
-    sum
+    Ok(sum)
 }
 
 fn part2(input: &str) -> usize {
