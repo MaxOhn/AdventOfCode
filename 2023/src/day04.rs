@@ -41,7 +41,7 @@ fn part2(input: &str) -> Result<usize> {
 }
 
 fn parse_matches(line: &str) -> Result<u8> {
-    let (_, suffix) = line.split_once(":").wrap_err("missing colon")?;
+    let (_, suffix) = line.split_once(':').wrap_err("missing colon")?;
     let (winning, owned) = suffix.split_once(" | ").wrap_err("missing split")?;
 
     let winning = winning
