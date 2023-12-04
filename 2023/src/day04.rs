@@ -1,3 +1,5 @@
+use std::collections::VecDeque;
+
 use aoc_rust::Solution;
 use eyre::{ContextCompat, Result, WrapErr};
 
@@ -5,7 +7,7 @@ pub fn run(input: &str) -> Result<Solution> {
     let input = input.trim();
 
     let p1 = part1(input)?;
-    let p2 = part2(input);
+    let p2 = part2(input)?;
 
     Ok(Solution::new().part1(p1).part2(p2))
 }
@@ -14,25 +16,24 @@ fn part1(input: &str) -> Result<u32> {
     let mut sum = 0;
 
     for line in input.lines() {
-        let line = line.trim_start_matches("Card").trim_start();
         let (_, suffix) = line.split_once(":").wrap_err("missing colon")?;
-        let (winning, mine) = suffix.split_once(" | ").wrap_err("missing split")?;
+        let (winning, owned) = suffix.split_once(" | ").wrap_err("missing split")?;
 
         let winning = winning
             .split(' ')
             .filter(|n| !n.is_empty())
             .map(str::parse)
             .collect::<Result<Vec<u8>, _>>()
-            .wrap_err("invalid number")?;
+            .wrap_err("invalid winning numbers")?;
 
-        let mine = mine
+        let owned = owned
             .split(' ')
             .filter(|n| !n.is_empty())
             .map(str::parse::<u8>);
 
         let mut matches = 0;
 
-        for n in mine {
+        for n in owned {
             matches += winning.contains(&n?) as u8;
         }
 
@@ -42,53 +43,63 @@ fn part1(input: &str) -> Result<u32> {
     Ok(sum)
 }
 
-fn part2(input: &str) -> usize {
-    let mut cards = Vec::new();
+fn part2(input: &str) -> Result<usize> {
+    let original = input
+        .lines()
+        .map(Card::parse)
+        .collect::<Result<Vec<_>>>()
+        .wrap_err("invalid cards")?;
 
-    for line in input.lines() {
-        let line = line.strip_prefix("Card").unwrap();
-        let (id, suffix) = line.split_once(":").unwrap();
-        let id = id.trim().parse::<u32>().unwrap();
-        let (winning, mine) = suffix.split_once(" | ").unwrap();
+    let mut cards_left = original.iter().map(|(id, _)| *id).collect::<VecDeque<_>>();
+
+    let mut total = cards_left.len();
+
+    while let Some(Id(id)) = cards_left.pop_front() {
+        let (idx, (_, Matches(matches))) = original
+            .iter()
+            .enumerate()
+            .find(|(_, (Id(card), _))| *card == id)
+            .unwrap();
+
+        for (id, _) in original[idx + 1..][..*matches as usize].iter() {
+            cards_left.push_back(*id);
+            total += 1;
+        }
+    }
+
+    Ok(total)
+}
+
+struct Card;
+
+#[derive(Copy, Clone)]
+struct Id(u16);
+
+struct Matches(u8);
+
+impl Card {
+    fn parse(line: &str) -> Result<(Id, Matches)> {
+        let line = line.trim_start_matches("Card").trim_start();
+        let (id, suffix) = line.split_once(":").wrap_err("missing colon")?;
+        let (winning, owned) = suffix.split_once(" | ").wrap_err("missing split")?;
+
+        let id = id.parse().map_err(|_| eyre!("invalid id"))?;
 
         let winning = winning
             .split(' ')
             .filter(|n| !n.is_empty())
-            .map(|n| n.trim().parse::<u32>().unwrap())
-            .collect::<Vec<_>>();
+            .map(str::parse)
+            .collect::<Result<Vec<u8>, _>>()
+            .wrap_err("invalid winning numbers")?;
 
-        let mine = mine
-            .split(' ')
-            .filter(|n| !n.is_empty())
-            .map(|n| n.trim().parse::<u32>().unwrap())
-            .collect::<Vec<_>>();
-
-        cards.push((id, winning, mine));
-    }
-
-    let mut all = cards.clone();
-
-    let mut i = 0;
-
-    while i < all.len() {
-        let (id, winning, mine) = &all[i];
+        let owned = owned.split(' ').filter(|n| !n.is_empty()).map(str::parse);
 
         let mut matches = 0;
 
-        for n in mine {
-            if winning.contains(n) {
-                matches += 1;
-            }
+        for n in owned {
+            matches += winning.contains(&n?) as u8;
         }
 
-        let idx = cards.iter().position(|(i, ..)| i == id).unwrap();
-
-        for card in cards[idx + 1..][..matches].iter() {
-            all.push(card.to_owned());
-        }
-
-        i += 1;
+        Ok((Id(id), Matches(matches)))
     }
-
-    all.len()
 }
