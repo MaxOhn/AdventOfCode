@@ -14,6 +14,27 @@ pub fn run(input: &str) -> Result<Solution> {
     Ok(Solution::new().part1(p1).part2(p2))
 }
 
+fn parse_input(input: &str) -> Result<(Vec<u64>, Vec<Map>)> {
+    let mut split = input.split("\n\n");
+
+    let seeds = split
+        .next()
+        .wrap_err("missing seeds line")?
+        .strip_prefix("seeds: ")
+        .wrap_err("invalid seeds prefix")?
+        .split(' ')
+        .map(str::parse)
+        .collect::<Result<_, _>>()
+        .wrap_err("invalid seed value")?;
+
+    let maps = split
+        .map(str::parse)
+        .collect::<Result<Vec<_>, _>>()
+        .wrap_err("invalid map")?;
+
+    Ok((seeds, maps))
+}
+
 fn part1(seeds: &[u64], maps: &[Map]) -> u64 {
     seeds
         .iter()
@@ -42,51 +63,6 @@ fn part2(seeds: &[u64], maps: &[Map]) -> u64 {
         })
         .min()
         .unwrap_or(u64::MAX)
-}
-
-fn parse_input(input: &str) -> Result<(Vec<u64>, Vec<Map>)> {
-    let mut lines = input.lines();
-
-    let seeds = lines
-        .next()
-        .wrap_err("missing seeds line")?
-        .strip_prefix("seeds: ")
-        .wrap_err("invalid seeds prefix")?
-        .split(' ')
-        .map(str::parse)
-        .collect::<Result<_, _>>()
-        .wrap_err("invalid seed value")?;
-
-    let mut curr = "seed";
-
-    let mut maps = Vec::new();
-
-    lines.next();
-
-    while let Some(line) = lines.next() {
-        let mut split = line
-            .strip_suffix(" map:")
-            .wrap_err("invalid map header")?
-            .split('-');
-
-        let from = split.next().wrap_err("missing `from` part")?;
-        ensure!(curr == from, "maps are not in order");
-        curr = split.nth(1).wrap_err("missing `to` part")?;
-
-        let mut entries = Vec::new();
-
-        while let Some(line) = lines.next() {
-            if line.is_empty() {
-                break;
-            }
-
-            entries.push(line.parse()?);
-        }
-
-        maps.push(Map { entries });
-    }
-
-    Ok((seeds, maps))
 }
 
 #[derive(Default)]
@@ -144,6 +120,20 @@ impl Map {
     }
 }
 
+impl FromStr for Map {
+    type Err = Report;
+
+    fn from_str(section: &str) -> Result<Self, Self::Err> {
+        section
+            .lines()
+            .skip(1)
+            .map(str::parse)
+            .collect::<Result<Vec<_>, _>>()
+            .map(|entries| Self { entries })
+            .wrap_err("invalid entry")
+    }
+}
+
 struct Entry {
     dst: u64,
     src: u64,
@@ -160,7 +150,7 @@ impl FromStr for Entry {
     type Err = Report;
 
     fn from_str(line: &str) -> Result<Self, Self::Err> {
-        let mut split = line.split(' ').map(str::parse).map(Result::ok).flatten();
+        let mut split = line.split(' ').map(str::parse).flat_map(Result::ok);
 
         let ((dst, src), len) = split
             .next()
