@@ -1,8 +1,7 @@
-use std::str::FromStr;
+use std::{cmp, mem, ops::Range, str::FromStr};
 
 use aoc_rust::Solution;
 use eyre::{ContextCompat, Report, Result, WrapErr};
-use rayon::{iter::ParallelIterator, slice::ParallelSlice};
 
 pub fn run(input: &str) -> Result<Solution> {
     let input = input.trim();
@@ -18,25 +17,31 @@ pub fn run(input: &str) -> Result<Solution> {
 fn part1(seeds: &[u64], maps: &[Map]) -> u64 {
     seeds
         .iter()
-        .map(|seed| seed_to_location(*seed, maps))
+        .map(|seed| maps.iter().fold(*seed, |curr, map| map.apply_one(curr)))
         .min()
         .unwrap_or(u64::MAX)
 }
 
 fn part2(seeds: &[u64], maps: &[Map]) -> u64 {
+    let mut bufs = Buffers::default();
+
     seeds
-        .par_chunks_exact(2)
-        .flat_map(|chunk| chunk[0]..chunk[0] + chunk[1])
-        .map(|seed| seed_to_location(seed, maps))
+        .chunks_exact(2)
+        .filter_map(|chunk| {
+            let start = chunk[0];
+            let end = start + chunk[1];
+
+            #[allow(clippy::single_range_in_vec_init)]
+            let ranges = vec![start..end];
+
+            maps.iter()
+                .fold(ranges, |ranges, map| map.apply_range(ranges, &mut bufs))
+                .iter()
+                .map(|range| range.start)
+                .min()
+        })
         .min()
         .unwrap_or(u64::MAX)
-}
-
-fn seed_to_location(seed: u64, maps: &[Map]) -> u64 {
-    maps.iter().fold(seed, |curr, map| {
-        map.find(curr)
-            .map_or(curr, |entry| entry.dst + curr - entry.src)
-    })
 }
 
 fn parse_input(input: &str) -> Result<(Vec<u64>, Vec<Map>)> {
@@ -84,13 +89,58 @@ fn parse_input(input: &str) -> Result<(Vec<u64>, Vec<Map>)> {
     Ok((seeds, maps))
 }
 
+#[derive(Default)]
+struct Buffers {
+    new_ranges: Vec<Range<u64>>,
+    final_ranges: Vec<Range<u64>>,
+}
+
 struct Map {
     entries: Vec<Entry>,
 }
 
 impl Map {
-    fn find(&self, value: u64) -> Option<&Entry> {
-        self.entries.iter().find(|entry| entry.contains(value))
+    fn apply_one(&self, value: u64) -> u64 {
+        self.entries
+            .iter()
+            .find(|entry| entry.contains(value))
+            .map_or(value, |entry| entry.dst + value - entry.src)
+    }
+
+    fn apply_range(&self, mut ranges: Vec<Range<u64>>, bufs: &mut Buffers) -> Vec<Range<u64>> {
+        let Buffers {
+            new_ranges,
+            final_ranges,
+        } = bufs;
+
+        for &Entry { dst, src, len } in self.entries.iter() {
+            let src_end = src + len;
+
+            for range in ranges.drain(..) {
+                let before = range.start..cmp::min(range.end, src);
+                let inter = cmp::max(range.start, src)..cmp::min(src_end, range.end);
+                let after = cmp::max(src_end, range.start)..range.end;
+
+                if !before.is_empty() {
+                    new_ranges.push(before);
+                }
+
+                if !inter.is_empty() {
+                    let mapped = inter.start - src + dst..inter.end - src + dst;
+                    final_ranges.push(mapped);
+                }
+
+                if !after.is_empty() {
+                    new_ranges.push(after);
+                }
+            }
+
+            mem::swap(&mut ranges, new_ranges);
+        }
+
+        ranges.append(final_ranges);
+
+        ranges
     }
 }
 
