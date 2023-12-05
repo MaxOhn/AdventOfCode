@@ -49,11 +49,9 @@ fn part2(seeds: &[u64], maps: &[Map]) -> u64 {
     seeds
         .chunks_exact(2)
         .filter_map(|chunk| {
-            let start = chunk[0];
-            let end = start + chunk[1];
-
+            // false positive, a vec of a single range really is what's required
             #[allow(clippy::single_range_in_vec_init)]
-            let ranges = vec![start..end];
+            let ranges = vec![chunk[0]..chunk[0] + chunk[1]];
 
             maps.iter()
                 .fold(ranges, |ranges, map| map.apply_range(ranges, &mut bufs))
@@ -79,8 +77,8 @@ impl Map {
     fn apply_one(&self, value: u64) -> u64 {
         self.entries
             .iter()
-            .find(|entry| entry.contains(value))
-            .map_or(value, |entry| entry.dst + value - entry.src)
+            .find_map(|entry| entry.try_map(value))
+            .unwrap_or(value)
     }
 
     fn apply_range(&self, mut ranges: Vec<Range<u64>>, bufs: &mut Buffers) -> Vec<Range<u64>> {
@@ -89,21 +87,20 @@ impl Map {
             final_ranges,
         } = bufs;
 
-        for &Entry { dst, src, len } in self.entries.iter() {
-            let src_end = src + len;
-
+        for Entry { dst, src } in self.entries.iter() {
             for range in ranges.drain(..) {
-                let before = range.start..cmp::min(range.end, src);
-                let inter = cmp::max(range.start, src)..cmp::min(src_end, range.end);
-                let after = cmp::max(src_end, range.start)..range.end;
+                let before = range.start..cmp::min(range.end, src.start);
+                let inter = cmp::max(range.start, src.start)..cmp::min(src.end, range.end);
+                let after = cmp::max(src.end, range.start)..range.end;
 
                 if !before.is_empty() {
                     new_ranges.push(before);
                 }
 
                 if !inter.is_empty() {
-                    let mapped = inter.start - src + dst..inter.end - src + dst;
-                    final_ranges.push(mapped);
+                    let from = inter.start - src.start + dst;
+                    let to = inter.end - src.start + dst;
+                    final_ranges.push(from..to);
                 }
 
                 if !after.is_empty() {
@@ -136,13 +133,16 @@ impl FromStr for Map {
 
 struct Entry {
     dst: u64,
-    src: u64,
-    len: u64,
+    src: Range<u64>,
 }
 
 impl Entry {
-    fn contains(&self, value: u64) -> bool {
-        self.src <= value && self.src + self.len > value
+    fn try_map(&self, value: u64) -> Option<u64> {
+        // the expression can underflow if evaluated eagerly
+        #[allow(clippy::unnecessary_lazy_evaluations)]
+        self.src
+            .contains(&value)
+            .then(|| self.dst + value - self.src.start)
     }
 }
 
@@ -152,12 +152,14 @@ impl FromStr for Entry {
     fn from_str(line: &str) -> Result<Self, Self::Err> {
         let mut split = line.split(' ').map(str::parse).flat_map(Result::ok);
 
-        let ((dst, src), len) = split
+        split
             .next()
             .zip(split.next())
             .zip(split.next())
-            .wrap_err("invalid map entry")?;
-
-        Ok(Self { dst, src, len })
+            .map(|((dst, src), len)| Self {
+                dst,
+                src: src..src + len,
+            })
+            .wrap_err("invalid entry value")
     }
 }
