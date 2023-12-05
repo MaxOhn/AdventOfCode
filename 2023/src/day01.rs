@@ -28,7 +28,7 @@ fn part2(input: &str) -> u32 {
     }
 
     let find_digit = |s: &str| {
-        static KV_MAP: &'static [(u8, &'static str)] = &[
+        static KV_MAP: &[(u8, &str)] = &[
             (b'0', "zero"),
             (b'1', "one"),
             (b'2', "two"),
