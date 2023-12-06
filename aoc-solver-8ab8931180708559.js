@@ -984,7 +984,7 @@ async function __wbg_init(input) {
     if (wasm !== undefined) return wasm;
 
     if (typeof input === 'undefined') {
-        input = new URL('aoc-solver-7e20a246cf24e3e2_bg.wasm', import.meta.url);
+        input = new URL('aoc-solver-8ab8931180708559_bg.wasm', import.meta.url);
     }
     const imports = __wbg_get_imports();
 
