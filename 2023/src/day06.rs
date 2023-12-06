@@ -12,42 +12,30 @@ pub fn run(input: &str) -> Result<Solution> {
     Ok(Solution::new().part1(p1).part2(p2))
 }
 
-fn part1(input: &str) -> Result<u32> {
-    let (time, dist) = input.split_once('\n').wrap_err("invalid input lines")?;
-
+fn part1(input: &str) -> Result<u64> {
     fn parse_line<'l>(
         line: &'l str,
         prefix: &str,
-    ) -> impl Iterator<Item = Result<u32, ParseIntError>> + 'l {
+    ) -> impl Iterator<Item = Result<u64, ParseIntError>> + 'l {
         line.trim_start_matches(prefix)
             .trim_start()
             .split(' ')
             .filter(|n| !n.is_empty())
-            .map(str::parse::<u32>)
+            .map(str::parse)
     }
 
+    let (time, dist) = input.split_once('\n').wrap_err("invalid input lines")?;
     let times = parse_line(time, "Time:");
     let dists = parse_line(dist, "Distance:");
 
     times
         .zip(dists)
-        .map(|(time, dist)| {
-            let time = time?;
-            let dist = dist?;
-
-            let count = (1..(time + 1) / 2)
-                .find_map(|i| (i * (time - i) > dist).then_some(time - 2 * i + 1))
-                .unwrap_or(0);
-
-            Ok(count)
-        })
+        .map(|(time, dist)| Ok(count(time?, dist?)))
         .try_fold(1, |prod, n| Ok::<_, ParseIntError>(prod * n?))
         .wrap_err("invalid integer")
 }
 
 fn part2(input: &str) -> Result<u64> {
-    let (time, dist) = input.split_once('\n').wrap_err("invalid input lines")?;
-
     fn parse_line<'l>(line: &'l str, prefix: &str) -> Result<u64> {
         line.trim_start_matches(prefix)
             .trim_start()
@@ -60,12 +48,30 @@ fn part2(input: &str) -> Result<u64> {
             .try_fold(0, |n, byte| Ok::<_, Report>(n * 10 + (byte? & 0xF) as u64))
     }
 
+    let (time, dist) = input.split_once('\n').wrap_err("invalid input lines")?;
     let time = parse_line(time, "Time:").wrap_err("invalid time")?;
     let dist = parse_line(dist, "Distance:").wrap_err("invalid dist")?;
 
-    let count = (1..(time + 1) / 2)
-        .find_map(|i| (i * (time - i) > dist).then_some(time - 2 * i + 1))
-        .unwrap_or(0);
+    Ok(count(time, dist))
+}
 
-    Ok(count)
+fn count(time: u64, dist: u64) -> u64 {
+    let mut lo = 0;
+    let mut hi = time / 2;
+
+    if hi * (time - hi) < dist {
+        return 0;
+    }
+
+    while lo + 1 < hi {
+        let mid = (lo + hi) / 2;
+
+        if mid * (time - mid) >= dist {
+            hi = mid;
+        } else {
+            lo = mid;
+        }
+    }
+
+    (time + 1) / 2 + time / 2 + 1 - 2 * hi
 }
