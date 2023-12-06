@@ -36,14 +36,14 @@ fn part1(input: &str) -> Result<u64> {
 }
 
 fn part2(input: &str) -> Result<u64> {
-    fn parse_line<'l>(line: &'l str, prefix: &str) -> Result<u64> {
+    fn parse_line(line: &str, prefix: &str) -> Result<u64> {
         line.trim_start_matches(prefix)
             .trim_start()
             .bytes()
             .filter_map(|byte| match byte {
                 b' ' => None,
                 b'0'..=b'9' => Some(Ok(byte)),
-                _ => Some(Err(eyre::eyre!("invalid digit"))),
+                _ => Some(Err(eyre::eyre!("invalid digit byte `{byte}`"))),
             })
             .try_fold(0, |n, byte| Ok::<_, Report>(n * 10 + (byte? & 0xF) as u64))
     }
@@ -73,5 +73,5 @@ fn count(time: u64, dist: u64) -> u64 {
         }
     }
 
-    (time + 1) / 2 + time / 2 + 1 - 2 * hi
+    time + 1 - 2 * hi
 }
