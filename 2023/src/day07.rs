@@ -1,4 +1,4 @@
-use std::{cmp::Ordering, marker::PhantomData, str::FromStr};
+use std::{marker::PhantomData, str::FromStr};
 
 use aoc_rust::Solution;
 use eyre::{ContextCompat, Report, Result, WrapErr};
@@ -22,7 +22,7 @@ fn part2(input: &str) -> Result<u32> {
 
 fn solve<Part>(input: &str) -> Result<u32>
 where
-    Hand<Part>: FromStr<Err = Report> + Ord,
+    Hand<Part>: FromStr<Err = Report>,
 {
     let mut hands = input
         .lines()
@@ -30,7 +30,7 @@ where
         .collect::<Result<Vec<Hand<Part>>>>()
         .wrap_err("invalid hand")?;
 
-    hands.sort_unstable();
+    hands.sort_unstable_by_key(|hand| hand.value);
 
     let winnings = hands
         .into_iter()
@@ -40,11 +40,11 @@ where
     Ok(winnings)
 }
 
-#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+#[derive(Copy, Clone)]
 struct Hand<Part> {
-    combo: Combo,
-    cards: [Card<Part>; 5],
+    value: u32,
     bid: u32,
+    _phantom: PhantomData<Part>,
 }
 
 trait HandExt<Part> {
@@ -131,60 +131,19 @@ where
 
         let combo = Self::combo(cards);
 
-        Ok(Self { combo, cards, bid })
-    }
-}
+        let value = cards
+            .into_iter()
+            .fold(combo as u32, |value, card| (value << 4) | card.0 as u32);
 
-impl Ord for Hand<Part1> {
-    fn cmp(&self, other: &Self) -> Ordering {
-        self.combo.cmp(&other.combo).then_with(|| {
-            for (b, a) in other.cards.iter().zip(self.cards) {
-                match a.cmp(b) {
-                    Ordering::Equal => {}
-                    other => return other,
-                }
-            }
-
-            Ordering::Equal
+        Ok(Self {
+            value,
+            bid,
+            _phantom: PhantomData,
         })
     }
 }
 
-impl PartialOrd for Hand<Part1> {
-    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-        Some(self.cmp(other))
-    }
-}
-
-impl Ord for Hand<Part2> {
-    fn cmp(&self, other: &Self) -> Ordering {
-        self.combo.cmp(&other.combo).then_with(|| {
-            for (b, a) in other.cards.iter().zip(self.cards) {
-                match a.cmp(b) {
-                    Ordering::Equal => {}
-                    other => return other,
-                }
-            }
-
-            Ordering::Equal
-        })
-    }
-}
-
-impl PartialOrd for Hand<Part2> {
-    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-        Some(self.cmp(other))
-    }
-}
-
-#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord)]
 struct Card<Part>(u8, PhantomData<Part>);
-
-impl<Part> std::fmt::Debug for Card<Part> {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        std::fmt::Debug::fmt(&self.0, f)
-    }
-}
 
 impl<Part> Card<Part> {
     fn new(card: u8) -> Self {
@@ -207,6 +166,14 @@ impl TryFrom<u8> for Card<Part1> {
         };
 
         Ok(Self::new(card))
+    }
+}
+
+impl<Part> Copy for Card<Part> {}
+
+impl<Part> Clone for Card<Part> {
+    fn clone(&self) -> Self {
+        *self
     }
 }
 
@@ -234,7 +201,6 @@ impl TryFrom<u8> for Card<Part2> {
     }
 }
 
-#[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
 enum Combo {
     HighCard,
     OnePair,
@@ -245,8 +211,6 @@ enum Combo {
     FiveOfAKind,
 }
 
-#[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
 struct Part1;
 
-#[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
 struct Part2;
