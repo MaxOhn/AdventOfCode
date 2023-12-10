@@ -19,74 +19,56 @@ fn part1(field: &Field) -> usize {
 fn part2(field: &Field) -> usize {
     let mut enclosed = 0;
 
-    for y in 0..field.height() {
-        'next: for x in 0..field.width() {
+    for x in 0..field.width() {
+        for y in 0..field.height() {
             let pos = Pos::new(x, y);
 
-            if field.path().contains(&pos) {
-                continue;
+            if !field.path().contains(&pos) {
+                enclosed += path_crossings(pos, Direction::North, field) as usize % 2;
             }
-
-            for dir in [
-                Direction::North,
-                Direction::West,
-                Direction::South,
-                Direction::East,
-            ] {
-                let offset = dir.offset();
-                let mut curr = pos;
-
-                let mut counts = [0_i8; 8];
-
-                loop {
-                    curr += offset;
-
-                    if !field.contains(curr) {
-                        break;
-                    }
-
-                    if field.path().contains(&curr) {
-                        counts[field[curr] as usize] += 1;
-                    }
-                }
-
-                let path_count = match dir {
-                    Direction::North | Direction::South => {
-                        let horizontal = counts[Cell::Horizontal as usize];
-                        let left =
-                            counts[Cell::NorthWest as usize] + counts[Cell::SouthWest as usize];
-
-                        horizontal + left
-                    }
-                    Direction::West | Direction::East => {
-                        let vertical = counts[Cell::Vertical as usize];
-                        let up =
-                            counts[Cell::NorthWest as usize] + counts[Cell::NorthEast as usize];
-
-                        vertical + up
-                    }
-                };
-
-                if path_count % 2 == 0 {
-                    continue 'next;
-                }
-            }
-
-            enclosed += 1;
         }
     }
 
     enclosed
 }
 
+fn path_crossings(pos: Pos, dir: Direction, field: &Field) -> u8 {
+    let offset = dir.offset();
+    let mut curr = pos + offset;
+    let mut counts = [0_u8; 8];
+
+    while field.contains(curr) {
+        if field.path().contains(&curr) {
+            counts[field[curr] as usize] += 1;
+        }
+
+        curr += offset;
+    }
+
+    match dir {
+        Direction::North | Direction::South => {
+            let horizontal = counts[Cell::Horizontal as usize];
+            let left = counts[Cell::NorthWest as usize] + counts[Cell::SouthWest as usize];
+
+            horizontal + left
+        }
+        Direction::West | Direction::East => {
+            let vertical = counts[Cell::Vertical as usize];
+            let up = counts[Cell::NorthWest as usize] + counts[Cell::NorthEast as usize];
+
+            vertical + up
+        }
+    }
+}
+
 mod model {
     use std::{
-        collections::HashSet,
-        ops::{Add, AddAssign, Index},
+        ops::{Add, AddAssign, Index, IndexMut},
         str::FromStr,
     };
 
     use eyre::{ContextCompat, Report, Result};
+    use fxhash::FxHashSet as HashSet;
 
     pub struct Field {
         inner: FieldInner,
@@ -122,22 +104,16 @@ mod model {
                 .flat_map(|line| line.bytes().map(Cell::try_from))
                 .collect::<Result<Vec<_>>>()?;
 
-            let inner = FieldInner { width, field };
+            let mut inner = FieldInner { width, field };
 
-            let (mut curr, mut dir) = inner
-                .start_neighbor()
-                .wrap_err("missing neighboring pipe of start")?;
+            let (start, mut dir) = inner.start_dir()?;
+            let mut curr = start + dir.offset();
 
-            let mut path = HashSet::new();
+            let mut path = HashSet::default();
+            path.insert(start);
 
             while path.insert(curr) {
-                let cell = inner[curr];
-
-                if cell == Cell::Start {
-                    break;
-                }
-
-                dir = cell.next_dir(dir.opposite()).unwrap();
+                dir = inner[curr].follow(dir.opposite()).unwrap();
                 curr += dir.offset();
             }
 
@@ -166,34 +142,49 @@ mod model {
                 && pos.y < self.field.len() as i32 / self.width
         }
 
-        fn start_neighbor(&self) -> Option<(Pos, Direction)> {
+        fn start_dir(&mut self) -> Result<(Pos, Direction)> {
             let start = self
                 .field
                 .iter()
                 .zip(0..)
                 .find(|(&c, _)| c == Cell::Start)
                 .map(|(_, i)| Pos::new(i % self.width, i / self.width))
-                .unwrap();
+                .wrap_err("missing start")?;
 
-            for dir in [
-                Direction::North,
-                Direction::West,
-                Direction::South,
-                Direction::East,
-            ] {
-                let offset = dir.offset();
-                let n_pos = start + offset;
+            let mut neighbors = Direction::ALL.into_iter().filter(|dir| {
+                let n_pos = start + dir.offset();
 
-                if !self.contains(n_pos) {
-                    continue;
+                self.contains(n_pos) && self[n_pos].follow(dir.opposite()).is_some()
+            });
+
+            let first = neighbors.next().wrap_err("missing neighbor of start")?;
+            let second = neighbors.next().wrap_err("missing neighbor of start")?;
+
+            let replace = match (first, second) {
+                (Direction::North, Direction::West) | (Direction::West, Direction::North) => {
+                    Cell::NorthWest
                 }
-
-                if self[n_pos].next_dir(dir.opposite()).is_some() {
-                    return Some((n_pos, dir));
+                (Direction::North, Direction::South) | (Direction::South, Direction::North) => {
+                    Cell::Vertical
                 }
-            }
+                (Direction::North, Direction::East) | (Direction::East, Direction::North) => {
+                    Cell::NorthEast
+                }
+                (Direction::West, Direction::South) | (Direction::South, Direction::West) => {
+                    Cell::SouthWest
+                }
+                (Direction::West, Direction::East) | (Direction::East, Direction::West) => {
+                    Cell::Horizontal
+                }
+                (Direction::South, Direction::East) | (Direction::East, Direction::South) => {
+                    Cell::SouthEast
+                }
+                _ => unreachable!(),
+            };
 
-            None
+            self[start] = replace;
+
+            Ok((start, first))
         }
     }
 
@@ -207,7 +198,15 @@ mod model {
         }
     }
 
-    #[derive(Copy, Clone, PartialEq, Eq, Hash)]
+    impl IndexMut<Pos> for FieldInner {
+        fn index_mut(&mut self, pos: Pos) -> &mut Self::Output {
+            let idx = (pos.y * self.width + pos.x) as usize;
+
+            &mut self.field[idx]
+        }
+    }
+
+    #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
     pub struct Pos {
         pub x: i32,
         pub y: i32,
@@ -250,20 +249,20 @@ mod model {
     }
 
     impl Cell {
-        pub fn next_dir(self, from: Direction) -> Option<Direction> {
+        pub fn follow(self, from: Direction) -> Option<Direction> {
             let to = match (self, from) {
-                (Cell::NorthWest, Direction::North) => Direction::West,
-                (Cell::NorthWest, Direction::West) => Direction::North,
-                (Cell::NorthEast, Direction::North) => Direction::East,
-                (Cell::NorthEast, Direction::East) => Direction::North,
-                (Cell::SouthWest, Direction::West) => Direction::South,
-                (Cell::SouthWest, Direction::South) => Direction::West,
-                (Cell::SouthEast, Direction::South) => Direction::East,
-                (Cell::SouthEast, Direction::East) => Direction::South,
-                (Cell::Vertical, Direction::South) => Direction::North,
-                (Cell::Vertical, Direction::North) => Direction::South,
-                (Cell::Horizontal, Direction::West) => Direction::East,
-                (Cell::Horizontal, Direction::East) => Direction::West,
+                (Cell::NorthWest, Direction::North)
+                | (Cell::SouthWest, Direction::South)
+                | (Cell::Horizontal, Direction::East) => Direction::West,
+                (Cell::NorthWest, Direction::West)
+                | (Cell::NorthEast, Direction::East)
+                | (Cell::Vertical, Direction::South) => Direction::North,
+                (Cell::NorthEast, Direction::North)
+                | (Cell::SouthEast, Direction::South)
+                | (Cell::Horizontal, Direction::West) => Direction::East,
+                (Cell::SouthWest, Direction::West)
+                | (Cell::SouthEast, Direction::East)
+                | (Cell::Vertical, Direction::North) => Direction::South,
                 _ => return None,
             };
 
@@ -300,6 +299,13 @@ mod model {
     }
 
     impl Direction {
+        pub const ALL: [Direction; 4] = [
+            Direction::North,
+            Direction::West,
+            Direction::South,
+            Direction::East,
+        ];
+
         pub fn offset(self) -> Pos {
             match self {
                 Direction::North => Pos::new(0, -1),
