@@ -11,62 +11,34 @@ pub fn run(input: &str) -> Result<Solution> {
 }
 
 fn part1(input: &str) -> i64 {
-    let mut curr = Vec::new();
-    let mut next = Vec::new();
-    let mut history = Vec::new();
-    let mut sum = 0;
-
-    for line in input.lines() {
-        curr.clear();
-        let iter = line.split(' ').map(|n| n.parse::<i64>().unwrap());
-        curr.extend(iter);
-
-        history.clear();
-        history.push(curr.clone());
-
-        while curr.iter().any(|&n| n != 0) {
-            diffs(&curr, &mut next);
-            std::mem::swap(&mut curr, &mut next);
-            history.push(curr.clone());
-            next.clear();
-        }
-
-        for entry in history.drain(..).rev() {
-            sum += entry[entry.len() - 1];
-        }
-    }
-
-    sum
+    solve(input.lines().map(|line| line.split(' ')))
 }
 
 fn part2(input: &str) -> i64 {
+    solve(input.lines().map(|line| line.rsplit(' ')))
+}
+
+fn solve<'i, I, L>(input: I) -> i64
+where
+    I: Iterator<Item = L>,
+    L: Iterator<Item = &'i str>,
+{
     let mut curr = Vec::new();
     let mut next = Vec::new();
-    let mut history = Vec::new();
     let mut sum = 0;
 
-    for line in input.lines() {
+    for line in input {
         curr.clear();
-        let iter = line.split(' ').map(|n| n.parse::<i64>().unwrap());
-        curr.extend(iter);
+        curr.extend(line.map(str::parse::<i64>).flat_map(Result::ok));
 
-        history.clear();
-        history.push(curr.clone());
+        sum += curr[curr.len() - 1];
 
         while curr.iter().any(|&n| n != 0) {
             diffs(&curr, &mut next);
             std::mem::swap(&mut curr, &mut next);
-            history.push(curr.clone());
+            sum += curr[curr.len() - 1];
             next.clear();
         }
-
-        let mut diff = 0;
-
-        for entry in history.drain(..).rev() {
-            diff = entry[0] - diff;
-        }
-
-        sum += diff;
     }
 
     sum
