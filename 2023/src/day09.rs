@@ -31,21 +31,31 @@ where
         curr.clear();
         curr.extend(line.map(str::parse::<i64>).flat_map(Result::ok));
 
-        sum += curr[curr.len() - 1];
+        if curr.is_empty() {
+            return 0;
+        }
 
-        while curr.iter().any(|&n| n != 0) {
-            diffs(&curr, &mut next);
-            std::mem::swap(&mut curr, &mut next);
+        loop {
             sum += curr[curr.len() - 1];
+
+            let mut only_zeros = true;
+
             next.clear();
+
+            let iter = curr
+                .windows(2)
+                .map(|w| w[1] - w[0])
+                .inspect(|&n| only_zeros &= n == 0);
+
+            next.extend(iter);
+
+            if only_zeros {
+                break;
+            }
+
+            std::mem::swap(&mut curr, &mut next);
         }
     }
 
     sum
-}
-
-fn diffs(from: &[i64], to: &mut Vec<i64>) {
-    for window in from.windows(2) {
-        to.push(window[1] - window[0])
-    }
 }
