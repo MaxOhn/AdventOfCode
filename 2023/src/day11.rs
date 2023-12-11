@@ -13,15 +13,15 @@ pub fn run(input: &str) -> Result<Solution> {
     Ok(Solution::new().part1(p1).part2(p2))
 }
 
-fn part1(image: &Image, mut galaxies: Vec<Pos>) -> usize {
+fn part1(image: &Image, mut galaxies: Vec<Pos>) -> u64 {
     solve(image, &mut galaxies, 1)
 }
 
-fn part2(image: &Image, mut galaxies: Vec<Pos>) -> usize {
+fn part2(image: &Image, mut galaxies: Vec<Pos>) -> u64 {
     solve(image, &mut galaxies, 999_999)
 }
 
-fn solve(image: &Image, galaxies: &mut [Pos], expand: usize) -> usize {
+fn solve(image: &Image, galaxies: &mut [Pos], expand: u64) -> u64 {
     let mut h = image.height();
     let mut w = image.width();
 
@@ -75,30 +75,30 @@ fn solve(image: &Image, galaxies: &mut [Pos], expand: usize) -> usize {
         .sum()
 }
 
-type Pos = (usize, usize);
+type Pos = (u64, u64);
 
 struct Image {
-    width: usize,
+    width: u64,
     inner: Vec<Pixel>,
 }
 
 impl Image {
-    fn width(&self) -> usize {
+    fn width(&self) -> u64 {
         self.width
     }
 
-    fn height(&self) -> usize {
-        self.inner.len() / self.width
+    fn height(&self) -> u64 {
+        self.inner.len() as u64 / self.width
     }
 
-    fn galaxies(&self) -> Vec<(usize, usize)> {
+    fn galaxies(&self) -> Vec<Pos> {
         self.inner
-            .chunks_exact(self.width())
+            .chunks_exact(self.width() as usize)
             .enumerate()
             .flat_map(|(y, line)| {
-                line.iter()
-                    .enumerate()
-                    .filter_map(move |(x, px)| matches!(px, Pixel::Galaxy).then_some((x, y)))
+                line.iter().enumerate().filter_map(move |(x, px)| {
+                    matches!(px, Pixel::Galaxy).then_some((x as u64, y as u64))
+                })
             })
             .collect()
     }
@@ -108,7 +108,7 @@ impl FromStr for Image {
     type Err = Report;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let width = s.lines().next().map_or(0, str::len);
+        let width = s.lines().next().map_or(0, str::len) as u64;
 
         let inner = s
             .lines()
@@ -125,7 +125,7 @@ impl Index<Pos> for Image {
     fn index(&self, (x, y): Pos) -> &Self::Output {
         let idx = y * self.width + x;
 
-        &self.inner[idx]
+        &self.inner[idx as usize]
     }
 }
 
