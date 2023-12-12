@@ -15,7 +15,7 @@ fn part1(input: &str) -> Result<u64> {
 }
 
 fn part2(input: &str) -> Result<u64> {
-    let modify_springs = |springs: &mut Vec<Status>| {
+    let modify_springs = |springs: &mut Vec<_>| {
         let len = springs.len();
         springs.push(Status::Unknown);
         springs.extend_from_within(0..len);
@@ -25,7 +25,7 @@ fn part2(input: &str) -> Result<u64> {
         springs.extend_from_within(0..len);
     };
 
-    let modify_nums = |nums: &mut Vec<u8>| {
+    let modify_nums = |nums: &mut Vec<_>| {
         let len = nums.len();
         nums.extend_from_within(0..len);
         nums.extend_from_within(0..2 * len);
@@ -38,7 +38,7 @@ fn part2(input: &str) -> Result<u64> {
 fn solve<S, N>(input: &str, modify_springs: S, modify_nums: N) -> Result<u64>
 where
     S: Fn(&mut Vec<Status>),
-    N: Fn(&mut Vec<u8>),
+    N: Fn(&mut Vec<usize>),
 {
     let mut sum = 0;
     let mut cache = Cache::default();
@@ -54,27 +54,27 @@ where
         let mut nums = nums
             .split(',')
             .map(str::parse)
-            .collect::<Result<Vec<u8>, _>>()
+            .collect::<Result<Vec<usize>, _>>()
             .map_err(|_| eyre::eyre!("invalid number"))?;
 
         modify_springs(&mut springs);
         modify_nums(&mut nums);
 
         cache.clear();
-        let remaining = nums.iter().sum::<u8>() + nums.len() as u8 - 1;
+        let remaining = nums.iter().sum::<usize>() + nums.len() - 1;
         sum += count_recursive(&mut springs, 0, &nums, remaining, &mut cache);
     }
 
     Ok(sum)
 }
 
-type Cache = fxhash::FxHashMap<(Box<[Status]>, u8, Box<[u8]>), u64>;
+type Cache = fxhash::FxHashMap<(usize, usize, usize), u64>;
 
 fn count_recursive(
     springs: &mut [Status],
-    prev_damaged: u8,
-    nums: &[u8],
-    mut remaining: u8,
+    prev_damaged: usize,
+    nums: &[usize],
+    mut remaining: usize,
     cache: &mut Cache,
 ) -> u64 {
     if springs.is_empty() {
@@ -85,11 +85,11 @@ fn count_recursive(
         };
 
         return is_valid as u64;
-    } else if prev_damaged + (springs.len() as u8) < remaining {
+    } else if prev_damaged + springs.len() < remaining {
         return 0;
     }
 
-    let key = (Box::from(&*springs), prev_damaged, Box::from(nums));
+    let key = (springs.len(), prev_damaged, nums.len());
 
     if let Some(cached) = cache.get(&key) {
         return *cached;
@@ -101,22 +101,22 @@ fn count_recursive(
             count_recursive(&mut springs[1..], prev_damaged + 1, nums, remaining, cache)
         }
         Status::Operational if prev_damaged == 0 => {
-            let next_idx = springs
+            let next = springs
                 .iter()
                 .position(|&status| status != Status::Operational)
                 .unwrap_or(1);
 
-            count_recursive(&mut springs[next_idx..], 0, nums, remaining, cache)
+            count_recursive(&mut springs[next..], 0, nums, remaining, cache)
         }
         Status::Operational if !nums.is_empty() && prev_damaged == nums[0] => {
-            let next_idx = springs
+            let next = springs
                 .iter()
                 .position(|&status| status != Status::Operational)
                 .unwrap_or(1);
 
-            remaining -= prev_damaged + (nums.len() != 1) as u8;
+            remaining -= prev_damaged + (nums.len() != 1) as usize;
 
-            count_recursive(&mut springs[next_idx..], 0, &nums[1..], remaining, cache)
+            count_recursive(&mut springs[next..], 0, &nums[1..], remaining, cache)
         }
         Status::Operational => 0,
         Status::Unknown => {
