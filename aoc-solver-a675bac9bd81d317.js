@@ -929,20 +929,20 @@ imports.wbg.__wbindgen_closure_wrapper476 = function(arg0, arg1, arg2) {
     const ret = makeMutClosure(arg0, arg1, 345, __wbg_adapter_39);
     return addHeapObject(ret);
 };
-imports.wbg.__wbindgen_closure_wrapper2306 = function(arg0, arg1, arg2) {
-    const ret = makeMutClosure(arg0, arg1, 890, __wbg_adapter_42);
+imports.wbg.__wbindgen_closure_wrapper2304 = function(arg0, arg1, arg2) {
+    const ret = makeMutClosure(arg0, arg1, 887, __wbg_adapter_42);
     return addHeapObject(ret);
 };
-imports.wbg.__wbindgen_closure_wrapper2611 = function(arg0, arg1, arg2) {
-    const ret = makeMutClosure(arg0, arg1, 1025, __wbg_adapter_45);
+imports.wbg.__wbindgen_closure_wrapper2609 = function(arg0, arg1, arg2) {
+    const ret = makeMutClosure(arg0, arg1, 1022, __wbg_adapter_45);
     return addHeapObject(ret);
 };
-imports.wbg.__wbindgen_closure_wrapper2733 = function(arg0, arg1, arg2) {
-    const ret = makeMutClosure(arg0, arg1, 1067, __wbg_adapter_48);
+imports.wbg.__wbindgen_closure_wrapper2731 = function(arg0, arg1, arg2) {
+    const ret = makeMutClosure(arg0, arg1, 1064, __wbg_adapter_48);
     return addHeapObject(ret);
 };
-imports.wbg.__wbindgen_closure_wrapper2801 = function(arg0, arg1, arg2) {
-    const ret = makeMutClosure(arg0, arg1, 1090, __wbg_adapter_51);
+imports.wbg.__wbindgen_closure_wrapper2799 = function(arg0, arg1, arg2) {
+    const ret = makeMutClosure(arg0, arg1, 1087, __wbg_adapter_51);
     return addHeapObject(ret);
 };
 
@@ -984,7 +984,7 @@ async function __wbg_init(input) {
     if (wasm !== undefined) return wasm;
 
     if (typeof input === 'undefined') {
-        input = new URL('aoc-solver-c5a3d3e5f41bc54b_bg.wasm', import.meta.url);
+        input = new URL('aoc-solver-a675bac9bd81d317_bg.wasm', import.meta.url);
     }
     const imports = __wbg_get_imports();
 
