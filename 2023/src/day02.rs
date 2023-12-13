@@ -77,7 +77,7 @@ impl FromStr for Color {
             "red" => Self::Red,
             "green" => Self::Green,
             "blue" => Self::Blue,
-            _ => bail!("invalid color `{color}`"),
+            _ => eyre::bail!("invalid color `{color}`"),
         };
 
         Ok(color)
@@ -97,7 +97,7 @@ impl FromStr for Cubes {
 
         let count = count
             .parse()
-            .map_err(|_| eyre!("incorrect count `{count}`"))?;
+            .map_err(|_| eyre::eyre!("incorrect count `{count}`"))?;
 
         let color = color.parse().wrap_err("incorrect color")?;
 
@@ -160,7 +160,7 @@ impl FromStr for Game {
     fn from_str(game: &str) -> Result<Self, Self::Err> {
         let suffix = game.strip_prefix("Game ").wrap_err("missing prefix")?;
         let (id, suffix) = suffix.split_once(": ").wrap_err("missing colon")?;
-        let id = id.parse().map_err(|_| eyre!("incorrect id `{id}`"))?;
+        let id = id.parse().map_err(|_| eyre::eyre!("incorrect id `{id}`"))?;
         let subsets = suffix.parse().wrap_err("invalid subsets")?;
 
         Ok(Self { id, subsets })

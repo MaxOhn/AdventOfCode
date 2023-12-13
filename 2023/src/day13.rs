@@ -130,7 +130,7 @@ mod grid {
             match byte {
                 b'.' => Ok(Self::Ash),
                 b'#' => Ok(Self::Rock),
-                _ => bail!("invalid field byte `{byte}`"),
+                _ => eyre::bail!("invalid field byte `{byte}`"),
             }
         }
     }

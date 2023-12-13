@@ -122,7 +122,7 @@ where
             Card::try_from(bytes.next().wrap_err("missing card")?)?,
         ];
 
-        ensure!(bytes.next() == Some(b' '), "missing whitespace");
+        eyre::ensure!(bytes.next() == Some(b' '), "missing whitespace");
 
         let bid = bytes.try_fold(0, |num, byte| match byte {
             b'0'..=b'9' => Ok(num * 10 + (byte & 0xF) as u32),
