@@ -1,8 +1,14 @@
 use aoc_rust::Solution;
-use eyre::{ContextCompat, Report, Result};
+use eyre::{ContextCompat, Result};
+
+use self::grid::Grid;
 
 pub fn run(input: &str) -> Result<Solution> {
-    let mut grids = parse_grids(input.trim())?;
+    let mut grids = input
+        .trim()
+        .split("\n\n")
+        .map(str::parse)
+        .collect::<Result<Vec<Grid>>>()?;
 
     let p1 = part1(&grids)?;
     let p2 = part2(&mut grids)?;
@@ -10,59 +16,28 @@ pub fn run(input: &str) -> Result<Solution> {
     Ok(Solution::new().part1(p1).part2(p2))
 }
 
-type Grid = Vec<Vec<Field>>;
-
-fn parse_grids(input: &str) -> Result<Vec<Grid>> {
-    let mut grids = Vec::new();
-
-    for grid in input.split("\n\n") {
-        let grid = grid
-            .lines()
-            .map(|line| {
-                line.bytes()
-                    .map(Field::try_from)
-                    .collect::<Result<Vec<_>>>()
-            })
-            .collect::<Result<Vec<_>>>()?;
-
-        grids.push(grid);
-    }
-
-    Ok(grids)
-}
-
 fn part1(grids: &[Grid]) -> Result<usize> {
-    let mut sum = 0;
-    let mut values = Vec::new();
-
-    for grid in grids.iter() {
-        find_mirrored(grid, &mut values);
-        sum += values.first().wrap_err("no mirrored line for grid")?;
-    }
-
-    Ok(sum)
+    grids
+        .iter()
+        .try_fold(0, |sum, grid| Some(sum + find_mirrored(grid, usize::MAX)?))
+        .wrap_err("no mirrored line for grid")
 }
 
 fn part2(grids: &mut [Grid]) -> Result<usize> {
     let mut sum = 0;
-    let mut values = Vec::new();
 
     'next: for grid in grids.iter_mut() {
-        find_mirrored(grid, &mut values);
-        let orig = values[0];
+        let orig = find_mirrored(grid, usize::MAX).wrap_err("no mirrored line for grid")?;
 
-        for smudge_x in 0..grid[0].len() {
-            for smudge_y in 0..grid.len() {
-                grid[smudge_y][smudge_x].flip();
-                find_mirrored(grid, &mut values);
+        for i in 0..grid.len() {
+            grid[i].flip();
 
-                if let Some(curr) = values.iter().find(|&n| *n != orig) {
-                    sum += curr;
-                    continue 'next;
-                }
-
-                grid[smudge_y][smudge_x].flip();
+            if let Some(curr) = find_mirrored(grid, orig) {
+                sum += curr;
+                continue 'next;
             }
+
+            grid[i].flip();
         }
 
         eyre::bail!("no mirrored line for grid after smudging");
@@ -71,19 +46,17 @@ fn part2(grids: &mut [Grid]) -> Result<usize> {
     Ok(sum)
 }
 
-fn find_mirrored(grid: &Grid, values: &mut Vec<usize>) {
-    values.clear();
-    vertical_mirror(grid, values);
-    horizontal_mirror(grid, values);
+fn find_mirrored(grid: &Grid, not_equal: usize) -> Option<usize> {
+    vertical_mirror(grid, not_equal).or_else(|| horizontal_mirror(grid, not_equal))
 }
 
-fn vertical_mirror(grid: &Grid, values: &mut Vec<usize>) {
-    'next: for col in 0..grid[0].len() - 1 {
+fn vertical_mirror(grid: &Grid, not_equal: usize) -> Option<usize> {
+    'next: for col in 0..grid.width() - 1 {
         let mut offset = 0;
 
-        while col >= offset && col + offset + 1 < grid[0].len() {
-            for y in 0..grid.len() {
-                if grid[y][col - offset] != grid[y][col + 1 + offset] {
+        while col >= offset && col + offset + 1 < grid.width() {
+            for row in grid.rows() {
+                if row[col - offset] != row[col + 1 + offset] {
                     continue 'next;
                 }
             }
@@ -91,17 +64,23 @@ fn vertical_mirror(grid: &Grid, values: &mut Vec<usize>) {
             offset += 1;
         }
 
-        values.push(col + 1);
+        let value = col + 1;
+
+        if value != not_equal {
+            return Some(value);
+        }
     }
+
+    None
 }
 
-fn horizontal_mirror(grid: &Grid, values: &mut Vec<usize>) {
-    'next: for row in 0..grid.len() - 1 {
+fn horizontal_mirror(grid: &Grid, not_equal: usize) -> Option<usize> {
+    'next: for row in 0..grid.height() - 1 {
         let mut offset = 0;
 
-        while row >= offset && row + offset + 1 < grid.len() {
-            let a = &grid[row - offset];
-            let b = &grid[row + 1 + offset];
+        while row >= offset && row + offset + 1 < grid.height() {
+            let a = grid.row(row - offset);
+            let b = grid.row(row + 1 + offset);
 
             if a != b {
                 continue 'next;
@@ -110,33 +89,105 @@ fn horizontal_mirror(grid: &Grid, values: &mut Vec<usize>) {
             offset += 1;
         }
 
-        values.push(100 * (row + 1));
-    }
-}
+        let value = 100 * (row + 1);
 
-#[derive(Copy, Clone, Debug, PartialEq, Eq)]
-enum Field {
-    Ash,
-    Rock,
-}
-
-impl Field {
-    fn flip(&mut self) {
-        *self = match self {
-            Self::Ash => Self::Rock,
-            Self::Rock => Self::Ash,
+        if value != not_equal {
+            return Some(value);
         }
     }
+
+    None
 }
 
-impl TryFrom<u8> for Field {
-    type Error = Report;
+mod grid {
+    use std::{
+        ops::{Index, IndexMut},
+        slice::SliceIndex,
+        str::FromStr,
+    };
 
-    fn try_from(byte: u8) -> Result<Self, Self::Error> {
-        match byte {
-            b'.' => Ok(Self::Ash),
-            b'#' => Ok(Self::Rock),
-            _ => bail!("invalid field byte `{byte}`"),
+    use eyre::Report;
+
+    #[derive(Copy, Clone, Debug, PartialEq, Eq)]
+    pub enum Field {
+        Ash,
+        Rock,
+    }
+
+    impl Field {
+        pub fn flip(&mut self) {
+            *self = match self {
+                Self::Ash => Self::Rock,
+                Self::Rock => Self::Ash,
+            }
+        }
+    }
+
+    impl TryFrom<u8> for Field {
+        type Error = Report;
+
+        fn try_from(byte: u8) -> Result<Self, Self::Error> {
+            match byte {
+                b'.' => Ok(Self::Ash),
+                b'#' => Ok(Self::Rock),
+                _ => bail!("invalid field byte `{byte}`"),
+            }
+        }
+    }
+
+    pub struct Grid {
+        width: usize,
+        inner: Vec<Field>,
+    }
+
+    impl Grid {
+        pub fn width(&self) -> usize {
+            self.width
+        }
+
+        pub fn height(&self) -> usize {
+            self.inner.len() / self.width
+        }
+
+        pub fn len(&self) -> usize {
+            self.inner.len()
+        }
+
+        pub fn row(&self, idx: usize) -> &[Field] {
+            &self.inner[idx * self.width()..][..self.width()]
+        }
+
+        pub fn rows(&self) -> impl Iterator<Item = &[Field]> {
+            self.inner.chunks_exact(self.width())
+        }
+    }
+
+    impl FromStr for Grid {
+        type Err = Report;
+
+        fn from_str(s: &str) -> Result<Self, Self::Err> {
+            let width = s.lines().next().map_or(0, str::len);
+
+            let inner = s
+                .lines()
+                .flat_map(|line| line.bytes().map(Field::try_from))
+                .collect::<Result<Vec<_>, Report>>()?;
+
+            Ok(Self { width, inner })
+        }
+    }
+
+    impl<I: SliceIndex<[Field]>> Index<I> for Grid {
+        type Output = I::Output;
+
+        fn index(&self, index: I) -> &Self::Output {
+            self.inner.index(index)
+        }
+    }
+
+    impl<I: SliceIndex<[Field]>> IndexMut<I> for Grid {
+        fn index_mut(&mut self, index: I) -> &mut Self::Output {
+            self.inner.index_mut(index)
         }
     }
 }
