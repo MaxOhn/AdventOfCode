@@ -89,9 +89,10 @@ mod dish {
                     let mut offset = w;
 
                     while y >= offset && self.dish[y - offset + x] == Rock::Empty {
-                        self.dish.swap(y - offset + w + x, y - offset + x);
                         offset += w;
                     }
+
+                    self.dish.swap(y + x, y + w - offset + x);
                 }
             }
 
@@ -110,9 +111,10 @@ mod dish {
                     let mut offset = w;
 
                     while y + offset < self.dish.len() && self.dish[y + offset + x] == Rock::Empty {
-                        self.dish.swap(y + offset - w + x, y + offset + x);
                         offset += w;
                     }
+
+                    self.dish.swap(y + x, y + offset - w + x);
                 }
             }
 
@@ -131,9 +133,10 @@ mod dish {
                     let mut offset = 1;
 
                     while x >= offset && self.dish[y + x - offset] == Rock::Empty {
-                        self.dish.swap(y + x - offset + 1, y + x - offset);
                         offset += 1;
                     }
+
+                    self.dish.swap(y + x, y + x + 1 - offset);
                 }
             }
 
@@ -152,9 +155,10 @@ mod dish {
                     let mut offset = 1;
 
                     while x + offset < w && self.dish[y + x + offset] == Rock::Empty {
-                        self.dish.swap(y + x + offset - 1, y + x + offset);
                         offset += 1;
                     }
+
+                    self.dish.swap(y + x, y + x + offset - 1);
                 }
             }
 
@@ -180,7 +184,7 @@ mod dish {
     #[derive(Copy, Clone, Debug, PartialEq, Eq)]
     enum Rock {
         Rounded,
-        Cubes,
+        Cube,
         Empty,
     }
 
@@ -190,7 +194,7 @@ mod dish {
         fn try_from(byte: u8) -> Result<Self, Self::Error> {
             match byte {
                 b'O' => Ok(Self::Rounded),
-                b'#' => Ok(Self::Cubes),
+                b'#' => Ok(Self::Cube),
                 b'.' => Ok(Self::Empty),
                 _ => eyre::bail!("invalid rock byte `{byte}`"),
             }
