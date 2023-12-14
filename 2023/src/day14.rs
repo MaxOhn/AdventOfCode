@@ -1,50 +1,30 @@
 use aoc_rust::Solution;
-use eyre::{Report, Result};
+use eyre::Result;
+
+use self::dish::Dish;
 
 pub fn run(input: &str) -> Result<Solution> {
-    let input = input.trim();
+    let dish: Dish = input.trim().parse()?;
 
-    let p1 = part1(input)?;
-    let p2 = part2(input)?;
+    let p1 = part1(dish.clone());
+    let p2 = part2(dish);
 
     Ok(Solution::new().part1(p1).part2(p2))
 }
 
-fn part1(input: &str) -> Result<usize> {
-    let mut dish = Vec::new();
-
-    for line in input.lines() {
-        let line = line
-            .bytes()
-            .map(Rock::try_from)
-            .collect::<Result<Vec<_>>>()?;
-
-        dish.push(line);
-    }
-
-    move_north(&mut dish);
-
-    Ok(load(&dish))
+fn part1(mut dish: Dish) -> usize {
+    dish.move_north().load()
 }
 
-fn part2(input: &str) -> Result<usize> {
-    let mut dish = Vec::new();
-
-    for line in input.lines() {
-        let line = line
-            .bytes()
-            .map(Rock::try_from)
-            .collect::<Result<Vec<_>>>()?;
-
-        dish.push(line);
-    }
+fn part2(mut dish: Dish) -> usize {
+    const TARGET: usize = 1_000_000_000;
 
     let mut history = Vec::new();
     history.push(dish.clone());
     let mut cycle_start = None;
 
-    for _ in 0..1_000_000_000 {
-        cycle(&mut dish);
+    for _ in 0..TARGET {
+        dish.cycle();
 
         if let Some(i) = history.iter().position(|entry| entry == &dish) {
             cycle_start = Some(i);
@@ -54,146 +34,166 @@ fn part2(input: &str) -> Result<usize> {
         history.push(dish.clone());
     }
 
-    let cycle_start = cycle_start.unwrap();
-    let cycle_len = history.len() - cycle_start;
+    let remaining = match cycle_start {
+        Some(cycle_start) => {
+            let cycle_len = history.len() - cycle_start;
+            let count = (TARGET - cycle_start) / cycle_len;
 
-    let target = 1_000_000_000;
-    let cycle_count = (target - cycle_start) / cycle_len;
-    let remaining = target - cycle_start - cycle_count * cycle_len;
+            TARGET - cycle_start - count * cycle_len
+        }
+        _ => 0,
+    };
 
     for _ in 0..remaining {
-        cycle(&mut dish);
+        dish.cycle();
     }
 
-    Ok(load(&dish))
+    dish.load()
 }
 
-fn load(dish: &[Vec<Rock>]) -> usize {
-    let mut load = 0;
+mod dish {
+    use std::str::FromStr;
 
-    for (row, i) in dish.iter().rev().zip(1..) {
-        let rounded = row.iter().filter(|&&rock| rock == Rock::Rounded).count();
-        load += rounded * i;
+    use eyre::Report;
+
+    #[derive(Clone, PartialEq)]
+    pub struct Dish {
+        width: usize,
+        dish: Box<[Rock]>,
     }
 
-    load
-}
+    impl Dish {
+        pub fn load(&self) -> usize {
+            self.dish
+                .chunks_exact(self.width)
+                .rev()
+                .zip(1..)
+                .fold(0, |load, (row, i)| {
+                    load + i * row.iter().filter(|&&rock| rock == Rock::Rounded).count()
+                })
+        }
 
-fn cycle(dish: &mut [Vec<Rock>]) {
-    move_north(dish);
-    move_west(dish);
-    move_south(dish);
-    move_east(dish);
-}
+        pub fn cycle(&mut self) {
+            self.move_north().move_west().move_south().move_east();
+        }
 
-fn move_north(dish: &mut [Vec<Rock>]) {
-    for y in 1..dish.len() {
-        for x in 0..dish[y].len() {
-            if !matches!(dish[y][x], Rock::Rounded) {
-                continue;
-            }
+        pub fn move_north(&mut self) -> &mut Self {
+            let w = self.width;
 
-            let mut offset = 1;
+            for y in (w..self.dish.len()).step_by(w) {
+                for x in 0..w {
+                    if self.dish[y + x] != Rock::Rounded {
+                        continue;
+                    }
 
-            while y >= offset {
-                if dish[y - offset][x] == Rock::Empty {
-                    dish[y - offset + 1][x] = Rock::Empty;
-                    dish[y - offset][x] = Rock::Rounded;
-                } else {
-                    break;
+                    let mut offset = w;
+
+                    while y >= offset && self.dish[y - offset + x] == Rock::Empty {
+                        self.dish.swap(y - offset + w + x, y - offset + x);
+                        offset += w;
+                    }
                 }
-
-                offset += 1;
             }
+
+            self
+        }
+
+        pub fn move_south(&mut self) -> &mut Self {
+            let w = self.width;
+
+            for y in (0..self.dish.len() - w).step_by(w).rev() {
+                for x in 0..w {
+                    if self.dish[y + x] != Rock::Rounded {
+                        continue;
+                    }
+
+                    let mut offset = w;
+
+                    while y + offset < self.dish.len() && self.dish[y + offset + x] == Rock::Empty {
+                        self.dish.swap(y + offset - w + x, y + offset + x);
+                        offset += w;
+                    }
+                }
+            }
+
+            self
+        }
+
+        pub fn move_west(&mut self) -> &mut Self {
+            let w = self.width;
+
+            for y in (0..self.dish.len()).step_by(w) {
+                for x in 1..w {
+                    if self.dish[y + x] != Rock::Rounded {
+                        continue;
+                    }
+
+                    let mut offset = 1;
+
+                    while x >= offset && self.dish[y + x - offset] == Rock::Empty {
+                        self.dish.swap(y + x - offset + 1, y + x - offset);
+                        offset += 1;
+                    }
+                }
+            }
+
+            self
+        }
+
+        pub fn move_east(&mut self) -> &mut Self {
+            let w = self.width;
+
+            for y in (0..self.dish.len()).step_by(w) {
+                for x in (0..w - 1).rev() {
+                    if self.dish[y + x] != Rock::Rounded {
+                        continue;
+                    }
+
+                    let mut offset = 1;
+
+                    while x + offset < w && self.dish[y + x + offset] == Rock::Empty {
+                        self.dish.swap(y + x + offset - 1, y + x + offset);
+                        offset += 1;
+                    }
+                }
+            }
+
+            self
         }
     }
-}
 
-fn move_south(dish: &mut [Vec<Rock>]) {
-    for y in (0..dish.len() - 1).rev() {
-        for x in 0..dish[y].len() {
-            if !matches!(dish[y][x], Rock::Rounded) {
-                continue;
-            }
+    impl FromStr for Dish {
+        type Err = Report;
 
-            let mut offset = 1;
+        fn from_str(s: &str) -> Result<Self, Self::Err> {
+            let width = s.lines().next().map_or(0, str::len);
 
-            while y + offset < dish.len() {
-                if dish[y + offset][x] == Rock::Empty {
-                    dish[y + offset - 1][x] = Rock::Empty;
-                    dish[y + offset][x] = Rock::Rounded;
-                } else {
-                    break;
-                }
+            let dish = s
+                .lines()
+                .flat_map(|line| line.bytes().map(Rock::try_from))
+                .collect::<Result<_, Report>>()?;
 
-                offset += 1;
-            }
+            Ok(Self { width, dish })
         }
     }
-}
 
-fn move_west(dish: &mut [Vec<Rock>]) {
-    for y in 0..dish.len() {
-        for x in 1..dish[y].len() {
-            if !matches!(dish[y][x], Rock::Rounded) {
-                continue;
-            }
-
-            let mut offset = 1;
-
-            while x >= offset {
-                if dish[y][x - offset] == Rock::Empty {
-                    dish[y][x - offset + 1] = Rock::Empty;
-                    dish[y][x - offset] = Rock::Rounded;
-                } else {
-                    break;
-                }
-
-                offset += 1;
-            }
-        }
+    #[derive(Copy, Clone, Debug, PartialEq, Eq)]
+    enum Rock {
+        Rounded,
+        Cubes,
+        Empty,
     }
-}
 
-fn move_east(dish: &mut [Vec<Rock>]) {
-    for y in 0..dish.len() {
-        for x in (0..dish[y].len() - 1).rev() {
-            if !matches!(dish[y][x], Rock::Rounded) {
-                continue;
+    impl TryFrom<u8> for Rock {
+        type Error = Report;
+
+        fn try_from(byte: u8) -> Result<Self, Self::Error> {
+            match byte {
+                b'O' => Ok(Self::Rounded),
+                b'#' => Ok(Self::Cubes),
+                b'.' => Ok(Self::Empty),
+                _ => eyre::bail!("invalid rock byte `{byte}`"),
             }
-
-            let mut offset = 1;
-
-            while x + offset < dish[y].len() {
-                if dish[y][x + offset] == Rock::Empty {
-                    dish[y][x + offset - 1] = Rock::Empty;
-                    dish[y][x + offset] = Rock::Rounded;
-                } else {
-                    break;
-                }
-
-                offset += 1;
-            }
-        }
-    }
-}
-
-#[derive(Copy, Clone, Debug, PartialEq, Eq)]
-enum Rock {
-    Rounded,
-    Cubes,
-    Empty,
-}
-
-impl TryFrom<u8> for Rock {
-    type Error = Report;
-
-    fn try_from(byte: u8) -> Result<Self, Self::Error> {
-        match byte {
-            b'O' => Ok(Self::Rounded),
-            b'#' => Ok(Self::Cubes),
-            b'.' => Ok(Self::Empty),
-            _ => eyre::bail!("invalid rock byte `{byte}`"),
         }
     }
 }
