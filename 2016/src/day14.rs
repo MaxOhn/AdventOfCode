@@ -1,6 +1,7 @@
-use std::{collections::HashMap, fmt::Write};
+use std::fmt::Write;
 
 use aoc_rust::Solution;
+use fxhash::FxHashMap as HashMap;
 
 pub fn run(_input: &str) -> eyre::Result<Solution> {
     Ok(Solution::new().part1(part1()).part2(part2()))
@@ -11,7 +12,7 @@ const INPUT: &str = "zpqevtbw";
 pub fn part1() -> u16 {
     let mut idx = 0;
 
-    let mut awaiting = HashMap::new();
+    let mut awaiting = HashMap::default();
     let mut done = 0;
 
     loop {
@@ -28,7 +29,7 @@ pub fn part1() -> u16 {
 pub fn part2() -> u16 {
     let mut idx = 0;
 
-    let mut awaiting = HashMap::new();
+    let mut awaiting = HashMap::default();
     let mut done = 0;
 
     loop {
