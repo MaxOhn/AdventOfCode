@@ -4,54 +4,26 @@ use eyre::Result;
 use self::map::Map;
 
 pub fn run(input: &str) -> Result<Solution> {
-    let input = input.trim();
+    let map: Map = input.trim().parse()?;
 
-    let p1 = part1(input)?;
-    let p2 = part2(input)?;
+    let p1 = part1(&map)?;
+    let p2 = part2(&map)?;
 
     Ok(Solution::new().part1(p1).part2(p2))
 }
 
-fn part1(input: &str) -> Result<u32> {
-    let map: Map = input.parse().unwrap();
-
-    map.part1()
+fn part1(map: &Map) -> Result<u32> {
+    map.dijkstra(1, 3)
 }
 
-fn part2(input: &str) -> Result<u32> {
-    let map: Map = input.parse().unwrap();
-
-    map.part2()
+fn part2(map: &Map) -> Result<u32> {
+    map.dijkstra(4, 10)
 }
 
 mod map {
     use std::{collections::BinaryHeap, str::FromStr};
 
     use eyre::{ContextCompat, Report};
-
-    #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
-    enum Direction {
-        Up,
-        Down,
-        Left,
-        Right,
-    }
-
-    impl Direction {
-        fn enumerate() -> [Self; 4] {
-            [Self::Up, Self::Down, Self::Left, Self::Right]
-        }
-
-        fn opposite(self) -> Self {
-            match self {
-                Self::Up => Self::Down,
-                Self::Down => Self::Up,
-                Self::Left => Self::Right,
-                Self::Right => Self::Left,
-            }
-        }
-    }
-
     pub struct Map {
         width: usize,
         map: Vec<u8>,
@@ -66,8 +38,8 @@ mod map {
             self.map.len() / self.width
         }
 
-        pub fn part1(&self) -> Result<u32, Report> {
-            #[derive(Clone, Copy, Debug, PartialEq, Eq)]
+        pub fn dijkstra(&self, min_steps: i32, max_steps: i32) -> Result<u32, Report> {
+            #[derive(Clone, Copy, PartialEq, Eq)]
             struct State {
                 x: i32,
                 y: i32,
@@ -121,14 +93,15 @@ mod map {
                     return Ok(heat_loss);
                 }
 
-                for ndir in Direction::enumerate() {
-                    if ndir == dir.opposite() || ndir == dir {
-                        continue;
-                    }
+                let ndirs = match dir {
+                    Direction::Up | Direction::Down => [Direction::Left, Direction::Right],
+                    Direction::Left | Direction::Right => [Direction::Up, Direction::Down],
+                };
 
+                for ndir in ndirs {
                     let mut nheat_loss = heat_loss;
 
-                    for steps in 1..=3 {
+                    for steps in 1..=max_steps {
                         let (nx, ny) = match ndir {
                             Direction::Up => (x, y - steps),
                             Direction::Down => (x, y + steps),
@@ -140,108 +113,9 @@ mod map {
                             break;
                         }
 
-                        let cost = self.map[ny as usize * w + nx as usize] as u32;
-                        nheat_loss += cost;
+                        nheat_loss += self.map[ny as usize * w + nx as usize] as u32;
 
-                        let curr_best = dist[ndir as usize][ny as usize * w + nx as usize];
-
-                        if nheat_loss < curr_best {
-                            dist[ndir as usize][ny as usize * w + nx as usize] = nheat_loss;
-
-                            let nstate = State {
-                                x: nx,
-                                y: ny,
-                                dir: ndir,
-                                heat_loss: nheat_loss,
-                            };
-
-                            queue.push(nstate);
-                        }
-                    }
-                }
-            }
-
-            eyre::bail!("no path found")
-        }
-
-        pub fn part2(&self) -> Result<u32, Report> {
-            #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-            struct State {
-                x: i32,
-                y: i32,
-                dir: Direction,
-                heat_loss: u32,
-            }
-
-            impl Ord for State {
-                fn cmp(&self, other: &Self) -> std::cmp::Ordering {
-                    other.heat_loss.cmp(&self.heat_loss)
-                }
-            }
-
-            impl PartialOrd for State {
-                fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
-                    Some(self.cmp(other))
-                }
-            }
-
-            let w = self.width();
-            let h = self.height();
-
-            let dst_x = w as i32 - 1;
-            let dst_y = h as i32 - 1;
-
-            let mut queue = BinaryHeap::new();
-
-            queue.push(State {
-                x: 0,
-                y: 0,
-                dir: Direction::Right,
-                heat_loss: 0,
-            });
-            queue.push(State {
-                x: 0,
-                y: 0,
-                dir: Direction::Down,
-                heat_loss: 0,
-            });
-
-            let mut dist = [0_u8; 4].map(|_| vec![u32::MAX; self.map.len()]);
-
-            while let Some(State {
-                x,
-                y,
-                dir,
-                heat_loss,
-            }) = queue.pop()
-            {
-                if x == dst_x && y == dst_y {
-                    return Ok(heat_loss);
-                }
-
-                for ndir in Direction::enumerate() {
-                    if ndir == dir.opposite() || ndir == dir {
-                        continue;
-                    }
-
-                    let mut nheat_loss = heat_loss;
-
-                    for steps in 1..=10 {
-                        let (nx, ny) = match ndir {
-                            Direction::Up => (x, y - steps),
-                            Direction::Down => (x, y + steps),
-                            Direction::Left => (x - steps, y),
-                            Direction::Right => (x + steps, y),
-                        };
-
-                        if nx < 0 || nx >= w as i32 || ny < 0 || ny >= h as i32 {
-                            break;
-                        }
-
-                        let cost = self.map[ny as usize * w + nx as usize] as u32;
-                        nheat_loss += cost;
-
-                        if steps < 4 {
+                        if steps < min_steps {
                             continue;
                         }
 
@@ -281,5 +155,13 @@ mod map {
 
             Ok(Self { width, map })
         }
+    }
+
+    #[derive(Copy, Clone, PartialEq, Eq)]
+    enum Direction {
+        Up,
+        Down,
+        Left,
+        Right,
     }
 }
