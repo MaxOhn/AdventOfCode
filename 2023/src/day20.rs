@@ -1,174 +1,132 @@
-use std::{cell::RefCell, collections::HashMap, mem, rc::Rc};
+use std::collections::VecDeque;
 
 use aoc_rust::{util::numbers::lcm, Solution};
-use eyre::Result;
+use eyre::{ContextCompat, Result};
+use fxhash::FxHashMap as HashMap;
 
 pub fn run(input: &str) -> Result<Solution> {
-    let input = input.trim();
+    let (modules, dsts) = parse_input(input.trim());
 
-    let p1 = part1(input);
-    let p2 = part2(input);
+    let p1 = part1(modules.clone(), &dsts);
+    let p2 = part2(modules, &dsts)?;
 
     Ok(Solution::new().part1(p1).part2(p2))
 }
 
-fn parse_input<'a>(input: &'a str) -> HashMap<&'a str, Rc<RefCell<Module<'a>>>> {
-    let mut modules = HashMap::new();
-    let mut dsts = HashMap::new();
+type Modules<'a> = HashMap<&'a str, Module<'a>>;
+type Destinations<'a> = HashMap<&'a str, Vec<&'a str>>;
+
+fn parse_input<'a>(input: &'a str) -> (Modules<'a>, Destinations<'a>) {
+    let mut modules = Modules::default();
+    let mut dsts = Destinations::default();
 
     for line in input.lines() {
         let (front, back) = line.split_once(" -> ").unwrap();
 
-        let (name, kind) = if let Some(name) = front.strip_prefix('%') {
-            (
-                name,
-                ModuleKind::FlipFlop {
-                    status: Status::Off,
-                },
-            )
+        let (name, module) = if let Some(name) = front.strip_prefix('%') {
+            (name, Module::FlipFlop { is_on: false })
         } else if let Some(name) = front.strip_prefix('&') {
             (
                 name,
-                ModuleKind::Conjunction {
-                    prev_pulses: Vec::new(),
+                Module::Conjunction {
+                    prev_inputs: Vec::new(),
                 },
             )
         } else {
-            (front, ModuleKind::Broadcaster)
+            (front, Module::Broadcaster)
         };
 
-        let module = Rc::new(RefCell::new(Module {
-            name,
-            kind,
-            dst: Vec::new(),
-        }));
-
         modules.insert(name, module);
-        dsts.insert(name, back.split(',').map(str::trim).collect::<Vec<_>>());
+        dsts.insert(name, back.split(',').map(str::trim).collect());
     }
 
-    for module in modules.values() {
-        let mut module = module.borrow_mut();
-        let module_name = module.name;
-
-        if let ModuleKind::Conjunction { prev_pulses } = &mut module.kind {
-            for (name, dsts) in dsts.iter() {
-                if dsts.contains(&module_name) {
-                    prev_pulses.push((name, Pulse::Low));
+    for (dst, module) in modules.iter_mut() {
+        if let Module::Conjunction { prev_inputs } = module {
+            for (src, dsts) in dsts.iter() {
+                if dsts.contains(&dst) {
+                    prev_inputs.push((src, Pulse::Low));
                 }
             }
         }
     }
 
-    for (name, dsts) in dsts {
-        for dst in dsts {
-            let dst = modules.entry(dst).or_insert_with(|| {
-                Rc::new(RefCell::new(Module {
-                    name: dst,
-                    kind: ModuleKind::Other {
-                        received_low: false,
-                    },
-                    dst: Vec::new(),
-                }))
-            });
-
-            let dst = Rc::clone(dst);
-            modules[name].borrow_mut().dst.push(dst);
-        }
-    }
-
-    modules
+    (modules, dsts)
 }
 
-type PendingPulses<'a> = Vec<(&'a str, &'a str, Pulse)>;
-
-fn part1(input: &str) -> u64 {
-    let modules = parse_input(input);
-
-    let mut pending: PendingPulses = Vec::new();
-    let mut next_pending: PendingPulses = Vec::new();
+fn part1<'a>(mut modules: Modules<'a>, dsts: &Destinations<'a>) -> u64 {
+    let mut pending = VecDeque::new();
 
     let mut count_low = 0;
     let mut count_high = 0;
 
     for _ in 1..=1000 {
-        modules["broadcaster"]
-            .borrow_mut()
-            .propagate(Pulse::Low, "button", &mut pending);
-
+        let broadcaster = modules.entry("broadcaster").or_default();
         count_low += 1;
 
-        while !pending.is_empty() {
-            for (dst, src, pulse) in pending.drain(..) {
-                match pulse {
-                    Pulse::High => count_high += 1,
-                    Pulse::Low => count_low += 1,
-                }
+        if let Some(next_pulse) = broadcaster.propagate(Pulse::Low, "button") {
+            for dst in dsts["broadcaster"].iter() {
+                pending.push_back(("broadcaster", *dst, next_pulse));
+            }
+        }
 
-                modules[dst]
-                    .borrow_mut()
-                    .propagate(pulse, &src, &mut next_pending);
+        while let Some((src, dst, pulse)) = pending.pop_front() {
+            match pulse {
+                Pulse::High => count_high += 1,
+                Pulse::Low => count_low += 1,
             }
 
-            mem::swap(&mut pending, &mut next_pending);
+            let dst_module = modules.entry(dst).or_default();
+
+            if let Some(next_pulse) = dst_module.propagate(pulse, src) {
+                for next_dst in dsts[dst].iter() {
+                    pending.push_back((dst, *next_dst, next_pulse));
+                }
+            }
         }
     }
 
     count_low * count_high
 }
 
-fn part2(input: &str) -> u64 {
-    let modules = parse_input(input);
-
-    let (prev_rx, _) = modules
+fn part2<'a>(mut modules: Modules<'a>, dsts: &Destinations<'a>) -> Result<u64> {
+    let (rx_src, _) = dsts
         .iter()
-        .find(|(_, module)| {
-            module
-                .borrow()
-                .dst
-                .iter()
-                .any(|dst| dst.borrow().name == "rx")
+        .find(|(src, dsts)| {
+            dsts.contains(&"rx") && matches!(modules[*src], Module::Conjunction { .. })
         })
-        .unwrap();
+        .wrap_err("missing conjunction module that sends to rx")?;
 
-    let mut cycles: HashMap<_, Option<u64>> = modules
+    let mut cycles: HashMap<_, Option<u64>> = dsts
         .iter()
-        .filter(|(_, module)| {
-            module
-                .borrow()
-                .dst
-                .iter()
-                .any(|dst| dst.borrow().name == *prev_rx)
-        })
+        .filter(|(_, dsts)| dsts.contains(rx_src))
         .map(|(name, _)| (*name, None))
         .collect();
 
-    let mut pending: PendingPulses = Vec::new();
-    let mut next_pending: PendingPulses = Vec::new();
+    let mut pending = VecDeque::new();
 
     for i in 1.. {
-        if i % 1_000_000 == 0 {
-            println!("i={i}");
+        let broadcaster = modules.entry("broadcaster").or_default();
+
+        if let Some(next_pulse) = broadcaster.propagate(Pulse::Low, "button") {
+            for dst in dsts["broadcaster"].iter() {
+                pending.push_back(("broadcaster", *dst, next_pulse));
+            }
         }
 
-        modules["broadcaster"]
-            .borrow_mut()
-            .propagate(Pulse::Low, "button", &mut pending);
-
-        while !pending.is_empty() {
-            for (dst, src, pulse) in pending.drain(..) {
-                if let Some((_, cycle)) = cycles.iter_mut().find(|(name, _)| **name == src) {
-                    if matches!(pulse, Pulse::High) {
-                        cycle.get_or_insert(i);
-                    }
+        while let Some((src, dst, pulse)) = pending.pop_front() {
+            if let Some(cycle) = cycles.get_mut(src) {
+                if matches!(pulse, Pulse::High) {
+                    cycle.get_or_insert(i);
                 }
-
-                modules[dst]
-                    .borrow_mut()
-                    .propagate(pulse, &src, &mut next_pending);
             }
 
-            mem::swap(&mut pending, &mut next_pending);
+            let dst_module = modules.entry(dst).or_default();
+
+            if let Some(next_pulse) = dst_module.propagate(pulse, src) {
+                for next_dst in dsts[dst].iter() {
+                    pending.push_back((dst, *next_dst, next_pulse));
+                }
+            }
         }
 
         let cycle = cycles
@@ -177,91 +135,56 @@ fn part2(input: &str) -> u64 {
             .try_fold(1, |prod, cycle| Some(lcm(prod, cycle?)));
 
         if let Some(cycle) = cycle {
-            return cycle;
+            return Ok(cycle);
         }
     }
 
     unreachable!()
 }
 
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, PartialEq, Eq)]
 enum Pulse {
     High,
     Low,
 }
 
-#[derive(Debug)]
-enum Status {
-    On,
-    Off,
-}
-
-#[derive(Debug)]
-enum ModuleKind<'a> {
-    FlipFlop { status: Status },
-    Conjunction { prev_pulses: Vec<(&'a str, Pulse)> },
+#[derive(Clone, Default)]
+enum Module<'a> {
+    FlipFlop {
+        is_on: bool,
+    },
+    Conjunction {
+        prev_inputs: Vec<(&'a str, Pulse)>,
+    },
     Broadcaster,
-    Other { received_low: bool },
+    #[default]
+    Other,
 }
 
-#[derive(Debug)]
-struct Module<'a> {
-    name: &'a str,
-    kind: ModuleKind<'a>,
-    dst: Vec<Rc<RefCell<Module<'a>>>>,
-}
-
-impl<'a> Module<'a> {
-    fn propagate(&mut self, pulse: Pulse, from: &'a str, pending: &mut PendingPulses<'a>) {
-        match &mut self.kind {
-            ModuleKind::FlipFlop { status } => match pulse {
-                Pulse::High => {}
-                Pulse::Low => {
-                    let pulse = match status {
-                        Status::On => {
-                            *status = Status::Off;
-
-                            Pulse::Low
-                        }
-                        Status::Off => {
-                            *status = Status::On;
-
-                            Pulse::High
-                        }
-                    };
-
-                    for dst in self.dst.iter_mut() {
-                        pending.push((dst.borrow().name, self.name, pulse));
-                    }
+impl Module<'_> {
+    fn propagate(&mut self, pulse: Pulse, src: &str) -> Option<Pulse> {
+        match self {
+            Module::FlipFlop { is_on } => {
+                if pulse == Pulse::High {
+                    return None;
                 }
-            },
-            ModuleKind::Conjunction { prev_pulses } => {
-                if let Some((_, prev_pulse)) =
-                    prev_pulses.iter_mut().find(|(name, _)| *name == from)
+
+                *is_on = !*is_on;
+
+                Some(if *is_on { Pulse::High } else { Pulse::Low })
+            }
+            Module::Conjunction { prev_inputs } => {
+                if let Some((_, prev_pulse)) = prev_inputs.iter_mut().find(|(name, _)| *name == src)
                 {
                     *prev_pulse = pulse;
                 }
 
-                let all_high = prev_pulses
-                    .iter()
-                    .all(|(_, pulse)| matches!(pulse, Pulse::High));
+                let all_high = prev_inputs.iter().all(|(_, pulse)| *pulse == Pulse::High);
 
-                let pulse = if all_high { Pulse::Low } else { Pulse::High };
-
-                for dst in self.dst.iter_mut() {
-                    pending.push((dst.borrow().name, self.name, pulse));
-                }
+                Some(if all_high { Pulse::Low } else { Pulse::High })
             }
-            ModuleKind::Broadcaster => {
-                for dst in self.dst.iter_mut() {
-                    pending.push((dst.borrow().name, self.name, pulse));
-                }
-            }
-            ModuleKind::Other { received_low } => {
-                if matches!(pulse, Pulse::Low) {
-                    *received_low = true;
-                }
-            }
+            Module::Broadcaster => Some(pulse),
+            Module::Other => None,
         }
     }
 }
