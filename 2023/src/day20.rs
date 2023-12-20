@@ -5,7 +5,7 @@ use eyre::{ContextCompat, Result};
 use fxhash::FxHashMap as HashMap;
 
 pub fn run(input: &str) -> Result<Solution> {
-    let (modules, dsts) = parse_input(input.trim());
+    let (modules, dsts) = parse_input(input.trim())?;
 
     let p1 = part1(modules.clone(), &dsts);
     let p2 = part2(modules, &dsts)?;
@@ -16,12 +16,12 @@ pub fn run(input: &str) -> Result<Solution> {
 type Modules<'a> = HashMap<&'a str, Module<'a>>;
 type Destinations<'a> = HashMap<&'a str, Vec<&'a str>>;
 
-fn parse_input<'a>(input: &'a str) -> (Modules<'a>, Destinations<'a>) {
+fn parse_input<'a>(input: &'a str) -> Result<(Modules<'a>, Destinations<'a>)> {
     let mut modules = Modules::default();
     let mut dsts = Destinations::default();
 
     for line in input.lines() {
-        let (front, back) = line.split_once(" -> ").unwrap();
+        let (front, back) = line.split_once(" -> ").wrap_err("missing arrow")?;
 
         let (name, module) = if let Some(name) = front.strip_prefix('%') {
             (name, Module::FlipFlop { is_on: false })
@@ -50,7 +50,7 @@ fn parse_input<'a>(input: &'a str) -> (Modules<'a>, Destinations<'a>) {
         }
     }
 
-    (modules, dsts)
+    Ok((modules, dsts))
 }
 
 fn part1<'a>(mut modules: Modules<'a>, dsts: &Destinations<'a>) -> u64 {
