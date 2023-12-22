@@ -16,7 +16,7 @@ pub fn run(input: &str) -> Result<Solution> {
 type Modules<'a> = HashMap<&'a str, Module<'a>>;
 type Destinations<'a> = HashMap<&'a str, Vec<&'a str>>;
 
-fn parse_input<'a>(input: &'a str) -> Result<(Modules<'a>, Destinations<'a>)> {
+fn parse_input(input: &str) -> Result<(Modules<'_>, Destinations<'_>)> {
     let mut modules = Modules::default();
     let mut dsts = Destinations::default();
 
@@ -43,7 +43,7 @@ fn parse_input<'a>(input: &'a str) -> Result<(Modules<'a>, Destinations<'a>)> {
     for (dst, module) in modules.iter_mut() {
         if let Module::Conjunction { prev_inputs } = module {
             for (src, dsts) in dsts.iter() {
-                if dsts.contains(&dst) {
+                if dsts.contains(dst) {
                     prev_inputs.push((src, Pulse::Low));
                 }
             }

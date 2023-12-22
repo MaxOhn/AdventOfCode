@@ -170,7 +170,7 @@ fn parse_input(input: &str) -> Result<(Vec<WorkFlow>, Vec<RatingSet>)> {
         .map(|line| {
             let (name, rules) = line
                 .trim_end_matches('}')
-                .split_once("{")
+                .split_once('{')
                 .wrap_err("missing parentheses")?;
 
             let rules = rules
