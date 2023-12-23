@@ -17,14 +17,14 @@ fn part1(grid: &Grid) -> Result<u32> {
     let w = grid.width();
     let h = grid.height();
 
-    let (x, y) = grid.start()?;
-    let (fx, fy) = grid.end()?;
+    let start = grid.start()?;
+    let end = grid.end()?;
 
-    let mut stack = vec![(x, y, HashSet::default())];
+    let mut stack = vec![(start, HashSet::default())];
     let mut max = 0;
 
-    while let Some((x, y, seen)) = stack.pop() {
-        if (x, y) == (fx, fy) {
+    while let Some(((x, y), seen)) = stack.pop() {
+        if (x, y) == end {
             if seen.len() > max {
                 max = seen.len();
             }
@@ -52,7 +52,7 @@ fn part1(grid: &Grid) -> Result<u32> {
             if !seen.contains(&(nx, ny)) {
                 let mut nseen = seen.clone();
                 nseen.insert((nx, ny));
-                stack.push((nx, ny, nseen));
+                stack.push(((nx, ny), nseen));
             }
         }
     }
