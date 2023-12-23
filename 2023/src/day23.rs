@@ -1,4 +1,4 @@
-use std::{cmp, collections::hash_map::Entry, ops::Index};
+use std::{cmp, ops::Index};
 
 use aoc_rust::Solution;
 use eyre::{ContextCompat, Result};
@@ -61,18 +61,18 @@ fn part1(grid: &Grid) -> Result<u32> {
 }
 
 fn part2(grid: &Grid) -> Result<u32> {
-    let neighbor_map = neighbor_map(grid);
+    let start = grid.start()?;
+    let end = grid.end()?;
 
-    let (x, y) = grid.start()?;
-    let (fx, fy) = grid.end()?;
+    let neighbor_map = neighbor_map(grid, start, end);
 
     let mut seen = HashSet::default();
-    seen.insert((x, y));
-    let mut stack = vec![(x, y, seen, 0)];
+    seen.insert(start);
+    let mut stack = vec![(start, seen, 0)];
     let mut max = 0;
 
-    while let Some((x, y, seen, len)) = stack.pop() {
-        if (x, y) == (fx, fy) {
+    while let Some(((x, y), seen, len)) = stack.pop() {
+        if (x, y) == end {
             max = cmp::max(max, len);
 
             continue;
@@ -82,7 +82,7 @@ fn part2(grid: &Grid) -> Result<u32> {
             if !seen.contains(&(nx, ny)) {
                 let mut nseen = seen.clone();
                 nseen.insert((nx, ny));
-                stack.push((nx, ny, nseen, len + dist));
+                stack.push(((nx, ny), nseen, len + dist));
             }
         }
     }
@@ -90,18 +90,60 @@ fn part2(grid: &Grid) -> Result<u32> {
     Ok(max as u32)
 }
 
-fn neighbor_map(grid: &Grid) -> HashMap<(i32, i32), Vec<((i32, i32), usize)>> {
+fn neighbor_map(grid: &Grid, start: Pos, end: Pos) -> HashMap<Pos, Vec<(Pos, usize)>> {
     let w = grid.width();
     let h = grid.height();
-    let mut direct_neighbors = HashMap::default();
 
-    for x in 0..w {
-        for y in 0..h {
-            if grid[(x, y)] == b'#' {
+    // first collect all positions with >=3 neighbors
+
+    let mut seen = HashSet::default();
+
+    let mut forks = HashSet::default();
+    forks.insert(start);
+    forks.insert(end);
+
+    let mut stack = vec![start];
+
+    while let Some((x, y)) = stack.pop() {
+        if !seen.insert((x, y)) {
+            continue;
+        }
+
+        let mut neighbors = 0;
+
+        for (dx, dy) in [(1, 0), (-1, 0), (0, 1), (0, -1)] {
+            let nx = x + dx;
+            let ny = y + dy;
+
+            if nx < 0 || nx >= w || ny < 0 || ny >= h || grid[(nx, ny)] == b'#' {
                 continue;
             }
 
-            let mut neighbors = Vec::new();
+            neighbors += 1;
+            stack.push((nx, ny));
+        }
+
+        if neighbors > 2 {
+            forks.insert((x, y));
+        }
+    }
+
+    // then calculate the distances between the forks
+
+    let mut neighbor_map: HashMap<Pos, Vec<(Pos, usize)>> = HashMap::default();
+
+    for &pos in forks.iter() {
+        seen.clear();
+
+        let mut stack = vec![(pos, 0)];
+
+        while let Some(((x, y), dist)) = stack.pop() {
+            if !seen.insert((x, y)) {
+                continue;
+            } else if (x, y) != pos && forks.contains(&(x, y)) {
+                neighbor_map.entry(pos).or_default().push(((x, y), dist));
+                continue;
+            }
 
             for (dx, dy) in [(1, 0), (-1, 0), (0, 1), (0, -1)] {
                 let nx = x + dx;
@@ -111,68 +153,15 @@ fn neighbor_map(grid: &Grid) -> HashMap<(i32, i32), Vec<((i32, i32), usize)>> {
                     continue;
                 }
 
-                neighbors.push((nx, ny));
+                stack.push(((nx, ny), dist + 1));
             }
-
-            direct_neighbors.insert((x, y), neighbors);
-        }
-    }
-
-    let mut neighbor_map = HashMap::default();
-
-    for x in 0..w {
-        for y in 0..h {
-            let Some(ns) = direct_neighbors.get(&(x, y)) else {
-                continue;
-            };
-
-            let mut final_neighbors: HashMap<_, _> = ns.iter().map(|n| (*n, 1)).collect();
-            final_neighbors.insert((x, y), 0);
-            let mut double_neighbors = HashSet::default();
-            double_neighbors.insert((x, y));
-
-            let mut stack = vec![(ns, 1)];
-
-            while let Some((neighbors, dist)) = stack.pop() {
-                for neighbor in neighbors {
-                    let Some(nns) = direct_neighbors.get(neighbor) else {
-                        continue;
-                    };
-
-                    if nns.len() != 2 {
-                        continue;
-                    }
-
-                    let mut seen = true;
-
-                    for &nn in nns {
-                        match final_neighbors.entry(nn) {
-                            Entry::Occupied(_) => {
-                                double_neighbors.insert(nn);
-                            }
-                            Entry::Vacant(e) => {
-                                e.insert(dist + 1);
-                                seen = false;
-                            }
-                        }
-                    }
-
-                    if !seen {
-                        stack.push((nns, dist + 1));
-                    }
-                }
-            }
-
-            let neighbors = final_neighbors
-                .into_iter()
-                .filter(|(key, _)| !double_neighbors.contains(key))
-                .collect();
-            neighbor_map.insert((x, y), neighbors);
         }
     }
 
     neighbor_map
 }
+
+type Pos = (i32, i32);
 
 struct Grid {
     width: i32,
@@ -195,7 +184,7 @@ impl Grid {
         self.grid.len() as i32 / self.width
     }
 
-    fn start(&self) -> Result<(i32, i32)> {
+    fn start(&self) -> Result<Pos> {
         self.grid
             .iter()
             .position(|&byte| byte == b'.')
@@ -203,7 +192,7 @@ impl Grid {
             .wrap_err("missing start in first row")
     }
 
-    fn end(&self) -> Result<(i32, i32)> {
+    fn end(&self) -> Result<Pos> {
         self.grid
             .chunks_exact(self.width as usize)
             .last()
@@ -213,10 +202,10 @@ impl Grid {
     }
 }
 
-impl Index<(i32, i32)> for Grid {
+impl Index<Pos> for Grid {
     type Output = u8;
 
-    fn index(&self, (x, y): (i32, i32)) -> &Self::Output {
+    fn index(&self, (x, y): Pos) -> &Self::Output {
         self.grid.index((y * self.width + x) as usize)
     }
 }
