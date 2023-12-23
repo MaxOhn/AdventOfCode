@@ -1,4 +1,4 @@
-use std::{cmp, ops::Index};
+use std::{cmp, collections::hash_map::Entry, ops::Index};
 
 use aoc_rust::Solution;
 use eyre::{ContextCompat, Result};
@@ -60,29 +60,34 @@ fn part1(grid: &Grid) -> Result<u32> {
     Ok(max as u32)
 }
 
+const START_ID: u64 = 0;
+const END_ID: u64 = 1;
+
 fn part2(grid: &Grid) -> Result<u32> {
     let start = grid.start()?;
     let end = grid.end()?;
 
     let neighbor_map = neighbor_map(grid, start, end);
 
-    let mut seen = HashSet::default();
-    seen.insert(start);
-    let mut stack = vec![(start, seen, 0)];
+    eyre::ensure!(neighbor_map.len() <= 64, "can have at most 64 3-way forks");
+
+    let mut seen = 0_u64;
+    seen |= 1 << START_ID;
+    let mut stack = vec![(START_ID, seen, 0)];
     let mut max = 0;
 
-    while let Some(((x, y), seen, len)) = stack.pop() {
-        if (x, y) == end {
+    while let Some((id, seen, len)) = stack.pop() {
+        if id == END_ID {
             max = cmp::max(max, len);
 
             continue;
         }
 
-        for &((nx, ny), dist) in neighbor_map[&(x, y)].iter() {
-            if !seen.contains(&(nx, ny)) {
-                let mut nseen = seen.clone();
-                nseen.insert((nx, ny));
-                stack.push(((nx, ny), nseen, len + dist));
+        for &(nid, dist) in neighbor_map[&id].iter() {
+            if seen & (1 << nid) == 0 {
+                let mut nseen = seen;
+                nseen |= 1 << nid;
+                stack.push((nid, nseen, len + dist));
             }
         }
     }
@@ -90,7 +95,7 @@ fn part2(grid: &Grid) -> Result<u32> {
     Ok(max as u32)
 }
 
-fn neighbor_map(grid: &Grid, start: Pos, end: Pos) -> HashMap<Pos, Vec<(Pos, usize)>> {
+fn neighbor_map(grid: &Grid, start: Pos, end: Pos) -> HashMap<u64, Vec<(u64, usize)>> {
     let w = grid.width();
     let h = grid.height();
 
@@ -101,6 +106,11 @@ fn neighbor_map(grid: &Grid, start: Pos, end: Pos) -> HashMap<Pos, Vec<(Pos, usi
     let mut forks = HashSet::default();
     forks.insert(start);
     forks.insert(end);
+
+    let mut ids = HashMap::default();
+    ids.insert(start, START_ID);
+    ids.insert(end, END_ID);
+    let mut next_id = END_ID + 1;
 
     let mut stack = vec![start];
 
@@ -125,12 +135,17 @@ fn neighbor_map(grid: &Grid, start: Pos, end: Pos) -> HashMap<Pos, Vec<(Pos, usi
 
         if neighbors > 2 {
             forks.insert((x, y));
+
+            if let Entry::Vacant(e) = ids.entry((x, y)) {
+                e.insert(next_id);
+                next_id += 1;
+            }
         }
     }
 
     // then calculate the distances between the forks
 
-    let mut neighbor_map: HashMap<Pos, Vec<(Pos, usize)>> = HashMap::default();
+    let mut neighbor_map = HashMap::<_, Vec<_>>::default();
 
     for &pos in forks.iter() {
         seen.clear();
@@ -141,7 +156,10 @@ fn neighbor_map(grid: &Grid, start: Pos, end: Pos) -> HashMap<Pos, Vec<(Pos, usi
             if !seen.insert((x, y)) {
                 continue;
             } else if (x, y) != pos && forks.contains(&(x, y)) {
-                neighbor_map.entry(pos).or_default().push(((x, y), dist));
+                neighbor_map
+                    .entry(ids[&pos])
+                    .or_default()
+                    .push((ids[&(x, y)], dist));
                 continue;
             }
 
