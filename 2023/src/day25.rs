@@ -7,20 +7,25 @@ use eyre::Result;
 use fxhash::FxHashMap as HashMap;
 
 pub fn run(input: &str) -> Result<Solution> {
-    let input = input.trim();
-
-    let p1 = part1(input);
+    let p1 = part1(input.trim())?;
 
     Ok(Solution::new().part1(p1).part2("x".to_owned()))
 }
 
-fn part1(input: &str) -> usize {
+fn part1(input: &str) -> Result<usize> {
     let mut connections = HashMap::<_, Vec<_>>::default();
     let mut ids = HashMap::<_, usize>::default();
     let mut next_id = 0;
 
     for line in input.lines() {
         let (from, back) = line.split_once(": ").unwrap();
+
+        let from = *ids.entry(from).or_insert_with(|| {
+            let id = next_id;
+            next_id += 1;
+
+            id
+        });
 
         let back: Vec<_> = back
             .split(' ')
@@ -34,14 +39,7 @@ fn part1(input: &str) -> usize {
             })
             .collect();
 
-        let from = *ids.entry(from).or_insert_with(|| {
-            let id = next_id;
-            next_id += 1;
-
-            id
-        });
-
-        connections.entry(from).or_default().extend(back);
+        connections.insert(from, back);
     }
 
     let mut mat = vec![vec![0; ids.len()].into_boxed_slice(); ids.len()];
@@ -53,22 +51,21 @@ fn part1(input: &str) -> usize {
         }
     }
 
-    let (cuts, partition) = global_min_cut(&mut mat);
+    let (cuts, partition_len) = global_min_cut(&mut mat);
+    eyre::ensure!(cuts == 3, "no 3-cut found");
 
-    assert_eq!(cuts, 3);
-
-    partition.len() * (ids.len() - partition.len())
+    Ok(partition_len * (ids.len() - partition_len))
 }
 
-type Graph = Vec<Box<[i32]>>;
-
-fn global_min_cut(mat: &mut Graph) -> (i32, Vec<i32>) {
-    let mut best = (i32::MAX, Vec::new());
+// https://en.wikipedia.org/wiki/Stoer%E2%80%93Wagner_algorithm#Example_code
+fn global_min_cut(mat: &mut [Box<[i32]>]) -> (i32, usize) {
+    let mut best = (i32::MAX, 0);
     let n = mat.len();
-    let mut co: Vec<_> = (0..n as i32).map(|i| vec![i]).collect();
+    let mut co: Vec<_> = vec![1; n];
+    let mut w = vec![0; n];
 
     for ph in 1..n {
-        let mut w = mat[0].clone();
+        w.copy_from_slice(&mat[0]);
         let mut s = 0;
         let mut t = 0;
 
@@ -88,9 +85,8 @@ fn global_min_cut(mat: &mut Graph) -> (i32, Vec<i32>) {
             }
         }
 
-        best = cmp::min(best, (w[t] - mat[t][t], co[t].clone()));
-        let mut co_t = co[t].clone();
-        co[s].append(&mut co_t);
+        best = cmp::min(best, (w[t] - mat[t][t], co[t]));
+        co[s] += co[t];
 
         for i in 0..n {
             mat[s][i] += mat[t][i];
