@@ -1,5 +1,3 @@
-mod day01;
-
 use std::{fs, time::Instant};
 
 use eyre::Result;
@@ -7,7 +5,10 @@ use eyre::Result;
 fn main() -> Result<()> {
     macro_rules! load {
         ( $day:ident ) => {
-            (concat!("./inputs/", stringify!($day), ".txt"), $day::run)
+            (
+                concat!("./inputs/", stringify!($day), ".txt"),
+                aoc24::$day::run,
+            )
         };
     }
 
