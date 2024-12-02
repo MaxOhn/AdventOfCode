@@ -14,12 +14,10 @@ fn part1(input: &str) -> usize {
     input
         .lines()
         .filter(|line| {
-            let iter = line
-                .split_ascii_whitespace()
+            line.split_ascii_whitespace()
                 .map(str::parse::<i32>)
-                .map(Result::unwrap);
-
-            is_safe(iter)
+                .map(Result::unwrap)
+                .is_safe()
         })
         .count()
 }
@@ -39,42 +37,46 @@ fn part2(input: &str) -> usize {
             buf.extend(iter);
 
             (0..buf.len()).any(|i| {
-                let iter = buf
-                    .iter()
+                buf.iter()
                     .enumerate()
                     .filter(|(j, _)| *j != i)
-                    .map(|(_, level)| *level);
-
-                is_safe(iter)
+                    .map(|(_, level)| *level)
+                    .is_safe()
             })
         })
         .count()
 }
 
-fn is_safe<I: Iterator<Item = i32>>(mut iter: I) -> bool {
-    let (Some(first), Some(second)) = (iter.next(), iter.next()) else {
-        return true;
-    };
-
-    let cmp = if first < second { i32::lt } else { i32::gt };
-
-    within_range(first, second) && check_remaining(iter, second, cmp)
+trait Report {
+    fn is_safe(self) -> bool;
 }
 
-fn check_remaining<I: Iterator<Item = i32>>(
-    iter: I,
-    init: i32,
-    cmp: fn(&i32, &i32) -> bool,
-) -> bool {
-    iter.scan(init, |prev, curr| {
-        let is_safe = cmp(prev, &curr) && within_range(*prev, curr);
-        *prev = curr;
+impl<I: Iterator<Item = i32>> Report for I {
+    fn is_safe(mut self) -> bool {
+        fn check_remaining<I: Iterator<Item = i32>>(
+            iter: I,
+            init: i32,
+            cmp: fn(&i32, &i32) -> bool,
+        ) -> bool {
+            iter.scan(init, |prev, curr| {
+                let is_safe = cmp(prev, &curr) && within_range(*prev, curr);
+                *prev = curr;
 
-        Some(is_safe)
-    })
-    .all(std::convert::identity)
-}
+                Some(is_safe)
+            })
+            .all(std::convert::identity)
+        }
 
-fn within_range(a: i32, b: i32) -> bool {
-    (1..=3).contains(&(a - b).abs())
+        fn within_range(a: i32, b: i32) -> bool {
+            (1..=3).contains(&(a - b).abs())
+        }
+
+        let (Some(first), Some(second)) = (self.next(), self.next()) else {
+            return true;
+        };
+
+        let cmp = if first < second { i32::lt } else { i32::gt };
+
+        within_range(first, second) && check_remaining(self, second, cmp)
+    }
 }
