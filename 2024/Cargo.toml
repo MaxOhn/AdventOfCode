@@ -7,3 +7,10 @@ edition = "2021"
 aoc-rust = { path = "../aoc-rust" }
 eyre = "0.6.9"
 fxhash = "0.2.1"
+
+[dev-dependencies]
+divan = "0.1.16"
+
+[[bench]]
+name = "day02"
+harness = false
