@@ -6,7 +6,6 @@ use eyre::Result;
 pub fn run(input: &str) -> Result<Solution> {
     let input = input.trim();
 
-    // let p1 = part1(input);
     let p1 = part1(input);
     let p2 = part2(input);
 
@@ -122,10 +121,11 @@ pub fn part1_structured(input: &str) -> i32 {
     };
 
     let mut count = 0;
+    let w = puzzle.w + 1;
 
     for needle in memchr::memchr_iter(b'X', puzzle.inner) {
-        let x = needle % puzzle.w;
-        let y = needle / puzzle.w;
+        let x = needle % w;
+        let y = needle / w;
         let curr = Pos::new(x as i16, y as i16);
 
         for dir in DIRECTIONS {
@@ -151,28 +151,20 @@ impl<'a> Puzzle<'a> {
 
         Some(Self {
             inner: input.as_bytes(),
-            w: w + 1,
+            w,
             h,
         })
-    }
-
-    fn w(&self) -> usize {
-        self.w - 1
-    }
-
-    fn h(&self) -> usize {
-        self.h
     }
 
     fn get(&self, idx: Pos) -> Option<u8> {
         let x = usize::try_from(idx.x).ok()?;
         let y = usize::try_from(idx.y).ok()?;
 
-        if x >= self.w() || y >= self.h() {
+        if x >= self.w || y >= self.h {
             return None;
         }
 
-        let idx = x + y * self.w;
+        let idx = x + y * (self.w + 1);
 
         self.inner.get(idx).copied()
     }
