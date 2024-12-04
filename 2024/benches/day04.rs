@@ -5,15 +5,11 @@ fn main() {
 const INPUT: &str = include_str!("../inputs/day04.txt");
 
 #[divan::bench]
-fn naive(bencher: divan::Bencher) {
-    bencher.with_inputs(|| INPUT).bench_refs(|input| {
-        aoc24::day04::part1(input);
-    });
+fn naive() {
+    aoc24::day04::part1(INPUT);
 }
 
 #[divan::bench]
-fn structured(bencher: divan::Bencher) {
-    bencher.with_inputs(|| INPUT).bench_refs(|input| {
-        aoc24::day04::part1_structured(input);
-    });
+fn structured() {
+    aoc24::day04::part1_structured(INPUT);
 }
