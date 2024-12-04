@@ -2,6 +2,7 @@ use std::ops::{Add, Mul};
 
 use aoc_rust::Solution;
 use eyre::Result;
+use rayon::iter::{IntoParallelIterator, ParallelIterator};
 
 pub fn run(input: &str) -> Result<Solution> {
     let input = input.trim();
@@ -20,71 +21,93 @@ pub fn part1(input: &str) -> i32 {
     let w = ww + 1; // consider '\n'
 
     let bytes = input.as_bytes();
-    let mut count = 0;
+    let quarter = input.len() / 4;
 
-    for x in memchr::memrchr_iter(b'X', bytes) {
-        let not_right = (x + 4) % w >= 3;
-        let not_left = x % w >= 3;
-        let not_top = x > 3 * w;
-        let not_bot = x < bytes.len() - ww - 2 * w;
+    [
+        (&bytes[..quarter], 0),
+        (&bytes[quarter..2 * quarter], quarter),
+        (&bytes[2 * quarter..3 * quarter], 2 * quarter),
+        (&bytes[3 * quarter..bytes.len()], 3 * quarter),
+    ]
+    .into_par_iter()
+    .map(|(chunk, start)| {
+        let mut count = 0;
 
-        if not_right {
-            if input[x + 1..].starts_with("MAS") {
-                count += 1;
+        for mut x in memchr::memrchr_iter(b'X', chunk) {
+            x += start;
+
+            let not_right = (x + 4) % w >= 3;
+            let not_left = x % w >= 3;
+            let not_top = x > 3 * w;
+            let not_bot = x < bytes.len() - ww - 2 * w;
+
+            if not_right {
+                if input[x + 1..].starts_with("MAS") {
+                    count += 1;
+                }
+
+                if not_bot
+                    && bytes[x + w + 1] == b'M'
+                    && bytes[x + 2 * w + 2] == b'A'
+                    && bytes[x + 3 * w + 3] == b'S'
+                {
+                    count += 1;
+                }
+
+                if not_top
+                    && bytes[x - w + 1] == b'M'
+                    && bytes[x - 2 * w + 2] == b'A'
+                    && bytes[x - 3 * w + 3] == b'S'
+                {
+                    count += 1;
+                }
+            }
+
+            if not_left {
+                if input[..x].ends_with("SAM") {
+                    count += 1;
+                }
+
+                if not_bot
+                    && bytes[x + w - 1] == b'M'
+                    && bytes[x + 2 * w - 2] == b'A'
+                    && bytes[x + 3 * w - 3] == b'S'
+                {
+                    count += 1;
+                }
+
+                if not_top
+                    && bytes[x - w - 1] == b'M'
+                    && bytes[x - 2 * w - 2] == b'A'
+                    && bytes[x - 3 * w - 3] == b'S'
+                {
+                    count += 1;
+                }
             }
 
             if not_bot
-                && bytes[x + w + 1] == b'M'
-                && bytes[x + 2 * w + 2] == b'A'
-                && bytes[x + 3 * w + 3] == b'S'
+                && bytes[x + w] == b'M'
+                && bytes[x + 2 * w] == b'A'
+                && bytes[x + 3 * w] == b'S'
             {
                 count += 1;
             }
 
             if not_top
-                && bytes[x - w + 1] == b'M'
-                && bytes[x - 2 * w + 2] == b'A'
-                && bytes[x - 3 * w + 3] == b'S'
+                && bytes[x - w] == b'M'
+                && bytes[x - 2 * w] == b'A'
+                && bytes[x - 3 * w] == b'S'
             {
                 count += 1;
             }
         }
 
-        if not_left {
-            if input[..x].ends_with("SAM") {
-                count += 1;
-            }
-
-            if not_bot
-                && bytes[x + w - 1] == b'M'
-                && bytes[x + 2 * w - 2] == b'A'
-                && bytes[x + 3 * w - 3] == b'S'
-            {
-                count += 1;
-            }
-
-            if not_top
-                && bytes[x - w - 1] == b'M'
-                && bytes[x - 2 * w - 2] == b'A'
-                && bytes[x - 3 * w - 3] == b'S'
-            {
-                count += 1;
-            }
-        }
-
-        if not_bot && bytes[x + w] == b'M' && bytes[x + 2 * w] == b'A' && bytes[x + 3 * w] == b'S' {
-            count += 1;
-        }
-
-        if not_top && bytes[x - w] == b'M' && bytes[x - 2 * w] == b'A' && bytes[x - 3 * w] == b'S' {
-            count += 1;
-        }
-    }
-
-    count
+        count
+    })
+    .sum()
 }
 
-fn part2(input: &str) -> i32 {
+pub fn part2(input: &str) -> i32 {
     let Some(ww) = input.lines().next().map(str::len) else {
         return 0;
     };
@@ -92,27 +115,42 @@ fn part2(input: &str) -> i32 {
     let w = ww + 1; // consider '\n'
 
     let bytes = input.as_bytes();
-    let mut count = 0;
+    let quarter = input.len() / 4;
 
-    for a in memchr::memrchr_iter(b'A', &bytes[w..bytes.len() - ww]) {
-        if a % w == 0 || (a + 1) % w == 0 {
-            continue;
+    [
+        (&bytes[..quarter], 0),
+        (&bytes[quarter..2 * quarter], quarter),
+        (&bytes[2 * quarter..3 * quarter], 2 * quarter),
+        (&bytes[3 * quarter..bytes.len()], 3 * quarter),
+    ]
+    .into_par_iter()
+    .map(|(chunk, start)| {
+        let mut count = 0;
+
+        for mut a in memchr::memrchr_iter(b'A', chunk) {
+            a += start;
+
+            if a % w == 0 || (a + 1) % w == 0 {
+                continue;
+            }
+
+            let ul = a - w - 1;
+            let ur = a - w + 1;
+            let dl = a + w - 1;
+            let dr = a + w + 1;
+
+            if ((bytes[dr] == b'M' && bytes[ul] == b'S')
+                || (bytes[dr] == b'S' && bytes[ul] == b'M'))
+                && ((bytes[ur] == b'M' && bytes[dl] == b'S')
+                    || (bytes[ur] == b'S' && bytes[dl] == b'M'))
+            {
+                count += 1;
+            }
         }
 
-        let ul = a - 1;
-        let ur = a + 1;
-        let dl = ul + (w << 1); // = a - 1 + 2 * ww
-        let dr = ur + (w << 1);
-
-        if ((bytes[dr] == b'M' && bytes[ul] == b'S') || (bytes[dr] == b'S' && bytes[ul] == b'M'))
-            && ((bytes[ur] == b'M' && bytes[dl] == b'S')
-                || (bytes[ur] == b'S' && bytes[dl] == b'M'))
-        {
-            count += 1;
-        }
-    }
-
-    count
+        count
+    })
+    .sum()
 }
 
 pub fn part1_structured(input: &str) -> i32 {
@@ -120,22 +158,26 @@ pub fn part1_structured(input: &str) -> i32 {
         return 0;
     };
 
-    let mut count = 0;
     let w = puzzle.w + 1;
 
-    for needle in memchr::memchr_iter(b'X', puzzle.inner) {
-        let x = needle % w;
-        let y = needle / w;
-        let curr = Pos::new(x as i16, y as i16);
+    DIRECTIONS
+        .into_par_iter()
+        .map(|dir| {
+            let mut count = 0;
 
-        for dir in DIRECTIONS {
-            if puzzle.dir_iter(curr, dir).take(3).eq(*b"MAS") {
-                count += 1;
+            for needle in memchr::memchr_iter(b'X', puzzle.inner) {
+                let x = needle % w;
+                let y = needle / w;
+                let curr = Pos::new(x as i16, y as i16);
+
+                if puzzle.dir_iter(curr, dir).take(3).eq(*b"MAS") {
+                    count += 1;
+                }
             }
-        }
-    }
 
-    count
+            count
+        })
+        .sum()
 }
 
 struct Puzzle<'a> {
