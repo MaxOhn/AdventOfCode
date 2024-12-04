@@ -16,3 +16,7 @@ divan = "0.1.16"
 [[bench]]
 name = "day02"
 harness = false
+
+[[bench]]
+name = "day04"
+harness = false
