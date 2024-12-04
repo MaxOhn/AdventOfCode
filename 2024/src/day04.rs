@@ -6,6 +6,7 @@ use eyre::Result;
 pub fn run(input: &str) -> Result<Solution> {
     let input = input.trim();
 
+    // let p1 = part1(input);
     let p1 = part1(input);
     let p2 = part2(input);
 
@@ -122,14 +123,14 @@ pub fn part1_structured(input: &str) -> i32 {
 
     let mut count = 0;
 
-    for y in 0..puzzle.h() as isize {
-        for x in 0..puzzle.w() as isize {
-            let curr = Idx::new(x, y);
+    for needle in memchr::memchr_iter(b'X', puzzle.inner) {
+        let x = needle % puzzle.w;
+        let y = needle / puzzle.w;
+        let curr = Pos::new(x as i16, y as i16);
 
-            for dir in Direction::enumerate() {
-                if puzzle.dir_iter(curr, dir).take(4).eq(*b"XMAS") {
-                    count += 1;
-                }
+        for dir in DIRECTIONS {
+            if puzzle.dir_iter(curr, dir).take(3).eq(*b"MAS") {
+                count += 1;
             }
         }
     }
@@ -140,15 +141,18 @@ pub fn part1_structured(input: &str) -> i32 {
 struct Puzzle<'a> {
     inner: &'a [u8],
     w: usize,
+    h: usize,
 }
 
 impl<'a> Puzzle<'a> {
     fn new(input: &'a str) -> Option<Self> {
         let w = input.lines().next()?.len();
+        let h = (input.len() + 1) / w;
 
         Some(Self {
             inner: input.as_bytes(),
             w: w + 1,
+            h,
         })
     }
 
@@ -157,10 +161,10 @@ impl<'a> Puzzle<'a> {
     }
 
     fn h(&self) -> usize {
-        (self.inner.len() + 1) / self.w
+        self.h
     }
 
-    fn get(&self, idx: Idx) -> Option<u8> {
+    fn get(&self, idx: Pos) -> Option<u8> {
         let x = usize::try_from(idx.x).ok()?;
         let y = usize::try_from(idx.y).ok()?;
 
@@ -173,24 +177,24 @@ impl<'a> Puzzle<'a> {
         self.inner.get(idx).copied()
     }
 
-    fn dir_iter(&self, idx: Idx, dir: Direction) -> PuzzleIter<'_> {
+    fn dir_iter(&self, idx: Pos, dir: Pos) -> PuzzleIter<'_> {
         PuzzleIter::new(idx, self, dir)
     }
 }
 
 #[derive(Copy, Clone, Debug)]
-struct Idx {
-    x: isize,
-    y: isize,
+struct Pos {
+    x: i16,
+    y: i16,
 }
 
-impl Idx {
-    fn new(x: isize, y: isize) -> Self {
+impl Pos {
+    const fn new(x: i16, y: i16) -> Self {
         Self { x, y }
     }
 }
 
-impl Add for Idx {
+impl Add for Pos {
     type Output = Self;
 
     fn add(self, rhs: Self) -> Self::Output {
@@ -201,10 +205,10 @@ impl Add for Idx {
     }
 }
 
-impl Mul<isize> for Idx {
+impl Mul<i16> for Pos {
     type Output = Self;
 
-    fn mul(self, rhs: isize) -> Self::Output {
+    fn mul(self, rhs: i16) -> Self::Output {
         Self {
             x: self.x * rhs,
             y: self.y * rhs,
@@ -214,21 +218,21 @@ impl Mul<isize> for Idx {
 
 #[derive(Copy, Clone)]
 struct OffsetIter {
-    offset: Idx,
-    progress: isize,
+    offset: Pos,
+    progress: i16,
 }
 
 impl OffsetIter {
-    fn new(dir: Direction) -> Self {
+    fn new(dir: Pos) -> Self {
         Self {
-            offset: dir.offset(),
-            progress: 0,
+            offset: dir,
+            progress: 1,
         }
     }
 }
 
 impl Iterator for OffsetIter {
-    type Item = Idx;
+    type Item = Pos;
 
     fn next(&mut self) -> Option<Self::Item> {
         let idx = self.offset * self.progress;
@@ -239,17 +243,17 @@ impl Iterator for OffsetIter {
 }
 
 struct PuzzleIter<'a> {
-    idx: Idx,
+    pos: Pos,
     puzzle: &'a Puzzle<'a>,
     offset: OffsetIter,
 }
 
 impl<'a> PuzzleIter<'a> {
-    fn new(idx: Idx, puzzle: &'a Puzzle<'a>, dir: Direction) -> Self {
+    fn new(pos: Pos, puzzle: &'a Puzzle<'a>, offset: Pos) -> Self {
         Self {
-            idx,
+            pos,
             puzzle,
-            offset: OffsetIter::new(dir),
+            offset: OffsetIter::new(offset),
         }
     }
 }
@@ -258,46 +262,17 @@ impl Iterator for PuzzleIter<'_> {
     type Item = u8;
 
     fn next(&mut self) -> Option<Self::Item> {
-        self.puzzle.get(self.idx + self.offset.next()?)
+        self.puzzle.get(self.pos + self.offset.next()?)
     }
 }
 
-#[derive(Copy, Clone)]
-enum Direction {
-    Right,
-    DownRight,
-    Down,
-    DownLeft,
-    Left,
-    UpLeft,
-    Up,
-    UpRight,
-}
-
-impl Direction {
-    fn offset(self) -> Idx {
-        match self {
-            Self::Right => Idx::new(1, 0),
-            Self::DownRight => Idx::new(1, 1),
-            Self::Down => Idx::new(0, 1),
-            Self::DownLeft => Idx::new(-1, 1),
-            Self::Left => Idx::new(-1, 0),
-            Self::UpLeft => Idx::new(-1, -1),
-            Self::Up => Idx::new(0, -1),
-            Self::UpRight => Idx::new(1, -1),
-        }
-    }
-
-    fn enumerate() -> impl IntoIterator<Item = Self> {
-        [
-            Self::Right,
-            Self::DownRight,
-            Self::Down,
-            Self::DownLeft,
-            Self::Left,
-            Self::UpLeft,
-            Self::Up,
-            Self::UpRight,
-        ]
-    }
-}
+const DIRECTIONS: [Pos; 8] = [
+    Pos::new(1, 0),   // Right
+    Pos::new(1, 1),   // DownRight
+    Pos::new(0, 1),   // Down
+    Pos::new(-1, 1),  // DownLeft
+    Pos::new(-1, 0),  // Left
+    Pos::new(-1, -1), // UpLeft
+    Pos::new(0, -1),  // Up
+    Pos::new(1, -1),  // UpRight
+];
