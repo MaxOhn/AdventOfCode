@@ -3,6 +3,7 @@ use std::{cell::RefCell, collections::HashMap};
 use aoc_rust::{util::lines::Lines, Solution};
 use eyre::Result;
 use fxhash::FxBuildHasher;
+use nom::{bytes::complete as by, character::complete as ch, sequence::separated_pair, IResult};
 use rayon::{iter::ParallelIterator, str::ParallelString};
 
 pub fn run(input: &str) -> Result<Solution> {
@@ -23,14 +24,13 @@ fn parse_rules(input: &str) -> Option<(HashMap<u8, Vec<u8>, FxBuildHasher>, &str
     let mut lines = Lines::new(input);
 
     while let Some(line) = lines.next() {
-        let Some((x, y)) = line
-            .split_once('|')
-            .and_then(|(x, y)| x.parse().ok().zip(y.parse().ok()))
-        else {
-            return Some((rules, lines.rest()));
-        };
+        let parsed: IResult<_, _> = separated_pair(ch::u8, by::tag("|"), ch::u8)(line);
 
-        rules.entry(x).or_default().push(y);
+        if let Ok(("", (x, y))) = parsed {
+            rules.entry(x).or_default().push(y);
+        } else {
+            return Some((rules, lines.rest()));
+        }
     }
 
     None
