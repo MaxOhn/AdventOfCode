@@ -837,7 +837,7 @@ function __wbg_get_imports() {
         const ret = false;
         return ret;
     };
-    imports.wbg.__wbindgen_closure_wrapper2345 = function(arg0, arg1, arg2) {
+    imports.wbg.__wbindgen_closure_wrapper2343 = function(arg0, arg1, arg2) {
         const ret = makeMutClosure(arg0, arg1, 812, __wbg_adapter_39);
         return ret;
     };
@@ -983,7 +983,7 @@ async function __wbg_init(module_or_path) {
     }
 
     if (typeof module_or_path === 'undefined') {
-        module_or_path = new URL('aoc-solver-5aaeb7bb69d85d9a_bg.wasm', import.meta.url);
+        module_or_path = new URL('aoc-solver-a2da98bcfcf9a1e4_bg.wasm', import.meta.url);
     }
     const imports = __wbg_get_imports();
 
