@@ -33,7 +33,7 @@ fn parse_rules(rules: &str) -> HashMap<u8, Vec<u8>, FxBuildHasher> {
     rules
 }
 
-fn part1(input: &str) -> u16 {
+pub fn part1(input: &str) -> u16 {
     let Some((rules, updates)) = input.split_once("\n\n") else {
         return 0;
     };
@@ -65,7 +65,7 @@ fn part1(input: &str) -> u16 {
         .sum()
 }
 
-fn part2(input: &str) -> u16 {
+pub fn part2(input: &str) -> u16 {
     let Some((rules, updates)) = input.split_once("\n\n") else {
         return 0;
     };
