@@ -94,9 +94,7 @@ fn part2(input: &str) -> u16 {
                         };
 
                         for &y in ys {
-                            let iy = memchr::memchr(y, updates);
-
-                            if let Some(iy) = iy {
+                            if let Some(iy) = memchr::memchr(y, updates) {
                                 if iy < ix {
                                     sorted = false;
                                     updates.swap(ix, iy);
