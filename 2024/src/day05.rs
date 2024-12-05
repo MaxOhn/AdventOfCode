@@ -1,6 +1,6 @@
 use std::{cell::RefCell, collections::HashMap};
 
-use aoc_rust::Solution;
+use aoc_rust::{util::lines::Lines, Solution};
 use eyre::Result;
 use fxhash::FxBuildHasher;
 use rayon::{iter::ParallelIterator, str::ParallelString};
@@ -18,27 +18,28 @@ thread_local! {
     static UPDATES_BUF: RefCell<Vec<u8>> = RefCell::new(Vec::new());
 }
 
-fn parse_rules(rules: &str) -> HashMap<u8, Vec<u8>, FxBuildHasher> {
-    let iter = rules
-        .lines()
-        .filter_map(|line| line.split_once('|'))
-        .filter_map(|(x, y)| x.parse().ok().zip(y.parse().ok()));
-
+fn parse_rules(input: &str) -> Option<(HashMap<u8, Vec<u8>, FxBuildHasher>, &str)> {
     let mut rules = HashMap::<u8, Vec<u8>, _>::with_hasher(FxBuildHasher::default());
+    let mut lines = Lines::new(input);
 
-    for (x, y) in iter {
+    while let Some(line) = lines.next() {
+        let Some((x, y)) = line
+            .split_once('|')
+            .and_then(|(x, y)| x.parse().ok().zip(y.parse().ok()))
+        else {
+            return Some((rules, lines.rest()));
+        };
+
         rules.entry(x).or_default().push(y);
     }
 
-    rules
+    None
 }
 
 pub fn part1(input: &str) -> u16 {
-    let Some((rules, updates)) = input.split_once("\n\n") else {
+    let Some((rules, updates)) = parse_rules(input) else {
         return 0;
     };
-
-    let rules = parse_rules(rules);
 
     updates
         .par_lines()
@@ -66,11 +67,9 @@ pub fn part1(input: &str) -> u16 {
 }
 
 pub fn part2(input: &str) -> u16 {
-    let Some((rules, updates)) = input.split_once("\n\n") else {
+    let Some((rules, updates)) = parse_rules(input) else {
         return 0;
     };
-
-    let rules = parse_rules(rules);
 
     updates
         .par_lines()
