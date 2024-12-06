@@ -14,7 +14,7 @@ pub fn run(input: &str) -> Result<Solution> {
 }
 
 thread_local! {
-    static UPDATE_BUF: RefCell<Update> = RefCell::new(Update::new());
+    static UPDATE: RefCell<Update> = RefCell::new(Update::new());
 }
 
 type Rules = [Vec<u8>; 100];
@@ -106,7 +106,7 @@ pub fn part1(input: &str) -> u16 {
     updates
         .par_lines()
         .filter_map(|line| {
-            UPDATE_BUF.with_borrow_mut(|update| {
+            UPDATE.with_borrow_mut(|update| {
                 update.parse(line);
 
                 rules
@@ -134,7 +134,7 @@ pub fn part2(input: &str) -> u16 {
     updates
         .par_lines()
         .filter_map(|line| {
-            UPDATE_BUF.with_borrow_mut(|update| {
+            UPDATE.with_borrow_mut(|update| {
                 update.parse(line);
 
                 let mut iters = 0;
