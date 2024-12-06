@@ -23,9 +23,7 @@ fn part1(input: &str) -> usize {
         return 0;
     };
 
-    let seen = input.trace_path(start as i16);
-
-    seen.len()
+    input.trace_path(start as i16).len()
 }
 
 fn part2(input: &str) -> usize {
@@ -89,7 +87,7 @@ impl<'a> InputMap<'a> {
     }
 
     fn contains(&self, pos: Pos) -> bool {
-        (0..self.w).contains(&pos.x) && (0..self.h).contains(&pos.y)
+        (0..self.w - 1).contains(&pos.x) && (0..self.h).contains(&pos.y)
     }
 
     fn trace_path(&self, start: i16) -> HashSet<i16, FxBuildHasher> {
@@ -129,7 +127,7 @@ impl Pos {
         Self { x, y }
     }
 
-    const fn rotate(&mut self) {
+    fn rotate(&mut self) {
         *self = match (self.x, self.y) {
             (-1, 0) => Self::new(0, -1),
             (0, -1) => Self::new(1, 0),
