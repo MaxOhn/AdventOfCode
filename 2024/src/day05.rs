@@ -1,9 +1,8 @@
 use std::{cell::RefCell, collections::HashMap};
 
-use aoc_rust::{util::lines::Lines, Solution};
+use aoc_rust::Solution;
 use eyre::Result;
 use fxhash::FxBuildHasher;
-use nom::{bytes::complete as by, character::complete as ch, sequence::separated_pair, IResult};
 use rayon::{iter::ParallelIterator, str::ParallelString};
 
 pub fn run(input: &str) -> Result<Solution> {
@@ -21,19 +20,33 @@ thread_local! {
 
 fn parse_rules(input: &str) -> Option<(HashMap<u8, Vec<u8>, FxBuildHasher>, &str)> {
     let mut rules = HashMap::<u8, Vec<u8>, _>::with_hasher(FxBuildHasher::default());
-    let mut lines = Lines::new(input);
 
-    while let Some(line) = lines.next() {
-        let parsed: IResult<_, _> = separated_pair(ch::u8, by::tag("|"), ch::u8)(line);
+    let mut x = 0;
+    let mut y = 0;
+    let mut curr = &mut x;
+    let mut newline = false;
+    let mut chars = input.chars();
 
-        if let Ok(("", (x, y))) = parsed {
-            rules.entry(x).or_default().push(y);
-        } else {
-            return Some((rules, lines.rest()));
+    for ch in chars.by_ref() {
+        match ch as u8 {
+            digit @ b'0'..=b'9' => *curr = *curr * 10 + (digit & 0xF),
+            b'|' => {
+                curr = &mut y;
+                newline = false;
+            }
+            b'\n' if newline => break,
+            b'\n' => {
+                rules.entry(x).or_default().push(y);
+                newline = true;
+                x = 0;
+                y = 0;
+                curr = &mut x;
+            }
+            _ => return None,
         }
     }
 
-    None
+    Some((rules, chars.as_str()))
 }
 
 pub fn part1(input: &str) -> u16 {
