@@ -15,7 +15,7 @@ pub fn run(input: &str) -> Result<Solution> {
 }
 
 thread_local! {
-    static UPDATE_BUF: RefCell<Vec<u8>> = RefCell::new(Vec::new());
+    static UPDATE_BUF: RefCell<Update> = RefCell::new(Update::new());
 }
 
 fn parse_rules(input: &str) -> Option<(HashMap<u8, Vec<u8>, FxBuildHasher>, &str)> {
@@ -49,13 +49,51 @@ fn parse_rules(input: &str) -> Option<(HashMap<u8, Vec<u8>, FxBuildHasher>, &str
     Some((rules, chars.as_str()))
 }
 
-fn parse_update(line: &str, buf: &mut Vec<u8>) {
-    buf.clear();
+struct Update {
+    pages: Vec<u8>,
+    indices: [u8; 100],
+}
 
-    for chunk in line.as_bytes().chunks(3) {
-        let [a, b, ..] = chunk else { unreachable!() };
-        let n = (a & 0xF) * 10 + (b & 0xF);
-        buf.push(n);
+impl Update {
+    fn new() -> Self {
+        Self {
+            pages: Vec::new(),
+            indices: [u8::MAX; 100],
+        }
+    }
+
+    fn parse(&mut self, line: &str) {
+        self.pages.clear();
+        self.indices.fill(u8::MAX);
+
+        let iter = line.as_bytes().chunks(3).enumerate().map(|(i, chunk)| {
+            let [a, b, ..] = chunk else { unreachable!() };
+
+            let n = (a & 0xF) * 10 + (b & 0xF);
+            self.indices[n as usize] = i as u8;
+
+            n
+        });
+
+        self.pages.extend(iter);
+    }
+
+    fn find(&self, needle: u8) -> Option<u8> {
+        let idx = self.indices[needle as usize];
+
+        (idx < u8::MAX).then_some(idx)
+    }
+
+    fn middle(&self) -> u16 {
+        self.pages[self.pages.len() / 2] as u16
+    }
+
+    fn swap(&mut self, x: u8, y: u8) {
+        let ix = self.indices[x as usize];
+        let iy = self.indices[y as usize];
+
+        self.indices.swap(x as usize, y as usize);
+        self.pages.swap(ix as usize, iy as usize);
     }
 }
 
@@ -68,19 +106,19 @@ pub fn part1(input: &str) -> u16 {
         .par_lines()
         .filter_map(|line| {
             UPDATE_BUF.with_borrow_mut(|update| {
-                parse_update(line, update);
+                update.parse(line);
 
                 rules
                     .iter()
                     .all(|(x, ys)| {
-                        let Some(ix) = memchr::memchr(*x, update) else {
+                        let Some(ix) = update.find(*x) else {
                             return true;
                         };
 
                         ys.iter()
-                            .all(|&y| memchr::memchr(y, update).map_or(true, |iy| ix < iy))
+                            .all(|&y| update.find(y).map_or(true, |iy| ix < iy))
                     })
-                    .then_some(update[update.len() / 2] as u16)
+                    .then_some(update.middle())
             })
         })
         .sum()
@@ -95,7 +133,7 @@ pub fn part2(input: &str) -> u16 {
         .par_lines()
         .filter_map(|line| {
             UPDATE_BUF.with_borrow_mut(|update| {
-                parse_update(line, update);
+                update.parse(line);
 
                 let mut iters = 0;
                 let mut sorted = false;
@@ -105,22 +143,22 @@ pub fn part2(input: &str) -> u16 {
                     sorted = true;
 
                     for (x, ys) in rules.iter() {
-                        let Some(ix) = memchr::memchr(*x, update) else {
+                        let Some(ix) = update.find(*x) else {
                             continue;
                         };
 
                         for &y in ys {
-                            if let Some(iy) = memchr::memchr(y, update) {
+                            if let Some(iy) = update.find(y) {
                                 if iy < ix {
                                     sorted = false;
-                                    update.swap(ix, iy);
+                                    update.swap(*x, y);
                                 }
                             }
                         }
                     }
                 }
 
-                (iters > 1).then_some(update[update.len() / 2] as u16)
+                (iters > 1).then_some(update.middle())
             })
         })
         .sum()
