@@ -15,7 +15,7 @@ pub fn run(input: &str) -> Result<Solution> {
 }
 
 thread_local! {
-    static UPDATES_BUF: RefCell<Vec<u8>> = RefCell::new(Vec::new());
+    static UPDATE_BUF: RefCell<Vec<u8>> = RefCell::new(Vec::new());
 }
 
 fn parse_rules(input: &str) -> Option<(HashMap<u8, Vec<u8>, FxBuildHasher>, &str)> {
@@ -49,6 +49,16 @@ fn parse_rules(input: &str) -> Option<(HashMap<u8, Vec<u8>, FxBuildHasher>, &str
     Some((rules, chars.as_str()))
 }
 
+fn parse_update(line: &str, buf: &mut Vec<u8>) {
+    buf.clear();
+
+    for chunk in line.as_bytes().chunks(3) {
+        let [a, b, ..] = chunk else { unreachable!() };
+        let n = (a & 0xF) * 10 + (b & 0xF);
+        buf.push(n);
+    }
+}
+
 pub fn part1(input: &str) -> u16 {
     let Some((rules, updates)) = parse_rules(input) else {
         return 0;
@@ -57,23 +67,20 @@ pub fn part1(input: &str) -> u16 {
     updates
         .par_lines()
         .filter_map(|line| {
-            let iter = line.split(',').map(str::parse::<u8>).map(Result::unwrap);
-
-            UPDATES_BUF.with_borrow_mut(|updates| {
-                updates.clear();
-                updates.extend(iter);
+            UPDATE_BUF.with_borrow_mut(|update| {
+                parse_update(line, update);
 
                 rules
                     .iter()
                     .all(|(x, ys)| {
-                        let Some(ix) = memchr::memchr(*x, updates) else {
+                        let Some(ix) = memchr::memchr(*x, update) else {
                             return true;
                         };
 
                         ys.iter()
-                            .all(|&y| memchr::memchr(y, updates).map_or(true, |iy| ix < iy))
+                            .all(|&y| memchr::memchr(y, update).map_or(true, |iy| ix < iy))
                     })
-                    .then_some(updates[updates.len() / 2] as u16)
+                    .then_some(update[update.len() / 2] as u16)
             })
         })
         .sum()
@@ -87,11 +94,8 @@ pub fn part2(input: &str) -> u16 {
     updates
         .par_lines()
         .filter_map(|line| {
-            let iter = line.split(',').map(str::parse::<u8>).map(Result::unwrap);
-
-            UPDATES_BUF.with_borrow_mut(|updates| {
-                updates.clear();
-                updates.extend(iter);
+            UPDATE_BUF.with_borrow_mut(|update| {
+                parse_update(line, update);
 
                 let mut iters = 0;
                 let mut sorted = false;
@@ -101,22 +105,22 @@ pub fn part2(input: &str) -> u16 {
                     sorted = true;
 
                     for (x, ys) in rules.iter() {
-                        let Some(ix) = memchr::memchr(*x, updates) else {
+                        let Some(ix) = memchr::memchr(*x, update) else {
                             continue;
                         };
 
                         for &y in ys {
-                            if let Some(iy) = memchr::memchr(y, updates) {
+                            if let Some(iy) = memchr::memchr(y, update) {
                                 if iy < ix {
                                     sorted = false;
-                                    updates.swap(ix, iy);
+                                    update.swap(ix, iy);
                                 }
                             }
                         }
                     }
                 }
 
-                (iters > 1).then_some(updates[updates.len() / 2] as u16)
+                (iters > 1).then_some(update[update.len() / 2] as u16)
             })
         })
         .sum()
