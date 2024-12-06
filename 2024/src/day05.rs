@@ -1,8 +1,7 @@
-use std::{cell::RefCell, collections::HashMap};
+use std::cell::RefCell;
 
 use aoc_rust::Solution;
 use eyre::Result;
-use fxhash::FxBuildHasher;
 use rayon::{iter::ParallelIterator, str::ParallelString};
 
 pub fn run(input: &str) -> Result<Solution> {
@@ -18,8 +17,10 @@ thread_local! {
     static UPDATE_BUF: RefCell<Update> = RefCell::new(Update::new());
 }
 
-fn parse_rules(input: &str) -> Option<(HashMap<u8, Vec<u8>, FxBuildHasher>, &str)> {
-    let mut rules = HashMap::<u8, Vec<u8>, _>::with_hasher(FxBuildHasher::default());
+type Rules = [Vec<u8>; 100];
+
+fn parse_rules(input: &str) -> Option<(Rules, &str)> {
+    let mut rules = [(); 100].map(|_| Vec::new());
 
     let mut x = 0;
     let mut y = 0;
@@ -36,7 +37,7 @@ fn parse_rules(input: &str) -> Option<(HashMap<u8, Vec<u8>, FxBuildHasher>, &str
             }
             b'\n' if newline => break,
             b'\n' => {
-                rules.entry(x).or_default().push(y);
+                rules[x as usize].push(y);
                 newline = true;
                 x = 0;
                 y = 0;
@@ -110,8 +111,9 @@ pub fn part1(input: &str) -> u16 {
 
                 rules
                     .iter()
-                    .all(|(x, ys)| {
-                        let Some(ix) = update.find(*x) else {
+                    .zip(0..)
+                    .all(|(ys, x)| {
+                        let Some(ix) = update.find(x) else {
                             return true;
                         };
 
@@ -142,8 +144,8 @@ pub fn part2(input: &str) -> u16 {
                     iters += 1;
                     sorted = true;
 
-                    for (x, ys) in rules.iter() {
-                        let Some(ix) = update.find(*x) else {
+                    for (ys, x) in rules.iter().zip(0..) {
+                        let Some(ix) = update.find(x) else {
                             continue;
                         };
 
@@ -151,7 +153,7 @@ pub fn part2(input: &str) -> u16 {
                             if let Some(iy) = update.find(y) {
                                 if iy < ix {
                                     sorted = false;
-                                    update.swap(*x, y);
+                                    update.swap(x, y);
                                 }
                             }
                         }
