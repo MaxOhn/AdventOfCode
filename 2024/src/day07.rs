@@ -1,3 +1,5 @@
+use std::{mem, str::Bytes};
+
 use aoc_rust::Solution;
 use eyre::Result;
 
@@ -13,29 +15,67 @@ pub fn run(input: &str) -> Result<Solution> {
 fn solve<C: Check>(input: &str) -> u64 {
     let mut sum = 0;
 
-    for line in input.lines() {
-        let (a, b) = line.split_once(": ").unwrap();
-        let a = a.parse().unwrap();
-        let b: Vec<_> = b.split(' ').map(str::parse).map(Result::unwrap).collect();
+    let mut bytes = input.bytes();
+    let mut buf = Vec::new();
 
-        if C::check(a, &b) {
-            sum += a;
+    while let Some(equation) = Equation::parse(&mut bytes, &mut buf) {
+        if equation.check::<C>() {
+            sum += equation.value;
         }
     }
 
     sum
 }
 
-trait Check {
-    fn ops(target: u64, curr: u64, next: u64, rest: &[u64]) -> bool;
+#[derive(Debug)]
+struct Equation<'a> {
+    value: u64,
+    nums: &'a [u64],
+}
 
-    fn check(res: u64, vals: &[u64]) -> bool {
-        let [init, rest @ ..] = vals else {
+impl<'a> Equation<'a> {
+    fn parse(bytes: &mut Bytes<'_>, buf: &'a mut Vec<u64>) -> Option<Self> {
+        let digit = |byte| (byte & 0xF) as u64;
+
+        let mut value = 0;
+
+        loop {
+            match bytes.next() {
+                Some(byte @ b'0'..=b'9') => value = value * 10 + digit(byte),
+                Some(b':') => break,
+                None | Some(_) => return None,
+            }
+        }
+
+        debug_assert_eq!(bytes.next(), Some(b' '));
+        buf.clear();
+        let mut curr = 0;
+
+        loop {
+            match bytes.next() {
+                Some(byte @ b'0'..=b'9') => curr = curr * 10 + digit(byte),
+                Some(b' ') => buf.push(mem::replace(&mut curr, 0)),
+                Some(b'\n') | None => break,
+                Some(_) => return None,
+            }
+        }
+
+        buf.push(curr);
+
+        Some(Self { value, nums: &*buf })
+    }
+
+    fn check<C: Check>(&self) -> bool {
+        let [curr, rest @ ..] = self.nums else {
             return false;
         };
 
-        Self::recurse(res, *init, rest)
+        C::recurse(self.value, *curr, rest)
     }
+}
+
+trait Check {
+    fn check(target: u64, curr: u64, next: u64, rest: &[u64]) -> bool;
 
     fn recurse(target: u64, curr: u64, rest: &[u64]) -> bool {
         let [next, rest @ ..] = rest else {
@@ -46,14 +86,14 @@ trait Check {
             return false;
         }
 
-        Self::ops(target, curr, *next, rest)
+        Self::check(target, curr, *next, rest)
     }
 }
 
 struct Part1;
 
 impl Check for Part1 {
-    fn ops(target: u64, curr: u64, next: u64, rest: &[u64]) -> bool {
+    fn check(target: u64, curr: u64, next: u64, rest: &[u64]) -> bool {
         Self::recurse(target, curr + next, rest) || Self::recurse(target, curr * next, rest)
     }
 }
@@ -61,7 +101,7 @@ impl Check for Part1 {
 struct Part2;
 
 impl Check for Part2 {
-    fn ops(target: u64, curr: u64, next: u64, rest: &[u64]) -> bool {
+    fn check(target: u64, curr: u64, next: u64, rest: &[u64]) -> bool {
         Self::recurse(target, curr + next, rest)
             || Self::recurse(target, curr * next, rest)
             || Self::recurse(target, concat(curr, next), rest)
