@@ -94,11 +94,11 @@ impl<'a> InputMap<'a> {
         let mut seen = HashSet::with_hasher(FxBuildHasher::default());
         seen.insert(start);
 
-        let mut offset = Pos::new(0, -1);
+        let mut dir = Direction::UP;
         let mut curr = Pos::new(start % self.w, start / self.w);
 
         loop {
-            let next = curr + offset;
+            let next = curr + dir;
 
             if !self.contains(next) {
                 return seen;
@@ -107,12 +107,31 @@ impl<'a> InputMap<'a> {
             let idx = next.to_idx(self.w);
 
             if self.bytes[idx as usize] == b'#' {
-                offset.rotate();
+                dir.rotate();
             } else {
                 seen.insert(idx);
                 curr = next;
             }
         }
+    }
+}
+
+const DIR_OFFSETS: [Pos; 4] = [
+    Pos::new(0, -1),
+    Pos::new(1, 0),
+    Pos::new(0, 1),
+    Pos::new(-1, 0),
+];
+
+#[derive(Copy, Clone, PartialEq, Eq, Hash)]
+struct Direction(u8);
+
+impl Direction {
+    const UP: Self = Self(0);
+
+    fn rotate(&mut self) {
+        self.0 += 1;
+        self.0 %= 4;
     }
 }
 
@@ -127,28 +146,18 @@ impl Pos {
         Self { x, y }
     }
 
-    fn rotate(&mut self) {
-        *self = match (self.x, self.y) {
-            (-1, 0) => Self::new(0, -1),
-            (0, -1) => Self::new(1, 0),
-            (1, 0) => Self::new(0, 1),
-            (0, 1) => Self::new(-1, 0),
-            _ => unreachable!(),
-        }
-    }
-
     const fn to_idx(self, w: i16) -> i16 {
         self.y * w + self.x
     }
 }
 
-impl Add for Pos {
+impl Add<Direction> for Pos {
     type Output = Self;
 
-    fn add(self, rhs: Self) -> Self::Output {
+    fn add(self, rhs: Direction) -> Self::Output {
         Self {
-            x: self.x + rhs.x,
-            y: self.y + rhs.y,
+            x: self.x + DIR_OFFSETS[rhs.0 as usize].x,
+            y: self.y + DIR_OFFSETS[rhs.0 as usize].y,
         }
     }
 }
@@ -159,7 +168,7 @@ thread_local! {
 
 struct State {
     input: InputMap<'static>,
-    seen: HashSet<(i16, Pos), FxBuildHasher>,
+    seen: HashSet<(i16, Direction), FxBuildHasher>,
 }
 
 impl State {
@@ -171,14 +180,14 @@ impl State {
     }
 
     fn is_loop(&mut self, start: i16) -> bool {
-        let mut offset = Pos::new(0, -1);
+        let mut dir = Direction::UP;
         let mut curr = Pos::new(start % self.input.w, start / self.input.w);
 
         self.seen.clear();
-        self.seen.insert((start, offset));
+        self.seen.insert((start, dir));
 
         loop {
-            let next = curr + offset;
+            let next = curr + dir;
 
             if !self.input.contains(next) {
                 break;
@@ -187,9 +196,9 @@ impl State {
             let idx = next.to_idx(self.input.w);
 
             if self.input.bytes[idx as usize] == b'#' {
-                offset.rotate();
+                dir.rotate();
             } else {
-                if !self.seen.insert((idx, offset)) {
+                if !self.seen.insert((idx, dir)) {
                     return true;
                 }
 
