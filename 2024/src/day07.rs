@@ -1,7 +1,8 @@
-use std::{mem, str::Bytes};
+use std::{cell::RefCell, mem};
 
 use aoc_rust::Solution;
 use eyre::Result;
+use rayon::{prelude::ParallelIterator, str::ParallelString};
 
 pub fn run(input: &str) -> Result<Solution> {
     let input = input.trim();
@@ -12,46 +13,40 @@ pub fn run(input: &str) -> Result<Solution> {
     Ok(Solution::new().part1(p1).part2(p2))
 }
 
-fn solve<C: Check>(input: &str) -> u64 {
-    let split = memchr::memchr(b'\n', &input[input.len() / 2..].as_bytes()).unwrap();
-    let (first, second) = input.split_at(input.len() / 2 + split + 1);
-
-    let compute = |input: &str| {
-        let mut sum = 0;
-        let mut bytes = input.bytes();
-        let mut buf = Vec::new();
-
-        while let Some(equation) = Equation::parse(&mut bytes, &mut buf) {
-            if equation.check::<C>() {
-                sum += equation.value;
-            }
-        }
-
-        sum
-    };
-
-    let (first, second) = rayon::join(|| compute(first), || compute(second));
-
-    first + second
+thread_local! {
+    static BUF: RefCell<Vec<u64>> = RefCell::new(Vec::new());
 }
 
-#[derive(Debug)]
+fn solve<C: Check>(input: &str) -> u64 {
+    input
+        .par_lines()
+        .map(|line| {
+            BUF.with_borrow_mut(|buf| {
+                let eq = Equation::parse(line, buf);
+
+                eq.check::<C>().then_some(eq.value).unwrap_or(0)
+            })
+        })
+        .sum()
+}
+
 struct Equation<'a> {
     value: u64,
     nums: &'a [u64],
 }
 
 impl<'a> Equation<'a> {
-    fn parse(bytes: &mut Bytes<'_>, buf: &'a mut Vec<u64>) -> Option<Self> {
+    fn parse(line: &str, buf: &'a mut Vec<u64>) -> Self {
         let digit = |byte| (byte & 0xF) as u64;
 
+        let mut bytes = line.bytes();
         let mut value = 0;
 
         loop {
             match bytes.next() {
                 Some(byte @ b'0'..=b'9') => value = value * 10 + digit(byte),
                 Some(b':') => break,
-                None | Some(_) => return None,
+                None | Some(_) => unreachable!(),
             }
         }
 
@@ -64,13 +59,13 @@ impl<'a> Equation<'a> {
                 Some(byte @ b'0'..=b'9') => curr = curr * 10 + digit(byte),
                 Some(b' ') => buf.push(mem::replace(&mut curr, 0)),
                 Some(b'\n') | None => break,
-                Some(_) => return None,
+                Some(_) => unreachable!(),
             }
         }
 
         buf.push(curr);
 
-        Some(Self { value, nums: &*buf })
+        Self { value, nums: &*buf }
     }
 
     fn check<C: Check>(&self) -> bool {
