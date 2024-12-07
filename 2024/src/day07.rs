@@ -13,18 +13,26 @@ pub fn run(input: &str) -> Result<Solution> {
 }
 
 fn solve<C: Check>(input: &str) -> u64 {
-    let mut sum = 0;
+    let split = memchr::memchr(b'\n', &input[input.len() / 2..].as_bytes()).unwrap();
+    let (first, second) = input.split_at(input.len() / 2 + split + 1);
 
-    let mut bytes = input.bytes();
-    let mut buf = Vec::new();
+    let compute = |input: &str| {
+        let mut sum = 0;
+        let mut bytes = input.bytes();
+        let mut buf = Vec::new();
 
-    while let Some(equation) = Equation::parse(&mut bytes, &mut buf) {
-        if equation.check::<C>() {
-            sum += equation.value;
+        while let Some(equation) = Equation::parse(&mut bytes, &mut buf) {
+            if equation.check::<C>() {
+                sum += equation.value;
+            }
         }
-    }
 
-    sum
+        sum
+    };
+
+    let (first, second) = rayon::join(|| compute(first), || compute(second));
+
+    first + second
 }
 
 #[derive(Debug)]
