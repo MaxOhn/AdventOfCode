@@ -11,6 +11,12 @@ pub fn run(input: &str) -> Result<Solution> {
     let p1 = part1(input);
     let p2 = part2(input);
 
+    rayon::broadcast(|_| {
+        INPUT.with(|once| {
+            once.get_or_init(|| RefCell::new(None)).borrow_mut().take();
+        })
+    });
+
     Ok(Solution::new().part1(p1).part2(p2))
 }
 
@@ -40,9 +46,8 @@ fn part2(input: &str) -> usize {
         .into_par_iter()
         .filter(|&i| {
             INPUT.with(|once| {
-                let mut state = once
-                    .get_or_init(|| RefCell::new(State::new(&input)))
-                    .borrow_mut();
+                let mut opt = once.get_or_init(|| RefCell::new(None)).borrow_mut();
+                let state = opt.get_or_insert_with(|| State::new(&input));
 
                 state.input.bytes.to_mut()[i as usize] = b'#';
                 let is_loop = state.is_loop(start as i16);
@@ -163,7 +168,7 @@ impl Add<Direction> for Pos {
 }
 
 thread_local! {
-    static INPUT: OnceLock<RefCell<State>> = OnceLock::new();
+    static INPUT: OnceLock<RefCell<Option<State>>> = OnceLock::new();
 }
 
 struct State {
