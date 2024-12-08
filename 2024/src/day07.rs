@@ -1,4 +1,8 @@
-use std::{cell::RefCell, mem};
+use std::{
+    cell::RefCell,
+    iter, mem,
+    ops::{Add, Mul},
+};
 
 use aoc_rust::Solution;
 use eyre::Result;
@@ -7,24 +11,57 @@ use rayon::{prelude::ParallelIterator, str::ParallelString};
 pub fn run(input: &str) -> Result<Solution> {
     let input = input.trim();
 
-    let p1 = solve::<Part1>(input);
-    let p2 = solve::<Part2>(input);
+    let p1 = part1_recursive(input);
+    let p2 = part2_recursive(input);
 
     Ok(Solution::new().part1(p1).part2(p2))
 }
 
-thread_local! {
-    static BUF: RefCell<Vec<u64>> = RefCell::new(Vec::new());
+pub fn part1_recursive(input: &str) -> u64 {
+    solve_recursive::<Part1>(input)
 }
 
-fn solve<C: Check>(input: &str) -> u64 {
+pub fn part2_recursive(input: &str) -> u64 {
+    solve_recursive::<Part2>(input)
+}
+
+pub fn part1_dynamic(input: &str) -> u64 {
+    solve_dynamic::<Part1>(input)
+}
+
+pub fn part2_dynamic(input: &str) -> u64 {
+    solve_dynamic::<Part2>(input)
+}
+
+#[derive(Default)]
+struct ThreadData {
+    eq_buf: Vec<u64>,
+    dp: Vec<u64>,
+}
+
+struct Dp<'a>(&'a mut Vec<u64>);
+
+thread_local! {
+    static DATA: RefCell<ThreadData> = RefCell::new(ThreadData::default());
+}
+
+fn solve_recursive<C: Check>(input: &str) -> u64 {
+    solve(input, |eq, _| eq.check_recursive::<C>())
+}
+
+fn solve_dynamic<C: Check>(input: &str) -> u64 {
+    solve(input, |eq, Dp(dp)| eq.check_dynamic::<C>(dp))
+}
+
+fn solve(input: &str, check_fn: fn(&Equation<'_>, Dp) -> bool) -> u64 {
     input
         .par_lines()
         .map(|line| {
-            BUF.with_borrow_mut(|buf| {
-                let eq = Equation::parse(line, buf);
+            DATA.with_borrow_mut(|data| {
+                let ThreadData { eq_buf, dp } = data;
+                let eq = Equation::parse(line, eq_buf);
 
-                eq.check::<C>().then_some(eq.value).unwrap_or(0)
+                check_fn(&eq, Dp(dp)).then_some(eq.value).unwrap_or(0)
             })
         })
         .sum()
@@ -68,47 +105,29 @@ impl<'a> Equation<'a> {
         Self { value, nums: &*buf }
     }
 
-    fn check<C: Check>(&self) -> bool {
+    fn check_recursive<C: Check>(&self) -> bool {
         let [curr, rest @ ..] = self.nums else {
             return false;
         };
 
         C::recurse(self.value, *curr, rest)
     }
-}
 
-trait Check {
-    fn check(target: u64, curr: u64, next: u64, rest: &[u64]) -> bool;
-
-    fn recurse(target: u64, curr: u64, rest: &[u64]) -> bool {
-        let [next, rest @ ..] = rest else {
-            return curr == target;
-        };
-
-        if curr > target {
-            return false;
-        }
-
-        Self::check(target, curr, *next, rest)
+    fn check_dynamic<C: Check>(&self, dp: &mut Vec<u64>) -> bool {
+        C::check_dynamic(self.value, &self.nums, dp)
     }
 }
 
 struct Part1;
 
 impl Check for Part1 {
-    fn check(target: u64, curr: u64, next: u64, rest: &[u64]) -> bool {
-        Self::recurse(target, curr + next, rest) || Self::recurse(target, curr * next, rest)
-    }
+    const OPS: &[fn(u64, u64) -> u64] = &[u64::add, u64::mul];
 }
 
 struct Part2;
 
 impl Check for Part2 {
-    fn check(target: u64, curr: u64, next: u64, rest: &[u64]) -> bool {
-        Self::recurse(target, curr + next, rest)
-            || Self::recurse(target, curr * next, rest)
-            || Self::recurse(target, concat(curr, next), rest)
-    }
+    const OPS: &[fn(u64, u64) -> u64] = &[u64::add, u64::mul, concat];
 }
 
 fn concat(mut a: u64, b: u64) -> u64 {
@@ -124,4 +143,70 @@ fn concat(mut a: u64, b: u64) -> u64 {
     }
 
     a + b
+}
+
+trait Check {
+    const OPS: &[fn(u64, u64) -> u64];
+    const N: usize = Self::OPS.len();
+
+    fn check_recursive(target: u64, curr: u64, next: u64, rest: &[u64]) -> bool {
+        Self::OPS
+            .iter()
+            .any(|op| Self::recurse(target, op(curr, next), rest))
+    }
+
+    fn recurse(target: u64, curr: u64, rest: &[u64]) -> bool {
+        let [next, rest @ ..] = rest else {
+            return curr == target;
+        };
+
+        if curr > target {
+            return false;
+        }
+
+        Self::check_recursive(target, curr, *next, rest)
+    }
+
+    fn check_dynamic(eq_value: u64, eq_nums: &[u64], dp: &mut Vec<u64>) -> bool {
+        let mut nums = eq_nums.iter().copied();
+
+        let Some(first) = nums.next() else {
+            return false;
+        };
+
+        let mut nums = nums.zip(0..eq_nums.len() as u32 - 1);
+
+        let Some((last_n, last_i)) = nums.next_back() else {
+            return eq_value == first;
+        };
+
+        let required = (0..eq_nums.len() as u32 - 1)
+            .map(|exp| Self::N.pow(exp))
+            .sum();
+
+        if dp.len() < required {
+            dp.extend(iter::repeat(0).take(required - dp.len()));
+        }
+
+        dp[0] = first;
+
+        let zip = |start, len| (start..start + len).zip(Self::OPS.iter().cycle());
+        let idx = |prev_start, j, start| prev_start + (j - start) / Self::N;
+
+        for (n, i) in nums {
+            let prev_start: usize = (0..i).map(|pow| Self::N.pow(pow)).sum();
+            let start = prev_start + Self::N.pow(i);
+            let len = Self::N.pow(i + 1);
+
+            for (j, op) in zip(start, len) {
+                dp[j] = op(dp[idx(prev_start, j, start)], n);
+            }
+        }
+
+        let prev_start: usize = (0..last_i).map(|pow| Self::N.pow(pow)).sum();
+        let start = prev_start + Self::N.pow(last_i);
+        let len = Self::N.pow(last_i + 1);
+
+        zip(start, len).any(|(j, op)| op(dp[idx(prev_start, j, start)], last_n) == eq_value)
+    }
 }
