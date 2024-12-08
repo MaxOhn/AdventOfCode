@@ -174,9 +174,7 @@ trait Check {
             return false;
         };
 
-        let mut nums = nums.zip(0..eq_nums.len() as u32 - 1);
-
-        let Some((last_n, last_i)) = nums.next_back() else {
+        let Some(last_n) = nums.next_back() else {
             return eq_value == first;
         };
 
@@ -190,23 +188,23 @@ trait Check {
 
         dp[0] = first;
 
-        let zip = |start, len| (start..start + len).zip(Self::OPS.iter().cycle());
-        let idx = |prev_start, j, start| prev_start + (j - start) / Self::N;
+        let mut prev = 0;
+        let mut curr = 1;
+        let mut len = Self::N;
 
-        for (n, i) in nums {
-            let prev_start: usize = (0..i).map(|pow| Self::N.pow(pow)).sum();
-            let start = prev_start + Self::N.pow(i);
-            let len = Self::N.pow(i + 1);
+        let zip = |curr, len| (curr..curr + len).zip(Self::OPS.iter().cycle());
+        let idx = |prev, j, curr| prev + (j - curr) / Self::N;
 
-            for (j, op) in zip(start, len) {
-                dp[j] = op(dp[idx(prev_start, j, start)], n);
+        for n in nums {
+            for (j, op) in zip(curr, len) {
+                dp[j] = op(dp[idx(prev, j, curr)], n);
             }
+
+            prev = curr;
+            curr += len;
+            len *= Self::N;
         }
 
-        let prev_start: usize = (0..last_i).map(|pow| Self::N.pow(pow)).sum();
-        let start = prev_start + Self::N.pow(last_i);
-        let len = Self::N.pow(last_i + 1);
-
-        zip(start, len).any(|(j, op)| op(dp[idx(prev_start, j, start)], last_n) == eq_value)
+        zip(curr, len).any(|(j, op)| op(dp[idx(prev, j, curr)], last_n) == eq_value)
     }
 }
