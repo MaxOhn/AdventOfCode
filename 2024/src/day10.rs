@@ -1,4 +1,5 @@
 use std::{
+    cell::RefCell,
     collections::HashSet,
     hash::{Hash, Hasher},
     ops::{Add, Index},
@@ -26,9 +27,10 @@ fn part2(input: &str) -> usize {
 }
 
 trait Part {
-    type StackItem;
+    type StackItem: Send + Sync;
     type UniqueItem: Hash + Eq;
 
+    fn with_data(f: impl Fn(&mut ThreadData<Self>) -> usize) -> usize;
     fn init(start: Pos) -> Self::StackItem;
     fn pos(item: &Self::StackItem) -> Pos;
     fn unique_item(item: Self::StackItem) -> Self::UniqueItem;
@@ -38,45 +40,43 @@ trait Part {
 fn solve<P: Part>(input: &str) -> usize {
     let grid = Grid::new(input);
     let w = grid.w as usize + 1;
-    let mut stack = Vec::new();
-    let mut set = HashSet::with_hasher(FxBuildHasher::default());
-    let mut sum = 0;
 
-    for (i, byte) in grid.iter().enumerate() {
-        if byte != b'0' {
-            continue;
-        }
+    grid.bytes
+        .iter()
+        .enumerate()
+        .filter(|(_, &byte)| byte == b'0')
+        .map(|(i, _)| {
+            P::with_data(|ThreadData { stack, set }| {
+                let start = Pos::from_index(i, w);
+                stack.push(P::init(start));
+                set.clear();
 
-        let start = Pos::from_index(i, w);
-        stack.push(P::init(start));
-        set.clear();
+                while let Some(item) = stack.pop() {
+                    let curr = P::pos(&item);
+                    let height = grid[curr];
 
-        while let Some(item) = stack.pop() {
-            let curr = P::pos(&item);
-            let height = grid[curr];
+                    if height == b'9' {
+                        set.insert(P::unique_item(item));
+                        continue;
+                    }
 
-            if height == b'9' {
-                set.insert(P::unique_item(item));
-                continue;
-            }
+                    for dir in DIRECTIONS {
+                        let next = curr + dir;
 
-            for dir in DIRECTIONS {
-                let next = curr + dir;
+                        if !grid.contains(next) {
+                            continue;
+                        }
 
-                if !grid.contains(next) {
-                    continue;
+                        if height + 1 == grid[next] {
+                            stack.push(P::push_item(&item, next));
+                        }
+                    }
                 }
 
-                if height + 1 == grid[next] {
-                    stack.push(P::push_item(&item, next));
-                }
-            }
-        }
-
-        sum += set.len();
-    }
-
-    sum
+                set.len()
+            })
+        })
+        .sum()
 }
 
 struct Part1;
@@ -84,6 +84,10 @@ struct Part1;
 impl Part for Part1 {
     type StackItem = Pos;
     type UniqueItem = Pos;
+
+    fn with_data(f: impl Fn(&mut ThreadData<Self>) -> usize) -> usize {
+        P1_DATA.with_borrow_mut(f)
+    }
 
     fn init(start: Pos) -> Self::StackItem {
         start
@@ -107,6 +111,10 @@ struct Part2;
 impl Part for Part2 {
     type StackItem = (Pos, Self::UniqueItem, FxHasher32);
     type UniqueItem = u32;
+
+    fn with_data(f: impl Fn(&mut ThreadData<Self>) -> usize) -> usize {
+        P2_DATA.with_borrow_mut(f)
+    }
 
     fn init(start: Pos) -> Self::StackItem {
         (start, 0, FxHasher32::default())
@@ -145,10 +153,6 @@ impl<'a> Grid<'a> {
             w: w as i8,
             h: h as i8,
         }
-    }
-
-    fn iter(&self) -> impl Iterator<Item = u8> + use<'_> {
-        self.bytes.iter().copied()
     }
 
     fn contains(&self, pos: Pos) -> bool {
@@ -194,3 +198,22 @@ const DIRECTIONS: [Pos; 4] = [
     Pos::new(1, 0),
     Pos::new(-1, 0),
 ];
+
+struct ThreadData<P: Part + ?Sized> {
+    stack: Vec<P::StackItem>,
+    set: HashSet<P::UniqueItem, FxBuildHasher>,
+}
+
+impl<P: Part> Default for ThreadData<P> {
+    fn default() -> Self {
+        Self {
+            stack: Default::default(),
+            set: Default::default(),
+        }
+    }
+}
+
+thread_local! {
+    static P1_DATA: RefCell<ThreadData<Part1>> = RefCell::new(ThreadData::default());
+    static P2_DATA: RefCell<ThreadData<Part2>> = RefCell::new(ThreadData::default());
+}
