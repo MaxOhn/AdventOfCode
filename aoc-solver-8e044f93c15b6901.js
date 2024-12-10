@@ -841,27 +841,27 @@ function __wbg_get_imports() {
         const ret = false;
         return ret;
     };
-    imports.wbg.__wbindgen_closure_wrapper2414 = function(arg0, arg1, arg2) {
+    imports.wbg.__wbindgen_closure_wrapper2412 = function(arg0, arg1, arg2) {
         const ret = makeMutClosure(arg0, arg1, 829, __wbg_adapter_39);
         return ret;
     };
-    imports.wbg.__wbindgen_closure_wrapper2613 = function(arg0, arg1, arg2) {
+    imports.wbg.__wbindgen_closure_wrapper2611 = function(arg0, arg1, arg2) {
         const ret = makeMutClosure(arg0, arg1, 942, __wbg_adapter_42);
         return ret;
     };
-    imports.wbg.__wbindgen_closure_wrapper2905 = function(arg0, arg1, arg2) {
+    imports.wbg.__wbindgen_closure_wrapper2903 = function(arg0, arg1, arg2) {
         const ret = makeMutClosure(arg0, arg1, 1022, __wbg_adapter_45);
         return ret;
     };
-    imports.wbg.__wbindgen_closure_wrapper2907 = function(arg0, arg1, arg2) {
+    imports.wbg.__wbindgen_closure_wrapper2905 = function(arg0, arg1, arg2) {
         const ret = makeMutClosure(arg0, arg1, 1022, __wbg_adapter_48);
         return ret;
     };
-    imports.wbg.__wbindgen_closure_wrapper2947 = function(arg0, arg1, arg2) {
+    imports.wbg.__wbindgen_closure_wrapper2945 = function(arg0, arg1, arg2) {
         const ret = makeMutClosure(arg0, arg1, 1034, __wbg_adapter_51);
         return ret;
     };
-    imports.wbg.__wbindgen_closure_wrapper3033 = function(arg0, arg1, arg2) {
+    imports.wbg.__wbindgen_closure_wrapper3031 = function(arg0, arg1, arg2) {
         const ret = makeMutClosure(arg0, arg1, 1062, __wbg_adapter_54);
         return ret;
     };
@@ -991,7 +991,7 @@ async function __wbg_init(module_or_path) {
     }
 
     if (typeof module_or_path === 'undefined') {
-        module_or_path = new URL('aoc-solver-ea81e3a66b4de2fc_bg.wasm', import.meta.url);
+        module_or_path = new URL('aoc-solver-8e044f93c15b6901_bg.wasm', import.meta.url);
     }
     const imports = __wbg_get_imports();
 
