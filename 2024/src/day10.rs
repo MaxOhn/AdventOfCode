@@ -1,12 +1,12 @@
 use std::{
     collections::HashSet,
-    hash::Hash,
+    hash::{Hash, Hasher},
     ops::{Add, Index},
 };
 
 use aoc_rust::Solution;
 use eyre::Result;
-use fxhash::FxBuildHasher;
+use fxhash::{FxBuildHasher, FxHasher32};
 
 pub fn run(input: &str) -> Result<Solution> {
     let input = input.trim();
@@ -105,27 +105,26 @@ impl Part for Part1 {
 struct Part2;
 
 impl Part for Part2 {
-    type StackItem = (Pos, Box<[Pos]>);
-    type UniqueItem = Box<[Pos]>;
+    type StackItem = (Pos, Self::UniqueItem, FxHasher32);
+    type UniqueItem = u32;
 
     fn init(start: Pos) -> Self::StackItem {
-        (start, Box::default())
+        (start, 0, FxHasher32::default())
     }
 
-    fn pos((pos, _): &Self::StackItem) -> Pos {
+    fn pos((pos, ..): &Self::StackItem) -> Pos {
         *pos
     }
 
-    fn unique_item((_, path): Self::StackItem) -> Self::UniqueItem {
-        path
+    fn unique_item((_, hash, _): Self::StackItem) -> Self::UniqueItem {
+        hash
     }
 
-    fn push_item((_, path): &Self::StackItem, next: Pos) -> Self::StackItem {
-        let mut next_path = Vec::with_capacity(path.len() + 1);
-        next_path.extend_from_slice(path);
-        next_path.push(next);
+    fn push_item((_, _, hasher): &Self::StackItem, next: Pos) -> Self::StackItem {
+        let mut hasher = hasher.clone();
+        next.hash(&mut hasher);
 
-        (next, next_path.into_boxed_slice())
+        (next, hasher.finish() as u32, hasher)
     }
 }
 
