@@ -1,13 +1,13 @@
 use std::{
     cell::RefCell,
     collections::HashSet,
-    hash::{Hash, Hasher},
+    hash::Hash,
     ops::{Add, Index},
 };
 
 use aoc_rust::Solution;
 use eyre::Result;
-use fxhash::{FxBuildHasher, FxHasher32};
+use fxhash::FxBuildHasher;
 
 pub fn run(input: &str) -> Result<Solution> {
     let input = input.trim();
@@ -27,14 +27,15 @@ fn part2(input: &str) -> usize {
 }
 
 trait Part {
-    type StackItem: Send + Sync;
-    type UniqueItem: Hash + Eq;
+    type Set: Set;
 
     fn with_data(f: impl Fn(&mut ThreadData<Self>) -> usize) -> usize;
-    fn init(start: Pos) -> Self::StackItem;
-    fn pos(item: &Self::StackItem) -> Pos;
-    fn unique_item(item: Self::StackItem) -> Self::UniqueItem;
-    fn push_item(item: &Self::StackItem, next: Pos) -> Self::StackItem;
+}
+
+trait Set {
+    fn reset(&mut self);
+    fn insert(&mut self, pos: Pos);
+    fn len(&self) -> usize;
 }
 
 fn solve<P: Part>(input: &str) -> usize {
@@ -48,15 +49,14 @@ fn solve<P: Part>(input: &str) -> usize {
         .map(|(i, _)| {
             P::with_data(|ThreadData { stack, set }| {
                 let start = Pos::from_index(i, w);
-                stack.push(P::init(start));
-                set.clear();
+                stack.push(start);
+                set.reset();
 
-                while let Some(item) = stack.pop() {
-                    let curr = P::pos(&item);
+                while let Some(curr) = stack.pop() {
                     let height = grid[curr];
 
                     if height == b'9' {
-                        set.insert(P::unique_item(item));
+                        set.insert(curr);
                         continue;
                     }
 
@@ -68,7 +68,7 @@ fn solve<P: Part>(input: &str) -> usize {
                         }
 
                         if height + 1 == grid[next] {
-                            stack.push(P::push_item(&item, next));
+                            stack.push(next);
                         }
                     }
                 }
@@ -82,57 +82,48 @@ fn solve<P: Part>(input: &str) -> usize {
 struct Part1;
 
 impl Part for Part1 {
-    type StackItem = Pos;
-    type UniqueItem = Pos;
+    type Set = HashSet<Pos, FxBuildHasher>;
 
     fn with_data(f: impl Fn(&mut ThreadData<Self>) -> usize) -> usize {
         P1_DATA.with_borrow_mut(f)
-    }
-
-    fn init(start: Pos) -> Self::StackItem {
-        start
-    }
-
-    fn pos(item: &Self::StackItem) -> Pos {
-        *item
-    }
-
-    fn unique_item(item: Self::StackItem) -> Self::UniqueItem {
-        item
-    }
-
-    fn push_item(_: &Self::StackItem, next: Pos) -> Self::StackItem {
-        next
     }
 }
 
 struct Part2;
 
 impl Part for Part2 {
-    type StackItem = (Pos, Self::UniqueItem, FxHasher32);
-    type UniqueItem = u32;
+    type Set = usize;
 
     fn with_data(f: impl Fn(&mut ThreadData<Self>) -> usize) -> usize {
         P2_DATA.with_borrow_mut(f)
     }
+}
 
-    fn init(start: Pos) -> Self::StackItem {
-        (start, 0, FxHasher32::default())
+impl Set for HashSet<Pos, FxBuildHasher> {
+    fn reset(&mut self) {
+        self.clear();
     }
 
-    fn pos((pos, ..): &Self::StackItem) -> Pos {
-        *pos
+    fn insert(&mut self, pos: Pos) {
+        self.insert(pos);
     }
 
-    fn unique_item((_, hash, _): Self::StackItem) -> Self::UniqueItem {
-        hash
+    fn len(&self) -> usize {
+        self.len()
+    }
+}
+
+impl Set for usize {
+    fn reset(&mut self) {
+        *self = 0;
     }
 
-    fn push_item((_, _, hasher): &Self::StackItem, next: Pos) -> Self::StackItem {
-        let mut hasher = hasher.clone();
-        next.hash(&mut hasher);
+    fn insert(&mut self, _: Pos) {
+        *self += 1;
+    }
 
-        (next, hasher.finish() as u32, hasher)
+    fn len(&self) -> usize {
+        *self
     }
 }
 
@@ -200,11 +191,11 @@ const DIRECTIONS: [Pos; 4] = [
 ];
 
 struct ThreadData<P: Part + ?Sized> {
-    stack: Vec<P::StackItem>,
-    set: HashSet<P::UniqueItem, FxBuildHasher>,
+    stack: Vec<Pos>,
+    set: P::Set,
 }
 
-impl<P: Part> Default for ThreadData<P> {
+impl<P: Part<Set: Default>> Default for ThreadData<P> {
     fn default() -> Self {
         Self {
             stack: Default::default(),
