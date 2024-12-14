@@ -32,7 +32,7 @@ fn part1(input: &str) -> u32 {
 
             (0..STEPS).for_each(|_| robot.run());
 
-            let (x, y) = robot.pos();
+            let (y, x) = robot.pos();
 
             if y == H / 2 || x == W / 2 {
                 return None;
@@ -41,7 +41,7 @@ fn part1(input: &str) -> u32 {
             let qx = usize::from(x > W / 2);
             let qy = usize::from(y > H / 2);
 
-            Some((qx + 2 * qy) as usize)
+            Some(qx + 2 * qy)
         })
         .fold(
             || [0; 4],
@@ -78,25 +78,21 @@ fn part2(input: &str) -> usize {
     (1..)
         .find(|_| {
             robots.iter_mut().for_each(Robot::run);
-            robots.sort_unstable_by_key(|robot| (robot.y, robot.x));
+            robots.sort_unstable_by_key(Robot::pos);
 
             robots.chunk_by(|a, b| a.y == b.y).any(|chunk| {
-                let in_a_row = chunk.windows(2).try_fold(0_i8, |in_a_row, w| {
-                    if w[0].x + 1 == w[1].x {
-                        ControlFlow::Continue(in_a_row + 1)
-                    } else if in_a_row >= 10 {
-                        ControlFlow::Break(in_a_row)
-                    } else {
-                        ControlFlow::Continue(0)
-                    }
-                });
-
-                let in_a_row = match in_a_row {
-                    ControlFlow::Continue(n) => n,
-                    ControlFlow::Break(n) => n,
-                };
-
-                in_a_row >= 10
+                chunk
+                    .windows(2)
+                    .try_fold(0_i8, |in_a_row, w| {
+                        if in_a_row >= 10 {
+                            ControlFlow::Break(in_a_row)
+                        } else if w[0].x + 1 == w[1].x {
+                            ControlFlow::Continue(in_a_row + 1)
+                        } else {
+                            ControlFlow::Continue(0)
+                        }
+                    })
+                    .is_break()
             })
         })
         .unwrap()
@@ -125,6 +121,6 @@ impl Robot {
     }
 
     fn pos(&self) -> (i16, i16) {
-        (self.x, self.y)
+        (self.y, self.x)
     }
 }
