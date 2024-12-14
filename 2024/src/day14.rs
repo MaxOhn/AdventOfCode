@@ -20,17 +20,16 @@ pub fn run(input: &str) -> Result<Solution> {
     Ok(Solution::new().part1(p1).part2(p2))
 }
 
-const W: i16 = 101;
-const H: i16 = 103;
-const STEPS: u8 = 100;
+const W: i32 = 101;
+const H: i32 = 103;
+const STEPS: i32 = 100;
 
 fn part1(input: &str) -> u32 {
     input
         .par_lines()
         .filter_map(|line| {
             let (_, mut robot) = Robot::parse(line).unwrap();
-
-            (0..STEPS).for_each(|_| robot.run());
+            robot.run_n(STEPS);
 
             let (y, x) = robot.pos();
 
@@ -77,7 +76,7 @@ fn part2(input: &str) -> usize {
 
     (1..)
         .find(|_| {
-            robots.iter_mut().for_each(Robot::run);
+            robots.iter_mut().for_each(Robot::run_once);
             robots.sort_unstable_by_key(Robot::pos);
 
             robots.chunk_by(|a, b| a.y == b.y).any(|chunk| {
@@ -98,16 +97,17 @@ fn part2(input: &str) -> usize {
         .unwrap()
 }
 
+#[derive(Copy, Clone)]
 struct Robot {
-    x: i16,
-    y: i16,
-    vx: i16,
-    vy: i16,
+    x: i32,
+    y: i32,
+    vx: i32,
+    vy: i32,
 }
 
 impl Robot {
     fn parse(line: &str) -> IResult<&str, Self> {
-        let xy = || separated_pair(ch::i16, by::tag(","), ch::i16);
+        let xy = || separated_pair(ch::i32, by::tag(","), ch::i32);
         let eq = |prefix| preceded(by::tag(prefix), preceded(by::tag("="), xy()));
         let pv = separated_pair(eq("p"), by::tag(" "), eq("v"));
         let (rest, ((x, y), (vx, vy))) = all_consuming(pv)(line)?;
@@ -115,12 +115,16 @@ impl Robot {
         Ok((rest, Self { x, y, vx, vy }))
     }
 
-    fn run(&mut self) {
-        self.x = (self.x + self.vx).rem_euclid(W);
-        self.y = (self.y + self.vy).rem_euclid(H);
+    fn run_n(&mut self, n: i32) {
+        self.x = (self.x + self.vx * n).rem_euclid(W);
+        self.y = (self.y + self.vy * n).rem_euclid(H);
     }
 
-    fn pos(&self) -> (i16, i16) {
+    fn run_once(&mut self) {
+        self.run_n(1);
+    }
+
+    fn pos(&self) -> (i32, i32) {
         (self.y, self.x)
     }
 }
