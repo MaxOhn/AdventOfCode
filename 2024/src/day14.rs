@@ -9,13 +9,13 @@ use nom::{
     sequence::{preceded, separated_pair},
     IResult,
 };
+use rayon::{iter::ParallelIterator, str::ParallelString};
 
 pub fn run(input: &str) -> Result<Solution> {
     let input = input.trim();
 
     let p1 = part1(input);
     let p2 = part2(input);
-    // let p2 = 0;
 
     Ok(Solution::new().part1(p1).part2(p2))
 }
@@ -24,36 +24,9 @@ const W: i16 = 101;
 const H: i16 = 103;
 const STEPS: u8 = 100;
 
-struct Robot {
-    x: i16,
-    y: i16,
-    vx: i16,
-    vy: i16,
-}
-
-impl Robot {
-    fn parse(line: &str) -> IResult<&str, Self> {
-        let xy = || separated_pair(ch::i16, by::tag(","), ch::i16);
-        let eq = |prefix| preceded(by::tag(prefix), preceded(by::tag("="), xy()));
-        let pv = separated_pair(eq("p"), by::tag(" "), eq("v"));
-        let (rest, ((x, y), (vx, vy))) = all_consuming(pv)(line)?;
-
-        Ok((rest, Self { x, y, vx, vy }))
-    }
-
-    fn run(&mut self) {
-        self.x = (self.x + self.vx).rem_euclid(W);
-        self.y = (self.y + self.vy).rem_euclid(H);
-    }
-
-    fn pos(&self) -> (i16, i16) {
-        (self.x, self.y)
-    }
-}
-
-fn part1(input: &str) -> i32 {
+fn part1(input: &str) -> u32 {
     input
-        .lines()
+        .par_lines()
         .filter_map(|line| {
             let (_, mut robot) = Robot::parse(line).unwrap();
 
@@ -70,11 +43,24 @@ fn part1(input: &str) -> i32 {
 
             Some((qx + 2 * qy) as usize)
         })
-        .fold([0; 4], |mut quadrants, i| {
-            quadrants[i] += 1;
+        .fold(
+            || [0; 4],
+            |mut quadrants, i| {
+                quadrants[i] += 1;
 
-            quadrants
-        })
+                quadrants
+            },
+        )
+        .reduce(
+            || [0; 4],
+            |mut reduced, quadrant| {
+                for (reduced, quadrant) in reduced.iter_mut().zip(quadrant) {
+                    *reduced += quadrant;
+                }
+
+                reduced
+            },
+        )
         .into_iter()
         .product()
 }
@@ -114,4 +100,31 @@ fn part2(input: &str) -> usize {
             })
         })
         .unwrap()
+}
+
+struct Robot {
+    x: i16,
+    y: i16,
+    vx: i16,
+    vy: i16,
+}
+
+impl Robot {
+    fn parse(line: &str) -> IResult<&str, Self> {
+        let xy = || separated_pair(ch::i16, by::tag(","), ch::i16);
+        let eq = |prefix| preceded(by::tag(prefix), preceded(by::tag("="), xy()));
+        let pv = separated_pair(eq("p"), by::tag(" "), eq("v"));
+        let (rest, ((x, y), (vx, vy))) = all_consuming(pv)(line)?;
+
+        Ok((rest, Self { x, y, vx, vy }))
+    }
+
+    fn run(&mut self) {
+        self.x = (self.x + self.vx).rem_euclid(W);
+        self.y = (self.y + self.vy).rem_euclid(H);
+    }
+
+    fn pos(&self) -> (i16, i16) {
+        (self.x, self.y)
+    }
 }
