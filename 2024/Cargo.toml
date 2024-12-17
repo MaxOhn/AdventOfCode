@@ -7,6 +7,7 @@ edition = "2021"
 aoc-rust = { path = "../aoc-rust" }
 eyre = "0.6.9"
 fxhash = "0.2.1"
+itoa = "1.0.14"
 memchr = "2.7.4"
 nom = "7.1.3"
 rayon = "1.10.0"
