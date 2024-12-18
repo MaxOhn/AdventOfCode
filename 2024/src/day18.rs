@@ -1,7 +1,4 @@
-use std::{
-    cmp::Reverse,
-    collections::{BinaryHeap, HashMap, HashSet},
-};
+use std::collections::{BinaryHeap, HashMap, HashSet};
 
 use aoc_rust::Solution;
 use eyre::Result;
@@ -68,7 +65,7 @@ fn part2(input: &str) -> Box<str> {
 
 #[derive(Default)]
 struct Dijkstra {
-    heap: BinaryHeap<(Reverse<i32>, i32, i32)>,
+    heap: BinaryHeap<(i32, i32, i32)>,
     dists: HashMap<(i32, i32), i32, FxBuildHasher>,
 }
 
@@ -82,7 +79,7 @@ impl Dijkstra {
         let heap = &mut self.heap;
         let dists = &mut self.dists;
 
-        heap.push((Reverse(2 * DIM), 0, 0));
+        heap.push((0, 0, 0));
         dists.insert((0, 0), 0);
 
         let mut best = i32::MAX;
@@ -119,8 +116,7 @@ impl Dijkstra {
 
                 if *dn > dist + 1 {
                     *dn = dist + 1;
-
-                    heap.push((Reverse(2 * DIM - nx - ny), nx, ny));
+                    heap.push((nx + ny, nx, ny));
                 }
             }
         }
