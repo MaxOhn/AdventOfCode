@@ -56,14 +56,15 @@ solution! {
     BoxStr(Box<str>),
 }
 
-impl PartialEq<&str> for SolutionType {
+impl PartialEq<str> for SolutionType {
     // the only way to compare non-strings with strings is to format them into
     // a string before comparing
     #[allow(clippy::cmp_owned)]
-    fn eq(&self, other: &&str) -> bool {
+    fn eq(&self, other: &str) -> bool {
         match self {
             Self::String(n) => n == other,
-            _ => self.to_string() == *other,
+            Self::BoxStr(n) => n.as_ref() == other,
+            _ => self.to_string() == other,
         }
     }
 }
