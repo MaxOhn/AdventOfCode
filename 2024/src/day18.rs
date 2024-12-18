@@ -69,8 +69,6 @@ fn part2(input: &str) -> Box<str> {
                 continue;
             }
 
-            dijkstra.reset();
-
             if dijkstra.run(&corrupted, false).no_path() {
                 return Box::from(line);
             }
@@ -90,16 +88,12 @@ struct Dijkstra {
 }
 
 impl Dijkstra {
-    fn reset(&mut self) {
-        self.heap.clear();
-        self.dists.clear();
-        self.prevs.clear();
-    }
-
     fn run(&mut self, corrupted: &Corrupted, keep_going: bool) -> DijkstraResult {
-        let heap = &mut self.heap;
-        let dists = &mut self.dists;
-        let prevs = &mut self.prevs;
+        let Self { heap, dists, prevs } = self;
+
+        heap.clear();
+        dists.clear();
+        prevs.clear();
 
         heap.push((0, 0, 0));
         dists.insert((0, 0), 0);
