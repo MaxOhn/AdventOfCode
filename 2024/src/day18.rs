@@ -13,7 +13,7 @@ pub fn run(input: &str) -> Result<Solution> {
     Ok(Solution::new().part1(p1).part2(p2))
 }
 
-fn parse_line(line: &str) -> (i32, i32) {
+fn parse_line(line: &str) -> (i16, i16) {
     let mut x = 0;
     let mut y = 0;
     let mut curr = &mut x;
@@ -23,19 +23,19 @@ fn parse_line(line: &str) -> (i32, i32) {
             curr = &mut y;
         } else {
             *curr *= 10;
-            *curr += (byte & 0xF) as i32;
+            *curr += (byte & 0xF) as i16;
         }
     }
 
     (x, y)
 }
 
-const DIM: i32 = 70;
+const DIM: i16 = 70;
 const TAKE: usize = 1024;
 
-type Corrupted = HashSet<(i32, i32), FxBuildHasher>;
+type Corrupted = HashSet<(i16, i16), FxBuildHasher>;
 
-fn part1(input: &str) -> i32 {
+fn part1(input: &str) -> i16 {
     let corrupted: Corrupted = Lines::new(input).take(TAKE).map(parse_line).collect();
     let mut dijkstra = Dijkstra::default();
 
@@ -84,9 +84,9 @@ fn part2(input: &str) -> Box<str> {
 
 #[derive(Default)]
 struct Dijkstra {
-    heap: BinaryHeap<(i32, i32, i32)>,
-    dists: HashMap<(i32, i32), i32, FxBuildHasher>,
-    prevs: HashMap<(i32, i32), (i32, i32), FxBuildHasher>,
+    heap: BinaryHeap<(i16, i16, i16)>,
+    dists: HashMap<(i16, i16), i16, FxBuildHasher>,
+    prevs: HashMap<(i16, i16), (i16, i16), FxBuildHasher>,
 }
 
 impl Dijkstra {
@@ -104,7 +104,7 @@ impl Dijkstra {
         heap.push((0, 0, 0));
         dists.insert((0, 0), 0);
 
-        let mut best = i32::MAX;
+        let mut best = i16::MAX;
 
         while let Some((_, x, y)) = heap.pop() {
             let dist = dists[&(x, y)];
@@ -134,7 +134,7 @@ impl Dijkstra {
                     continue;
                 }
 
-                let dn = dists.entry((nx, ny)).or_insert(i32::MAX);
+                let dn = dists.entry((nx, ny)).or_insert(i16::MAX);
 
                 if *dn > dist + 1 {
                     *dn = dist + 1;
@@ -144,12 +144,12 @@ impl Dijkstra {
             }
         }
 
-        (best < i32::MAX)
+        (best < i16::MAX)
             .then_some(DijkstraResult::Best(best))
             .unwrap_or(DijkstraResult::NoPath)
     }
 
-    fn collect_path(&self, set: &mut HashSet<(i32, i32), FxBuildHasher>) {
+    fn collect_path(&self, set: &mut HashSet<(i16, i16), FxBuildHasher>) {
         set.clear();
         let mut curr = (DIM, DIM);
 
@@ -161,13 +161,13 @@ impl Dijkstra {
 }
 
 enum DijkstraResult {
-    Best(i32),
+    Best(i16),
     NoPath,
     PathFound,
 }
 
 impl DijkstraResult {
-    fn best(self) -> Option<i32> {
+    fn best(self) -> Option<i16> {
         match self {
             DijkstraResult::Best(best) => Some(best),
             _ => None,
