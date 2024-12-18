@@ -50,13 +50,32 @@ fn part2(input: &str) -> Box<str> {
 
     let mut corrupted: Corrupted = lines.by_ref().take(TAKE).map(parse_line).collect();
     let mut dijkstra = Dijkstra::default();
+    let mut path = HashSet::with_hasher(FxBuildHasher::default());
 
-    for line in lines {
+    if let Some(line) = lines.next() {
         corrupted.insert(parse_line(line));
-        dijkstra.reset();
 
         if dijkstra.run(&corrupted, false).no_path() {
             return Box::from(line);
+        }
+
+        dijkstra.collect_path(&mut path);
+
+        for line in lines {
+            let pos = parse_line(line);
+            corrupted.insert(pos);
+
+            if !path.contains(&pos) {
+                continue;
+            }
+
+            dijkstra.reset();
+
+            if dijkstra.run(&corrupted, false).no_path() {
+                return Box::from(line);
+            }
+
+            dijkstra.collect_path(&mut path);
         }
     }
 
@@ -67,17 +86,20 @@ fn part2(input: &str) -> Box<str> {
 struct Dijkstra {
     heap: BinaryHeap<(i32, i32, i32)>,
     dists: HashMap<(i32, i32), i32, FxBuildHasher>,
+    prevs: HashMap<(i32, i32), (i32, i32), FxBuildHasher>,
 }
 
 impl Dijkstra {
     fn reset(&mut self) {
         self.heap.clear();
         self.dists.clear();
+        self.prevs.clear();
     }
 
     fn run(&mut self, corrupted: &Corrupted, keep_going: bool) -> DijkstraResult {
         let heap = &mut self.heap;
         let dists = &mut self.dists;
+        let prevs = &mut self.prevs;
 
         heap.push((0, 0, 0));
         dists.insert((0, 0), 0);
@@ -116,6 +138,7 @@ impl Dijkstra {
 
                 if *dn > dist + 1 {
                     *dn = dist + 1;
+                    prevs.insert((nx, ny), (x, y));
                     heap.push((nx + ny, nx, ny));
                 }
             }
@@ -124,6 +147,16 @@ impl Dijkstra {
         (best < i32::MAX)
             .then_some(DijkstraResult::Best(best))
             .unwrap_or(DijkstraResult::NoPath)
+    }
+
+    fn collect_path(&self, set: &mut HashSet<(i32, i32), FxBuildHasher>) {
+        set.clear();
+        let mut curr = (DIM, DIM);
+
+        while curr != (0, 0) {
+            set.insert(curr);
+            curr = self.prevs[&curr];
+        }
     }
 }
 
