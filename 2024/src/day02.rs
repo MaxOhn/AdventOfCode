@@ -134,6 +134,7 @@ pub fn part2_bruteforce(input: &str) -> usize {
 }
 
 trait Report {
+    #[allow(clippy::wrong_self_convention)]
     fn is_safe(self) -> bool;
 }
 

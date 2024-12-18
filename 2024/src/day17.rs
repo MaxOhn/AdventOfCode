@@ -108,8 +108,8 @@ impl State {
             };
 
             match op {
-                0 => self.a = self.a >> (combo() as u32),
-                1 => self.b = self.b ^ operand as i64,
+                0 => self.a >>= combo() as u32,
+                1 => self.b ^= operand as i64,
                 2 => self.b = combo() % 8,
                 3 => {
                     if self.a != 0 && self.ip != operand as usize {
@@ -118,7 +118,7 @@ impl State {
                         continue;
                     }
                 }
-                4 => self.b = self.b ^ self.c,
+                4 => self.b ^= self.c,
                 5 => {
                     self.ip += 2;
 

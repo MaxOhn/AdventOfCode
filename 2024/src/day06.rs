@@ -88,7 +88,7 @@ impl<'a> InputMap<'a> {
     }
 
     fn start(&self) -> Option<usize> {
-        memchr::memchr(b'^', &*self.bytes)
+        memchr::memchr(b'^', &self.bytes)
     }
 
     fn contains(&self, pos: Pos) -> bool {
@@ -168,7 +168,7 @@ impl Add<Direction> for Pos {
 }
 
 thread_local! {
-    static INPUT: OnceLock<RefCell<Option<State>>> = OnceLock::new();
+    static INPUT: OnceLock<RefCell<Option<State>>> = const { OnceLock::new() };
 }
 
 struct State {

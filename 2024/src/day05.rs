@@ -117,8 +117,7 @@ pub fn part1(input: &str) -> u16 {
                             return true;
                         };
 
-                        ys.iter()
-                            .all(|&y| update.find(y).map_or(true, |iy| ix < iy))
+                        ys.iter().all(|&y| update.find(y).is_none_or(|iy| ix < iy))
                     })
                     .then_some(update.middle())
             })

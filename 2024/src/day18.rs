@@ -138,9 +138,11 @@ impl Dijkstra {
             }
         }
 
-        (best < i16::MAX)
-            .then_some(DijkstraResult::Best(best))
-            .unwrap_or(DijkstraResult::NoPath)
+        if best < i16::MAX {
+            DijkstraResult::Best(best)
+        } else {
+            DijkstraResult::NoPath
+        }
     }
 
     fn collect_path(&self, set: &mut HashSet<(i16, i16), FxBuildHasher>) {

@@ -1,5 +1,5 @@
 use std::{
-    cmp::Reverse,
+    cmp::{Ordering, Reverse},
     collections::{BinaryHeap, HashSet},
 };
 
@@ -111,14 +111,18 @@ fn part2(input: &str) -> usize {
 
             let next_score = score + weight;
 
-            if dists[next as usize][i] > next_score {
-                dists[next as usize][i] = next_score;
-                heap.push((Reverse(next_score), next, i));
+            match dists[next as usize][i].cmp(&next_score) {
+                Ordering::Greater => {
+                    dists[next as usize][i] = next_score;
+                    heap.push((Reverse(next_score), next, i));
 
-                prevs[next as usize][i].clear();
-                prevs[next as usize][i].insert((pos, dir));
-            } else if dists[next as usize][i] == next_score {
-                prevs[next as usize][i].insert((pos, dir));
+                    prevs[next as usize][i].clear();
+                    prevs[next as usize][i].insert((pos, dir));
+                }
+                Ordering::Equal => {
+                    prevs[next as usize][i].insert((pos, dir));
+                }
+                Ordering::Less => {}
             }
         }
     }

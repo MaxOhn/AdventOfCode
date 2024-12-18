@@ -61,7 +61,11 @@ fn solve(input: &str, check_fn: fn(&Equation<'_>, Dp) -> bool) -> u64 {
                 let ThreadData { eq_buf, dp } = data;
                 let eq = Equation::parse(line, eq_buf);
 
-                check_fn(&eq, Dp(dp)).then_some(eq.value).unwrap_or(0)
+                if check_fn(&eq, Dp(dp)) {
+                    eq.value
+                } else {
+                    0
+                }
             })
         })
         .sum()
@@ -114,7 +118,7 @@ impl<'a> Equation<'a> {
     }
 
     fn check_dynamic<C: Check>(&self, dp: &mut Vec<u64>) -> bool {
-        C::check_dynamic(self.value, &self.nums, dp)
+        C::check_dynamic(self.value, self.nums, dp)
     }
 }
 
