@@ -1,6 +1,6 @@
 use std::collections::{BinaryHeap, HashMap, HashSet};
 
-use aoc_rust::Solution;
+use aoc_rust::{util::lines::Lines, Solution};
 use eyre::Result;
 use fxhash::FxBuildHasher;
 
@@ -36,7 +36,7 @@ const TAKE: usize = 1024;
 type Corrupted = HashSet<(i32, i32), FxBuildHasher>;
 
 fn part1(input: &str) -> i32 {
-    let corrupted: Corrupted = input.lines().take(TAKE).map(parse_line).collect();
+    let corrupted: Corrupted = Lines::new(input).take(TAKE).map(parse_line).collect();
     let mut dijkstra = Dijkstra::default();
 
     dijkstra
@@ -46,7 +46,7 @@ fn part1(input: &str) -> i32 {
 }
 
 fn part2(input: &str) -> Box<str> {
-    let mut lines = input.lines();
+    let mut lines = Lines::new(input);
 
     let mut corrupted: Corrupted = lines.by_ref().take(TAKE).map(parse_line).collect();
     let mut dijkstra = Dijkstra::default();
