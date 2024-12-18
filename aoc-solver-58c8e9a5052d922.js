@@ -983,7 +983,7 @@ async function __wbg_init(module_or_path) {
     }
 
     if (typeof module_or_path === 'undefined') {
-        module_or_path = new URL('aoc-solver-5163e14f77b21224_bg.wasm', import.meta.url);
+        module_or_path = new URL('aoc-solver-58c8e9a5052d922_bg.wasm', import.meta.url);
     }
     const imports = __wbg_get_imports();
 
