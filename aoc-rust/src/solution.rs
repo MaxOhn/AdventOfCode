@@ -53,6 +53,7 @@ solution! {
     F32(f32),
     F64(f64),
     String(String),
+    BoxStr(Box<str>),
 }
 
 impl PartialEq<&str> for SolutionType {
