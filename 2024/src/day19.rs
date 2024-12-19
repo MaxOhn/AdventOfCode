@@ -34,7 +34,7 @@ fn solve<P: Part>(input: &str) -> P::Output {
 
     let applied = |available: Vec<_>| {
         let mut cache = Cache::<P>::default();
-        let line = terminated(ch::alpha1, opt(ch::line_ending::<_, ()>));
+        let line = terminated(ch::alpha1, opt(ch::newline::<_, ()>));
         let apply = move |line| P::recurse(&available, line, &mut cache);
 
         fold_many1(map(line, apply), <P::Output>::default, P::fold_output)
