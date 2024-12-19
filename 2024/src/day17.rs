@@ -135,3 +135,35 @@ impl State {
         None
     }
 }
+
+#[allow(unused)]
+fn unga_bunga(input: &str) -> i64 {
+    let (state, program) = State::parse(input).unwrap();
+    let mut a = 0;
+
+    let start = std::time::Instant::now();
+
+    loop {
+        fn drive_state(state: &mut State, program: &[u8]) -> bool {
+            for &n in program.iter() {
+                if state.run_until_print(program) != Some(n) {
+                    return false;
+                }
+            }
+
+            state.run_until_print(program).is_none()
+        }
+
+        let mut state = State::new(a, state.b, state.c);
+
+        if drive_state(&mut state, &program) {
+            return a;
+        }
+
+        a += 1;
+
+        if a % 1_000_000_000 == 0 {
+            println!("[{:?}] {a}", start.elapsed());
+        }
+    }
+}
