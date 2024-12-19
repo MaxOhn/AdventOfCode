@@ -32,7 +32,8 @@ fn part2(input: &str) -> i64 {
 fn solve<P: Part>(input: &str) -> P::Output {
     let available = terminated(separated_list1(by::tag(", "), ch::alpha1), ch::multispace1);
 
-    let applied = |available: Vec<_>| {
+    let applied = |mut available: Vec<_>| {
+        available.sort_unstable(); // why does this improve performance
         let mut cache = Cache::<P>::default();
         let line = terminated(ch::alpha1, opt(ch::newline::<_, ()>));
         let apply = move |line| P::recurse(&available, line, &mut cache);
