@@ -81,7 +81,7 @@ fn part2(input: &str) -> i32 {
         )
     });
 
-    let mut iter = rayon::broadcast(|_| DATA.with_borrow(|data| data.bananas.clone())).into_iter();
+    let mut iter = rayon::broadcast(|_| DATA.take().bananas).into_iter();
 
     let Some(mut bananas) = iter.next() else {
         return 0;
@@ -109,6 +109,12 @@ impl ThreadData {
             nums: Vec::new(),
             seen: HashSet::with_hasher(FxBuildHasher::new()),
         }
+    }
+}
+
+impl Default for ThreadData {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
