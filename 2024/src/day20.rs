@@ -38,7 +38,7 @@ fn solve<const MAX_CHEAT: u16, const AT_LEAST: u16>(input: &str) -> u32 {
         let (next, next_dist) = [(-1, 0), (1, 0), (0, -1), (0, 1)]
             .into_iter()
             .filter_map(|(dx, dy)| {
-                let next = (curr.0 as i16 + dx, curr.1 as i16 + dy);
+                let next = (curr.0 + dx, curr.1 + dy);
                 let next_dist = *end_dists.get(&next)?;
 
                 Some((next, next_dist))
@@ -97,7 +97,7 @@ impl<'a> RaceTrack<'a> {
     }
 
     fn find(&self, byte: u8) -> (i16, i16) {
-        let pos = memchr::memchr(byte, &self.bytes).unwrap() as i16;
+        let pos = memchr::memchr(byte, self.bytes).unwrap() as i16;
 
         (pos % self.w, pos / self.w)
     }

@@ -489,6 +489,9 @@ fn degeneracy_graph_rc(n: &Map) -> List {
         })
         .collect();
 
+    // false positive by clippy; the custom Hash impl doesn't consider the
+    // mutable inner type
+    #[allow(clippy::mutable_key_type)]
     let n: Map<_, Vec<_>> = n
         .iter()
         .map(|(key, values)| {
