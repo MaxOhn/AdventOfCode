@@ -28,3 +28,8 @@ fn part2_bk_pivot_arena() {
 fn part2_bk_degeneracy() {
     aoc24::day23::part2_bk_degeneracy(INPUT);
 }
+
+#[divan::bench(sample_count = 100, sample_size = 10)]
+fn part2_bk_degeneracy_arena() {
+    aoc24::day23::part2_bk_degeneracy_arena(INPUT);
+}

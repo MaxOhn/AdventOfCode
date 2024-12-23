@@ -1,5 +1,5 @@
 use std::{
-    collections::{btree_map::Entry, BTreeMap},
+    collections::{btree_map::Entry as BTreeEntry, hash_map::Entry as HashEntry, BTreeMap},
     mem::ManuallyDrop,
     ops::{Deref, DerefMut},
     ptr::NonNull,
@@ -21,6 +21,7 @@ pub fn run(input: &str) -> Result<Solution> {
     // assert_eq!(p2, part2_bk_pivot(input));
     // assert_eq!(p2, part2_bk_pivot_arena(input));
     assert_eq!(p2, part2_bk_degeneracy(input));
+    assert_eq!(p2, part2_bk_degeneracy_arena(input));
 
     Ok(Solution::new().part1(p1).part2(p2))
 }
@@ -184,7 +185,7 @@ pub fn part2_bk(input: &str) -> String {
 
 fn bk(r: Set, mut p: Set, mut x: Set, c: &mut BTreeMap<usize, Set>, n: &Map) {
     if p.is_empty() && x.is_empty() {
-        if let Entry::Vacant(e) = c.entry(r.len()) {
+        if let BTreeEntry::Vacant(e) = c.entry(r.len()) {
             e.insert(r);
         }
 
@@ -221,7 +222,7 @@ pub fn part2_bk_pivot(input: &str) -> String {
 
 fn bk_pivot(r: Set, mut p: Set, mut x: Set, c: &mut BTreeMap<usize, Set>, n: &Map) {
     let Some(pivot) = p.union(&x).next() else {
-        if let Entry::Vacant(e) = c.entry(r.len()) {
+        if let BTreeEntry::Vacant(e) = c.entry(r.len()) {
             e.insert(r);
         }
 
@@ -351,7 +352,7 @@ fn bk_pivot_arena(
     arena: &Arena,
 ) {
     let Some(pivot) = p.union(&x).next() else {
-        if let Entry::Vacant(e) = c.entry(r.len()) {
+        if let BTreeEntry::Vacant(e) = c.entry(r.len()) {
             e.insert(r.into_owned());
         }
 
@@ -377,7 +378,7 @@ fn bk_pivot_arena(
     }
 }
 
-// the more favorable vertex order doesn't seem worth its calculation time
+// the more favorable vertex order doesn't seem quite worth its calculation time
 pub fn part2_bk_degeneracy(input: &str) -> String {
     let map = parse_input(input);
 
@@ -430,7 +431,82 @@ fn degeneracy_graph(n: &Map) -> List {
                 continue;
             }
 
-            let dw = d_indices.entry(*w).or_default();
+            let HashEntry::Occupied(mut entry) = d_indices.entry(*w) else {
+                unreachable!()
+            };
+            let dw = entry.get_mut();
+            d[*dw].retain(|item| item != w);
+            *dw -= 1;
+            d[*dw].push(*w);
+        }
+    }
+
+    l.reverse();
+
+    l
+}
+
+pub fn part2_bk_degeneracy_arena(input: &str) -> String {
+    let map = parse_input(input);
+
+    let arena = Arena::default();
+    let mut c = BTreeMap::default();
+    bk_degeneracy_arena(&mut c, &map, &arena);
+
+    map_to_password(&c)
+}
+
+fn bk_degeneracy_arena(c: &mut BTreeMap<usize, Set>, n: &Map, arena: &Arena) {
+    let mut p = arena.get();
+    p.extend(n.keys().copied());
+    let mut x = arena.get();
+
+    for v in degeneracy_graph_arena(n, arena) {
+        let mut r = arena.get();
+        r.insert(v);
+
+        let neighbors = &n[&v];
+
+        let mut next_p = arena.get();
+        next_p.extend(p.intersection(neighbors).copied());
+
+        let mut next_x = arena.get();
+        next_x.extend(x.intersection(neighbors).copied());
+
+        bk_pivot_arena(r, next_p, next_x, c, n, arena);
+
+        p.remove(&v);
+        x.insert(v);
+    }
+}
+
+fn degeneracy_graph_arena(n: &Map, arena: &Arena) -> List {
+    let mut l = List::new();
+    let mut l_set = arena.get();
+
+    let cap = 1 + n.values().map(Set::len).max().unwrap_or(0);
+    let mut d = vec![List::new(); cap];
+    let mut d_indices = Map::default();
+
+    for (v, ns) in n {
+        let dv = ns.len();
+        d[dv].push(*v);
+        d_indices.insert(*v, dv);
+    }
+
+    while let Some(item) = d.iter_mut().find_map(List::pop) {
+        l.push(item);
+        l_set.insert(item);
+
+        for w in n[&item].iter() {
+            if l_set.contains(w) {
+                continue;
+            }
+
+            let HashEntry::Occupied(mut entry) = d_indices.entry(*w) else {
+                unreachable!()
+            };
+            let dw = entry.get_mut();
             d[*dw].retain(|item| item != w);
             *dw -= 1;
             d[*dw].push(*w);
