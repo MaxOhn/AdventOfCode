@@ -1,14 +1,9 @@
 use std::{
     collections::{btree_map::Entry, BTreeMap},
-    hash::{Hash, Hasher},
     mem::ManuallyDrop,
     ops::{Deref, DerefMut},
     ptr::NonNull,
-    rc::Rc,
-    sync::{
-        atomic::{AtomicBool, Ordering::Relaxed},
-        Mutex,
-    },
+    sync::Mutex,
 };
 
 use aoc_rust::Solution;
@@ -25,8 +20,7 @@ pub fn run(input: &str) -> Result<Solution> {
     // assert_eq!(p2, part2_bk(input));
     // assert_eq!(p2, part2_bk_pivot(input));
     // assert_eq!(p2, part2_bk_pivot_arena(input));
-    // assert_eq!(p2, part2_bk_degeneracy(input));
-    // assert_eq!(p2, part2_bk_degeneracy_rc(input));
+    assert_eq!(p2, part2_bk_degeneracy(input));
 
     Ok(Solution::new().part1(p1).part2(p2))
 }
@@ -397,7 +391,7 @@ fn bk_degeneracy(c: &mut BTreeMap<usize, Set>, n: &Map) {
     let mut p: Set = n.keys().copied().collect();
     let mut x = Set::default();
 
-    for v in degeneracy_graph(n.to_owned()) {
+    for v in degeneracy_graph(n) {
         let mut r = Set::default();
         r.insert(v);
 
@@ -412,111 +406,38 @@ fn bk_degeneracy(c: &mut BTreeMap<usize, Set>, n: &Map) {
     }
 }
 
-fn degeneracy_graph(mut n: Map) -> List {
-    let mut degeneracy = Vec::new();
+// <https://en.wikipedia.org/wiki/Degeneracy_(graph_theory)>
+fn degeneracy_graph(n: &Map) -> List {
+    let mut l = List::new();
+    let mut l_set = Set::default();
 
-    while let Some((&key, _)) = n.iter().min_by_key(|(_, edges)| edges.len()) {
-        degeneracy.push(key);
-        n.remove(&key);
+    let cap = 1 + n.values().map(Set::len).max().unwrap_or(0);
+    let mut d = vec![List::new(); cap];
+    let mut d_indices = Map::default();
 
-        for edges in n.values_mut() {
-            edges.remove(&key);
+    for (v, ns) in n {
+        let dv = ns.len();
+        d[dv].push(*v);
+        d_indices.insert(*v, dv);
+    }
+
+    while let Some(item) = d.iter_mut().find_map(List::pop) {
+        l.push(item);
+        l_set.insert(item);
+
+        for w in n[&item].iter() {
+            if l_set.contains(w) {
+                continue;
+            }
+
+            let dw = d_indices.entry(*w).or_default();
+            d[*dw].retain(|item| item != w);
+            *dw -= 1;
+            d[*dw].push(*w);
         }
     }
 
-    degeneracy
-}
+    l.reverse();
 
-// even slower than part2_bk_degeneracy :(
-pub fn part2_bk_degeneracy_rc(input: &str) -> String {
-    let map = parse_input(input);
-
-    let mut c = BTreeMap::default();
-    bk_degeneracy_rc(&mut c, &map);
-
-    map_to_password(&c)
-}
-
-fn bk_degeneracy_rc(c: &mut BTreeMap<usize, Set>, n: &Map) {
-    let mut p: Set = n.keys().copied().collect();
-    let mut x = Set::default();
-
-    for v in degeneracy_graph_rc(n) {
-        let mut r = Set::default();
-        r.insert(v);
-
-        let neighbors = &n[&v];
-        let next_p = p.intersection(neighbors).copied().collect();
-        let next_x = x.intersection(neighbors).copied().collect();
-
-        bk_pivot(r, next_p, next_x, c, n);
-
-        p.remove(&v);
-        x.insert(v);
-    }
-}
-
-fn degeneracy_graph_rc(n: &Map) -> List {
-    struct Wrap {
-        computer: Computer,
-        present: AtomicBool,
-    }
-
-    impl PartialEq for Wrap {
-        fn eq(&self, other: &Self) -> bool {
-            self.computer == other.computer
-        }
-    }
-
-    impl Eq for Wrap {}
-
-    impl Hash for Wrap {
-        fn hash<H: Hasher>(&self, state: &mut H) {
-            self.computer.hash(state);
-        }
-    }
-
-    let rcs: Map<_, _> = n
-        .keys()
-        .map(|&computer| {
-            (
-                computer,
-                Rc::new(Wrap {
-                    computer,
-                    present: AtomicBool::new(true),
-                }),
-            )
-        })
-        .collect();
-
-    // false positive by clippy; the custom Hash impl doesn't consider the
-    // mutable inner type
-    #[allow(clippy::mutable_key_type)]
-    let n: Map<_, Vec<_>> = n
-        .iter()
-        .map(|(key, values)| {
-            (
-                Rc::clone(&rcs[key]),
-                values.iter().map(|value| Rc::clone(&rcs[value])).collect(),
-            )
-        })
-        .collect();
-
-    let mut degeneracy = Vec::new();
-
-    while let Some((key, _)) = n
-        .iter()
-        .filter(|(key, _)| key.present.load(Relaxed))
-        .min_by_key(|(_, edges)| {
-            edges
-                .iter()
-                .filter(|edge| edge.present.load(Relaxed))
-                .count()
-        })
-    {
-        degeneracy.push(key.computer);
-        key.present.store(false, Relaxed);
-    }
-
-    degeneracy
+    l
 }
