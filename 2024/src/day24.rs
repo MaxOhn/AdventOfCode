@@ -6,6 +6,7 @@ use std::{
     str::Lines,
 };
 
+use ahash::HashSetExt;
 use aoc_rust::Solution;
 use eyre::Result;
 use fxhash::{FxHashMap, FxHashSet};
@@ -42,7 +43,7 @@ fn part2(input: &str) -> String {
     let (_, input) = input.split_once("\n\n").expect("bad input");
     let gates = parse_gates(&mut input.lines());
 
-    let mut swapped = FxHashSet::default();
+    let mut swapped = FxHashSet::with_capacity(8);
 
     let x00 = InOut(*b"x00");
     let y00 = InOut(*b"y00");
@@ -59,7 +60,7 @@ fn part2(input: &str) -> String {
 
     let xor_out = gates
         .iter()
-        .find(|gate| gate.has_lhs(x00, bool::bitxor, y00))
+        .find(|gate| gate.has_lhs(x00, XOR, y00))
         .unwrap()
         .out;
 
@@ -69,7 +70,7 @@ fn part2(input: &str) -> String {
 
     let mut carry = gates
         .iter()
-        .find(|gate| gate.has_lhs(x00, bool::bitand, y00))
+        .find(|gate| gate.has_lhs(x00, AND, y00))
         .unwrap()
         .out;
 
@@ -91,13 +92,13 @@ fn part2(input: &str) -> String {
             C ----------/
         */
 
-        let Some(xor1) = gates.iter().find(|gate| gate.has_lhs(x, bool::bitxor, y)) else {
+        let Some(xor1) = gates.iter().find(|gate| gate.has_lhs(x, XOR, y)) else {
             break;
         };
 
         let xor2 = gates
             .iter()
-            .find(|gate| gate.op == bool::bitxor && gate.has_either_input(xor1.out, carry))
+            .find(|gate| gate.op == XOR && gate.has_either_input(xor1.out, carry))
             .unwrap();
 
         if xor2.out != z {
@@ -124,13 +125,13 @@ fn part2(input: &str) -> String {
 
         let and1_out = gates
             .iter()
-            .find(|gate| gate.has_lhs(x, bool::bitand, y))
+            .find(|gate| gate.has_lhs(x, AND, y))
             .unwrap()
             .out;
 
         let and2 = gates
             .iter()
-            .find(|gate| gate.op == bool::bitand && gate.has_either_input(xor1.out, carry))
+            .find(|gate| gate.op == AND && gate.has_either_input(xor1.out, carry))
             .unwrap();
 
         if !and2.has_input(xor1.out) {
@@ -143,7 +144,7 @@ fn part2(input: &str) -> String {
 
         let or = gates
             .iter()
-            .find(|gate| gate.op == bool::bitor && gate.has_either_input(and1_out, and2.out))
+            .find(|gate| gate.op == OR && gate.has_either_input(and1_out, and2.out))
             .unwrap();
 
         if !or.has_input(and1_out) {
@@ -203,11 +204,11 @@ impl InOut {
     }
 
     fn z(self) -> Option<u8> {
-        (self.0[0] == b'z').then(|| {
-            let [_, a, b] = self.0;
-
-            (a & 0xF) * 10 + (b & 0xF)
-        })
+        if let Self([b'z', a, b]) = self {
+            Some((a & 0xF) * 10 + (b & 0xF))
+        } else {
+            None
+        }
     }
 
     fn eval(self, values: &mut FxHashMap<InOut, bool>, gates: &FxHashSet<Gate>) -> bool {
@@ -236,6 +237,10 @@ struct Gate {
     out: InOut,
 }
 
+const AND: fn(bool, bool) -> bool = bool::bitand;
+const OR: fn(bool, bool) -> bool = bool::bitor;
+const XOR: fn(bool, bool) -> bool = bool::bitxor;
+
 impl Gate {
     fn has_lhs(&self, a: InOut, op: fn(bool, bool) -> bool, b: InOut) -> bool {
         self.in1 == a && self.op == op && self.in2 == b
@@ -254,9 +259,9 @@ impl Gate {
             let (rest, op) = alt((by::tag("AND"), by::tag("OR"), by::tag("XOR")))(input)?;
 
             let op = match op {
-                "AND" => bool::bitand,
-                "OR" => bool::bitor,
-                "XOR" => bool::bitxor,
+                "AND" => AND,
+                "OR" => OR,
+                "XOR" => XOR,
                 _ => unreachable!(),
             };
 
