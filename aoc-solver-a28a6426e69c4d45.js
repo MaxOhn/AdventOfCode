@@ -219,31 +219,27 @@ function debugString(val) {
     return className;
 }
 function __wbg_adapter_36(arg0, arg1, arg2) {
-    wasm.closure349_externref_shim(arg0, arg1, arg2);
+    wasm.closure350_externref_shim(arg0, arg1, arg2);
 }
 
-function __wbg_adapter_39(arg0, arg1) {
-    wasm._dyn_core__ops__function__FnMut_____Output___R_as_wasm_bindgen__closure__WasmClosure___describe__invoke__h445a9f437224ed9c(arg0, arg1);
+function __wbg_adapter_39(arg0, arg1, arg2) {
+    wasm.closure993_externref_shim(arg0, arg1, arg2);
 }
 
-function __wbg_adapter_42(arg0, arg1, arg2) {
-    wasm.closure995_externref_shim(arg0, arg1, arg2);
+function __wbg_adapter_42(arg0, arg1) {
+    wasm._dyn_core__ops__function__FnMut_____Output___R_as_wasm_bindgen__closure__WasmClosure___describe__invoke__h5d0e897bcf634c69(arg0, arg1);
 }
 
-function __wbg_adapter_45(arg0, arg1) {
-    wasm._dyn_core__ops__function__FnMut_____Output___R_as_wasm_bindgen__closure__WasmClosure___describe__invoke__hc9bec521de3ddf19(arg0, arg1);
+function __wbg_adapter_45(arg0, arg1, arg2) {
+    wasm.closure1086_externref_shim(arg0, arg1, arg2);
 }
 
-function __wbg_adapter_48(arg0, arg1, arg2) {
-    wasm.closure1088_externref_shim(arg0, arg1, arg2);
+function __wbg_adapter_48(arg0, arg1) {
+    wasm._dyn_core__ops__function__FnMut_____Output___R_as_wasm_bindgen__closure__WasmClosure___describe__invoke__h552a2ec2d15de95f(arg0, arg1);
 }
 
-function __wbg_adapter_51(arg0, arg1) {
-    wasm._dyn_core__ops__function__FnMut_____Output___R_as_wasm_bindgen__closure__WasmClosure___describe__invoke__hec9630d7e322e43a(arg0, arg1);
-}
-
-function __wbg_adapter_54(arg0, arg1, arg2) {
-    wasm.closure1124_externref_shim(arg0, arg1, arg2);
+function __wbg_adapter_51(arg0, arg1, arg2) {
+    wasm.closure1122_externref_shim(arg0, arg1, arg2);
 }
 
 async function __wbg_load(module, imports) {
@@ -841,32 +837,28 @@ function __wbg_get_imports() {
         const ret = false;
         return ret;
     };
-    imports.wbg.__wbindgen_closure_wrapper2695 = function(arg0, arg1, arg2) {
-        const ret = makeMutClosure(arg0, arg1, 890, __wbg_adapter_39);
+    imports.wbg.__wbindgen_closure_wrapper2897 = function(arg0, arg1, arg2) {
+        const ret = makeMutClosure(arg0, arg1, 994, __wbg_adapter_39);
         return ret;
     };
-    imports.wbg.__wbindgen_closure_wrapper2878 = function(arg0, arg1, arg2) {
-        const ret = makeMutClosure(arg0, arg1, 996, __wbg_adapter_42);
+    imports.wbg.__wbindgen_closure_wrapper3213 = function(arg0, arg1, arg2) {
+        const ret = makeMutClosure(arg0, arg1, 1083, __wbg_adapter_42);
         return ret;
     };
-    imports.wbg.__wbindgen_closure_wrapper3196 = function(arg0, arg1, arg2) {
-        const ret = makeMutClosure(arg0, arg1, 1085, __wbg_adapter_45);
+    imports.wbg.__wbindgen_closure_wrapper3215 = function(arg0, arg1, arg2) {
+        const ret = makeMutClosure(arg0, arg1, 1083, __wbg_adapter_45);
         return ret;
     };
-    imports.wbg.__wbindgen_closure_wrapper3198 = function(arg0, arg1, arg2) {
-        const ret = makeMutClosure(arg0, arg1, 1085, __wbg_adapter_48);
+    imports.wbg.__wbindgen_closure_wrapper3249 = function(arg0, arg1, arg2) {
+        const ret = makeMutClosure(arg0, arg1, 1095, __wbg_adapter_48);
         return ret;
     };
-    imports.wbg.__wbindgen_closure_wrapper3232 = function(arg0, arg1, arg2) {
-        const ret = makeMutClosure(arg0, arg1, 1097, __wbg_adapter_51);
-        return ret;
-    };
-    imports.wbg.__wbindgen_closure_wrapper3324 = function(arg0, arg1, arg2) {
-        const ret = makeMutClosure(arg0, arg1, 1125, __wbg_adapter_54);
+    imports.wbg.__wbindgen_closure_wrapper3341 = function(arg0, arg1, arg2) {
+        const ret = makeMutClosure(arg0, arg1, 1123, __wbg_adapter_51);
         return ret;
     };
     imports.wbg.__wbindgen_closure_wrapper428 = function(arg0, arg1, arg2) {
-        const ret = makeMutClosure(arg0, arg1, 350, __wbg_adapter_36);
+        const ret = makeMutClosure(arg0, arg1, 351, __wbg_adapter_36);
         return ret;
     };
     imports.wbg.__wbindgen_debug_string = function(arg0, arg1) {
@@ -991,7 +983,7 @@ async function __wbg_init(module_or_path) {
     }
 
     if (typeof module_or_path === 'undefined') {
-        module_or_path = new URL('aoc-solver-77ea6c98835e0b98_bg.wasm', import.meta.url);
+        module_or_path = new URL('aoc-solver-a28a6426e69c4d45_bg.wasm', import.meta.url);
     }
     const imports = __wbg_get_imports();
 
