@@ -15,7 +15,7 @@ pub fn run(input: &str) -> eyre::Result<aoc_rust::Solution> {
 }
 
 pub fn solve(input: &str) -> Result<Solution<i32, i32>, Error> {
-    let mut computer = Computer::new(input.to_owned())?;
+    let mut computer = Computer::new(input)?;
     let mut curr_pos = Point2i::new(0, 0);
     let mut curr_dir = Direction::N;
     // 0: Wall; 1: Path; 2: Blocked; 3: Oxygenated

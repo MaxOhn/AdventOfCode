@@ -86,9 +86,16 @@ fn solve_part2(maze: &GridMap<Cell>, start: Point2i, end: Point2i) -> Result<usi
 }
 
 fn parse_maze(input: &str) -> Result<(GridMap<Cell>, Point2i, Point2i), Error> {
-    let maze_matrix: Vec<Vec<char>> = input.lines().map(|line| line.chars().collect()).collect();
+    let mut maze_matrix: Vec<Vec<char>> =
+        input.lines().map(|line| line.chars().collect()).collect();
     let h = maze_matrix.len();
     let w = maze_matrix[0].len();
+
+    let last_row = maze_matrix.last_mut().unwrap();
+    if last_row.len() < w {
+        last_row.resize(w, ' ');
+    }
+
     let mut maze: GridMap<Cell> = GridMap::new();
     let mut portals: HashMap<String, (Point2i, bool)> = HashMap::new();
     let mut start = None;

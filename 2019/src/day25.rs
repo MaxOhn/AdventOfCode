@@ -11,7 +11,7 @@ pub fn run(input: &str) -> eyre::Result<aoc_rust::Solution> {
 }
 
 pub fn solve(input: &str) -> Result<Solution<i32, i32>, Error> {
-    let mut robot = Computer::new(input.to_owned())?;
+    let mut robot = Computer::new(input)?;
     robot.run()?.print();
     /* Play yourself
     // Take sand, fixed point, wreath, and space law space brochure
@@ -44,6 +44,7 @@ pub fn solve(input: &str) -> Result<Solution<i32, i32>, Error> {
 } // 73.37ms
 
 trait ShipRobot {
+    #[allow(unused)]
     fn get_instruction(&mut self) -> bool;
     fn write_instruction(&mut self, instruction: &str) -> Result<&mut Self, Error>;
     fn print(&mut self);

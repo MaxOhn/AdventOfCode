@@ -9,7 +9,7 @@ pub fn run(input: &str) -> eyre::Result<aoc_rust::Solution> {
 }
 
 pub fn solve(input: &str) -> Result<Solution<i64, i64>, Error> {
-    let mut computer = Computer::new(input.to_owned())?;
+    let mut computer = Computer::new(input)?;
     computer
         // !C && D
         .insert_not('C', 'J')
@@ -23,7 +23,7 @@ pub fn solve(input: &str) -> Result<Solution<i64, i64>, Error> {
         .output_iter()
         .last()
         .ok_or_else(|| error!("Computer did not prodocude an output for part1"))?;
-    let mut computer = Computer::new(input.to_owned())?;
+    let mut computer = Computer::new(input)?;
     computer
         // !B && !E && D
         .insert_not('B', 'J')
@@ -58,6 +58,7 @@ trait SpringScript {
     fn insert_or(&mut self, i1: char, i2: char) -> &mut Self;
     fn insert_walk(&mut self) -> &mut Self;
     fn insert_run(&mut self) -> &mut Self;
+    #[allow(unused)]
     fn print_output(&mut self) -> &mut Self;
 }
 

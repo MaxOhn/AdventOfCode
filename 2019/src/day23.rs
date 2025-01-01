@@ -63,7 +63,7 @@ impl PacketBuffer {
 pub fn solve(input: &str) -> Result<Solution<i64, i64>, Error> {
     let mut computers = Vec::with_capacity(50);
     for network_address in 0..50 {
-        let mut computer = Computer::new(input.to_owned())?;
+        let mut computer = Computer::new(input)?;
         computer.insert(network_address).insert(-1);
         computers.push(computer);
     }

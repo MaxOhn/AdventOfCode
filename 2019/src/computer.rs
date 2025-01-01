@@ -1,21 +1,25 @@
-use crate::Error;
 use std::collections::VecDeque;
+
+use crate::Error;
+
+type Result<T> = std::result::Result<T, Error>;
 
 pub struct Computer {
     memory: Vec<i64>,
     pc: usize,
-    rb: i32,
+    rb: i64,
     input: VecDeque<i64>,
     output: VecDeque<i64>,
     state: State,
 }
 
 impl Computer {
-    pub fn new(input: String) -> Result<Self, Error> {
+    pub fn new(input: &str) -> Result<Self> {
         let memory = input
             .split(',')
             .map(|n| n.parse().map_err(Error::from))
-            .collect::<Result<Vec<_>, Error>>()?;
+            .collect::<Result<Vec<_>>>()?;
+
         Ok(Computer {
             memory,
             pc: 0,
@@ -26,60 +30,69 @@ impl Computer {
         })
     }
 
-    pub fn run(&mut self) -> Result<&mut Self, Error> {
+    pub fn run(&mut self) -> Result<&mut Self> {
         if self.state == State::Done {
             return Ok(self);
-        } else if self.state == State::Wait {
+        }
+
+        if self.state == State::Wait {
             if self.input.is_empty() {
                 bail!("Cannot run while waiting for input");
             }
+
             self.state = State::Ready;
         }
+
         if self.memory[self.pc] == 99 {
             self.state = State::Done;
+
             return Ok(self);
         }
+
         while self.step()? == State::Ready {}
+
         Ok(self)
     }
 
-    pub fn step(&mut self) -> Result<State, Error> {
-        if let Some(mut op) = Operation::new(&mut self.memory, self.pc, self.rb)? {
-            match op.opcode {
-                1 => self.memory[op.w] = op.v1 + op.v2,
-                2 => self.memory[op.w] = op.v1 * op.v2,
-                3 => match self.input.pop_front() {
-                    Some(input) => self.memory[op.w] = input,
-                    None => {
-                        self.state = State::Wait;
-                        return Ok(State::Wait);
-                    }
-                },
-                4 => self.output.push_back(op.v1),
-                5 => {
-                    op.pc = if op.v1 != 0 {
-                        op.v2 as usize
-                    } else {
-                        op.pc + 3
-                    }
+    pub fn step(&mut self) -> Result<State> {
+        let Some(op) = Operation::new(&mut self.memory, self.pc, self.rb)? else {
+            return Ok(State::Done);
+        };
+
+        match op {
+            Operation::Add { w, v1, v2 } => self.memory[w] = v1 + v2,
+            Operation::Mul { w, v1, v2 } => self.memory[w] = v1 * v2,
+            Operation::Input { w } => match self.input.pop_front() {
+                Some(input) => self.memory[w] = input,
+                None => {
+                    self.state = State::Wait;
+
+                    return Ok(State::Wait);
                 }
-                6 => {
-                    op.pc = if op.v1 == 0 {
-                        op.v2 as usize
-                    } else {
-                        op.pc + 3
-                    }
+            },
+            Operation::Output(val) => self.output.push_back(val),
+            Operation::JumpIfTrue { v1, v2 } => {
+                if v1 != 0 {
+                    self.pc = v2 as usize;
+                } else {
+                    self.pc += 3;
                 }
-                7 => self.memory[op.w] = if op.v1 < op.v2 { 1 } else { 0 },
-                8 => self.memory[op.w] = if op.v1 == op.v2 { 1 } else { 0 },
-                9 => self.rb = op.rb,
-                _ => bail!("Can't process opcode {}", op.opcode),
             }
-            self.pc = op.pc;
-            Ok(State::Ready)
-        } else {
-            Ok(State::Done)
+            Operation::JumpIfFalse { v1, v2 } => {
+                if v1 == 0 {
+                    self.pc = v2 as usize;
+                } else {
+                    self.pc += 3;
+                }
+            }
+            Operation::LessThan { w, v1, v2 } => self.memory[w] = if v1 < v2 { 1 } else { 0 },
+            Operation::Equals { w, v1, v2 } => self.memory[w] = if v1 == v2 { 1 } else { 0 },
+            Operation::RelativeBase(rb) => self.rb += rb,
         }
+
+        self.pc += op.pc();
+
+        Ok(State::Ready)
     }
 
     pub fn pop(&mut self) -> Option<i64> {
@@ -88,10 +101,11 @@ impl Computer {
 
     pub fn insert(&mut self, input: i64) -> &mut Self {
         self.input.push_back(input);
+
         self
     }
 
-    pub fn output_iter<'a>(&'a mut self) -> impl Iterator<Item = &i64> + 'a {
+    pub fn output_iter(&self) -> impl Iterator<Item = &'_ i64> {
         self.output.iter()
     }
 }
@@ -103,123 +117,100 @@ pub enum State {
     Wait,
 }
 
-struct Operation {
-    opcode: i64,
-    v1: i64,
-    v2: i64,
-    w: usize,
-    pc: usize,
-    rb: i32,
+enum Operation {
+    Add { w: usize, v1: i64, v2: i64 },
+    Mul { w: usize, v1: i64, v2: i64 },
+    Input { w: usize },
+    Output(i64),
+    JumpIfTrue { v1: i64, v2: i64 },
+    JumpIfFalse { v1: i64, v2: i64 },
+    LessThan { w: usize, v1: i64, v2: i64 },
+    Equals { w: usize, v1: i64, v2: i64 },
+    RelativeBase(i64),
 }
 
 impl Operation {
-    fn new(mem: &mut Vec<i64>, pc: usize, rb: i32) -> Result<Option<Self>, Error> {
-        while mem.len() <= pc + 3 {
-            mem.push(0);
+    fn pc(&self) -> usize {
+        match self {
+            Operation::Add { .. }
+            | Operation::Mul { .. }
+            | Operation::LessThan { .. }
+            | Operation::Equals { .. } => 4,
+            Operation::JumpIfTrue { .. } | Operation::JumpIfFalse { .. } => 0,
+            Operation::Input { .. } | Operation::Output(_) | Operation::RelativeBase(_) => 2,
         }
-        let opcode = mem[pc] % 100;
-        if opcode == 99 {
-            return Ok(None);
-        }
-        if opcode == 3 {
-            let w = match (mem[pc] / 100) % 10 {
-                0 => mem[pc + 1] as usize,
-                2 => (rb + mem[pc + 1] as i32) as usize,
-                other => bail!("Can't process mode {} for writing", other),
-            };
-            if mem.len() <= w {
-                mem.resize(w + 1, 0);
-            }
-            return Ok(Some(Operation {
-                opcode,
-                v1: 0,
-                v2: 0,
-                w,
-                pc: pc + 2,
-                rb,
-            }));
+    }
+
+    fn new(mem: &mut Vec<i64>, pc: usize, rb: i64) -> Result<Option<Self>> {
+        if mem.len() < pc + 4 {
+            mem.resize(pc + 4, 0);
         }
 
-        let v1 = match (mem[pc] / 100) % 10 {
-            0 => {
-                if mem.len() as i64 <= mem[pc + 1] {
-                    mem.resize(mem[pc + 1] as usize + 1, 0);
-                }
-                mem[mem[pc + 1] as usize]
-            }
-            1 => mem[pc + 1],
-            2 => {
-                if mem.len() as i32 <= rb + mem[pc + 1] as i32 {
-                    mem.resize((rb as i64 + mem[pc + 1]) as usize + 1, 0);
-                }
-                mem[(rb + mem[pc + 1] as i32) as usize]
-            }
-            other => bail!("Can't process mode {}", other),
-        };
-        if opcode == 4 {
-            return Ok(Some(Operation {
-                opcode,
-                v1,
-                v2: 0,
-                w: 0,
-                pc: pc + 2,
-                rb,
-            }));
-        }
-        if opcode == 9 {
-            return Ok(Some(Operation {
-                opcode,
-                v1: 0,
-                v2: 0,
-                w: 0,
-                pc: pc + 2,
-                rb: rb + v1 as i32,
-            }));
-        }
-        let v2 = match (mem[pc] / 1000) % 10 {
-            0 => {
-                if mem.len() as i64 <= mem[pc + 2] {
-                    mem.resize(mem[pc + 2] as usize + 1, 0);
-                }
-                mem[mem[pc + 2] as usize]
-            }
-            1 => mem[pc + 2],
-            2 => {
-                if mem.len() as i32 <= rb + mem[pc + 2] as i32 {
-                    mem.resize((rb + mem[pc + 2] as i32) as usize + 1, 0);
-                }
-                mem[(rb + mem[pc + 2] as i32) as usize]
-            }
-            other => bail!("Can't mode opcode {}", other),
-        };
+        let opcode = mem[pc] % 100;
+
         match opcode {
-            1 | 2 | 7 | 8 => {
-                let w = match (mem[pc] / 10000) % 10 {
-                    0 => mem[pc + 3] as usize,
-                    2 => (rb + mem[pc + 3] as i32) as usize,
-                    _ => unreachable!(),
-                };
-                if mem.len() <= w {
-                    mem.resize(w + 1, 0);
-                }
-                Ok(Some(Operation {
-                    opcode,
-                    v1,
-                    v2,
-                    w,
-                    pc: pc + 4,
-                    rb,
-                }))
+            3 => {
+                let w = Self::write_idx::<1>(mem, pc, rb)?;
+
+                return Ok(Some(Self::Input { w }));
             }
-            5 | 6 => Ok(Some(Operation {
-                opcode,
-                v1,
-                v2,
-                w: 0,
-                pc,
-                rb,
-            })),
-            other => bail!("Can't process opcode {}", other),
+            99 => return Ok(None),
+            _ => {}
         }
+
+        let v1 = Self::value::<1>(mem, pc, rb)?;
+
+        match opcode {
+            4 => return Ok(Some(Self::Output(v1))),
+            9 => return Ok(Some(Self::RelativeBase(v1))),
+            _ => {}
+        }
+
+        let v2 = Self::value::<2>(mem, pc, rb)?;
+
+        match opcode {
+            5 => return Ok(Some(Self::JumpIfTrue { v1, v2 })),
+            6 => return Ok(Some(Self::JumpIfFalse { v1, v2 })),
+            _ => {}
+        }
+
+        let w = Self::write_idx::<3>(mem, pc, rb)?;
+
+        match opcode {
+            1 => Ok(Some(Self::Add { w, v1, v2 })),
+            2 => Ok(Some(Self::Mul { w, v1, v2 })),
+            7 => Ok(Some(Self::LessThan { w, v1, v2 })),
+            8 => Ok(Some(Self::Equals { w, v1, v2 })),
+            opcode => bail!("Can't process opcode {opcode}"),
+        }
+    }
+
+    fn value<const IDX: usize>(mem: &mut Vec<i64>, pc: usize, rb: i64) -> Result<i64> {
+        let idx = match (mem[pc] / 10_i64.pow(IDX as u32 + 1)) % 10 {
+            0 => mem[pc + IDX] as usize,
+            1 => pc + IDX,
+            2 => (rb + mem[pc + IDX]) as usize,
+            mode => bail!("Unknown value mode {mode}"),
+        };
+
+        if mem.len() <= idx {
+            mem.resize(idx + 1, 0);
+        }
+
+        Ok(mem[idx])
+    }
+
+    fn write_idx<const IDX: usize>(mem: &mut Vec<i64>, pc: usize, rb: i64) -> Result<usize> {
+        let idx = match (mem[pc] / 10_i64.pow(IDX as u32 + 1)) % 10 {
+            0 => mem[pc + IDX] as usize,
+            2 => (rb + mem[pc + IDX]) as usize,
+            mode => bail!("Unknown write mode {mode}"),
+        };
+
+        if mem.len() <= idx {
+            mem.resize(idx + 1, 0);
+        }
+
+        Ok(idx)
     }
 }

@@ -15,7 +15,7 @@ pub fn run(input: &str) -> eyre::Result<aoc_rust::Solution> {
 }
 
 pub fn solve(input: &str) -> Result<Solution<usize, i64>, Error> {
-    let mut computer = Computer::new(input.to_owned())?;
+    let mut computer = Computer::new(input)?;
     computer.run()?;
     let mut grid = GridMap::new();
     while let Some(x) = computer.pop() {
@@ -36,7 +36,7 @@ pub fn solve(input: &str) -> Result<Solution<usize, i64>, Error> {
     mapping.insert(4, '•');
     let mut input = input.to_owned();
     input.replace_range(..1, "2");
-    let mut computer = Computer::new(input)?;
+    let mut computer = Computer::new(&input)?;
     let mut ready_to_play = false;
     let mut p2 = 0;
     let mut ball;

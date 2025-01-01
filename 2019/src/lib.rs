@@ -134,7 +134,7 @@ pub mod util {
             V: Eq + Debug,
         {
             let input = fs::read_to_string(format!("inputs/day{:02}.txt", day)).unwrap();
-            let solution = solve_function(&input).unwrap();
+            let solution = solve_function(input.trim_end()).unwrap();
             assert_eq!(solution.part1, part1);
             assert_eq!(solution.part2, part2);
         }

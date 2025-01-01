@@ -11,18 +11,18 @@ pub fn run(input: &str) -> eyre::Result<aoc_rust::Solution> {
 }
 
 pub fn solve(input: &str) -> Result<Solution<i64, i64>, Error> {
-    let p1 = solve_part1(input.to_owned())?;
-    let p2 = solve_part2(input.to_owned())?;
+    let p1 = solve_part1(input)?;
+    let p2 = solve_part2(input)?;
     Ok(Solution::new(p1, p2))
 } // 230.73ms
 
-fn solve_part1(input: String) -> Result<i64, Error> {
+fn solve_part1(input: &str) -> Result<i64, Error> {
     let mut max_signal = 0;
     for phases in (0..5).permutations(5) {
         let mut amplifiers: Vec<Computer> = phases
             .iter()
             .map(|&phase| {
-                let mut computer = Computer::new(input.clone())?;
+                let mut computer = Computer::new(input)?;
                 computer.insert(phase);
                 Ok(computer)
             })
@@ -39,13 +39,13 @@ fn solve_part1(input: String) -> Result<i64, Error> {
     Ok(max_signal)
 }
 
-fn solve_part2(input: String) -> Result<i64, Error> {
+fn solve_part2(input: &str) -> Result<i64, Error> {
     let mut max_signal = 0;
     for phases in (5..10).permutations(5) {
         let mut amplifiers: Vec<Computer> = phases
             .iter()
             .map(|&phase| {
-                let mut computer = Computer::new(input.clone())?;
+                let mut computer = Computer::new(input)?;
                 computer.insert(phase);
                 Ok(computer)
             })
@@ -71,11 +71,10 @@ mod tests {
 
     #[test]
     fn test07() {
-        let input = "3,15,3,16,1002,16,10,16,1,16,15,15,4,15,99,0,0".to_owned();
+        let input = "3,15,3,16,1002,16,10,16,1,16,15,15,4,15,99,0,0";
         assert_eq!(solve_part1(input).unwrap(), 43210);
         let input =
-            "3,26,1001,26,-4,26,3,27,1002,27,2,27,1,27,26,27,4,27,1001,28,-1,28,1005,28,6,99,0,0,5"
-                .to_owned();
+            "3,26,1001,26,-4,26,3,27,1002,27,2,27,1,27,26,27,4,27,1001,28,-1,28,1005,28,6,99,0,0,5";
         assert_eq!(solve_part2(input).unwrap(), 139629729);
         crate::util::tests::test_full_problem(7, solve, 65464, 1518124);
     }

@@ -26,7 +26,7 @@ fn run() -> Result<(), Error> {
     };
     let input =
         fs::read_to_string(format!("inputs/day{:02}.txt", day)).expect("Error: Invalid day");
-    let input = input.as_str();
+    let input = input.trim_end();
 
     let start = Instant::now();
     let solution = match day {

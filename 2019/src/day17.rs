@@ -13,7 +13,7 @@ pub fn run(input: &str) -> eyre::Result<aoc_rust::Solution> {
 pub fn solve(input: &str) -> Result<Solution<usize, i64>, Error> {
     let mut input = input.to_owned();
     input.replace_range(..1, "2");
-    let mut computer = Computer::new(input)?;
+    let mut computer = Computer::new(&input)?;
     computer.run()?;
     let mut grid = vec![vec![]];
     loop {

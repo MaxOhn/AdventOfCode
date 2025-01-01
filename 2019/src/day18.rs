@@ -219,7 +219,7 @@ mod tests {
     }
 
     #[test]
-    //#[ignore] // test takes much time
+    // #[ignore = "test takes much time"]
     fn test18_actual() {
         crate::util::tests::test_full_problem(18, solve, 4420, 2128);
     }
