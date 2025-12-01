@@ -1,0 +1,8 @@
+[package]
+name = "aoc25"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+aoc-rust = { path = "../aoc-rust" }
+eyre = "0.6.9"
