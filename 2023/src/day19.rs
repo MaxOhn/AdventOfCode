@@ -160,7 +160,7 @@ impl Default for Ranges {
     }
 }
 
-fn parse_input(input: &str) -> Result<(Vec<WorkFlow>, Vec<RatingSet>)> {
+fn parse_input(input: &str) -> Result<(Vec<WorkFlow<'_>>, Vec<RatingSet<'_>>)> {
     let (workflows, ratings) = input
         .split_once("\n\n")
         .wrap_err("missing double newline")?;

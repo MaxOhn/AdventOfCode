@@ -18,9 +18,10 @@ aoc25 = { path = "../2025" }
 aoc-rust = { path = "../aoc-rust" }
 console_error_panic_hook = { version = "0.1" }
 eyre = { version = "0.6.9" }
-leptos = { version = "0.5", features = ["csr", "nightly"] }
-leptos_meta = { version = "0.5", features = ["csr", "nightly"] }
-leptos_router = { version = "0.5", features = ["csr", "nightly"] }
+getrandom = { version = "0.3.4", features = ["wasm_js"] }
+leptos = { version = "0.6", features = ["csr", "nightly"] }
+leptos_meta = { version = "0.6", features = ["csr", "nightly"] }
+leptos_router = { version = "0.6", features = ["csr", "nightly"] }
 tracing = { version = "0.1.37" }
 tracing-subscriber = { version = "0.3.18", default-features = false, features = ["fmt", "std"] }
 tracing-subscriber-wasm = { version = "0.1.0" }
