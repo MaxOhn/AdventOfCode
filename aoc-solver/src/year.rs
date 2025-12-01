@@ -12,7 +12,7 @@ use crate::day::{SolvedDay, SolvedDays};
 pub struct Year(u16);
 
 impl Year {
-    const DEFAULT_YEAR: u16 = 2024;
+    const DEFAULT_YEAR: u16 = 2025;
 
     pub fn solved_days(self) -> SolvedDays {
         SolvedDays::new(crate::generated::solved_days(self.0))

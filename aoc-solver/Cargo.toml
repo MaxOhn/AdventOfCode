@@ -13,6 +13,7 @@ aoc21 = { path = "../2021" }
 aoc22 = { path = "../2022" }
 aoc23 = { path = "../2023" }
 aoc24 = { path = "../2024" }
+aoc25 = { path = "../2025" }
 
 aoc-rust = { path = "../aoc-rust" }
 console_error_panic_hook = { version = "0.1" }
