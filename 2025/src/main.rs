@@ -12,7 +12,7 @@ fn main() -> Result<()> {
         };
     }
 
-    let (path, run) = load!(day04);
+    let (path, run) = load!(day05);
     let input = fs::read_to_string(path)?;
 
     let start = Instant::now();
