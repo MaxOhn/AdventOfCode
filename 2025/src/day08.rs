@@ -115,6 +115,8 @@ fn part1(input: &str) -> Result<usize> {
 
     let (biggest, _, _) = lengths.select_nth_unstable_by_key(3, |n| Reverse(*n));
 
+    println!("{biggest:?}");
+
     Ok(biggest.into_iter().map(|a| *a).product())
 }
 
