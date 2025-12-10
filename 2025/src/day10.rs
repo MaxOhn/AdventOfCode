@@ -51,7 +51,7 @@ fn part1(input: &str) -> u64 {
 
 #[cfg(target_arch = "wasm32")]
 fn part2(input: &str) -> String {
-    "TODO".to_owned()
+    "Cannot use z3 on WASM :(".to_owned()
 }
 
 #[cfg(not(target_arch = "wasm32"))]
