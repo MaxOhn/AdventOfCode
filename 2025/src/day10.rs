@@ -2,7 +2,6 @@ use std::collections::VecDeque;
 
 use aoc_rust::Solution;
 use eyre::Result;
-use z3::{Optimize, SatResult, ast::Int};
 
 pub fn run(input: &str) -> Result<Solution> {
     let input = input.trim();
@@ -50,7 +49,15 @@ fn part1(input: &str) -> u64 {
     sum
 }
 
+#[cfg(target_arch = "wasm32")]
+fn part2(input: &str) -> String {
+    "TODO".to_owned()
+}
+
+#[cfg(not(target_arch = "wasm32"))]
 fn part2(input: &str) -> u64 {
+    use z3::{Optimize, SatResult, ast::Int};
+
     let mut sum = 0;
 
     let mut vars = Vec::new();

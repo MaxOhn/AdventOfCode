@@ -7,4 +7,6 @@ edition = "2024"
 aoc-rust = { path = "../aoc-rust" }
 eyre = "0.6.9"
 fxhash = "0.2.1"
+
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 z3 = { version = "0.19.6", features = ["gh-release"] }
