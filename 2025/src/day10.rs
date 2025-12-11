@@ -1,7 +1,8 @@
-use std::collections::VecDeque;
+use std::cmp;
 
 use aoc_rust::Solution;
 use eyre::Result;
+use fxhash::FxHashMap;
 
 pub fn run(input: &str) -> Result<Solution> {
     let input = input.trim();
@@ -12,10 +13,8 @@ pub fn run(input: &str) -> Result<Solution> {
     Ok(Solution::new().part1(p1).part2(p2))
 }
 
-fn part1(input: &str) -> u64 {
+fn part1(input: &str) -> usize {
     let mut sum = 0;
-
-    let mut queue = VecDeque::new();
 
     for line in input.lines() {
         let mut iter = line.split_ascii_whitespace();
@@ -28,25 +27,58 @@ fn part1(input: &str) -> u64 {
             .map(|button| button.iter().fold(0, |button, &i| button | (1 << i)))
             .collect();
 
-        queue.clear();
-        queue.push_back((0, 1));
-
-        'outer: while let Some((curr, presses)) = queue.pop_front() {
-            for button in buttons.iter() {
-                let next = curr ^ button;
-
-                if next == lights {
-                    sum += presses;
-
-                    break 'outer;
-                }
-
-                queue.push_back((next, presses + 1));
-            }
-        }
+        sum += solve_parity(lights, &buttons).unwrap();
     }
 
     sum
+}
+
+type Cache<'a> = FxHashMap<(u16, &'a [u16]), Option<usize>>;
+
+fn solve_parity(lights: u16, buttons: &[u16]) -> Option<usize> {
+    fn recurse_outer<'a>(
+        lights: u16,
+        button: u16,
+        rest: &'a [u16],
+        cache: &mut Cache<'a>,
+    ) -> Option<usize> {
+        let with = recurse_inner(lights ^ button, rest, 1, cache);
+        let without = recurse_inner(lights, rest, 0, cache);
+
+        match (with, without) {
+            (Some(with), Some(without)) => Some(cmp::min(with, without)),
+            (None, Some(count)) | (Some(count), None) => Some(count),
+            (None, None) => None,
+        }
+    }
+
+    fn recurse_inner<'a>(
+        lights: u16,
+        buttons: &'a [u16],
+        count: usize,
+        cache: &mut Cache<'a>,
+    ) -> Option<usize> {
+        let Some((button, rest)) = buttons.split_first() else {
+            return (lights == 0x00_00).then_some(count);
+        };
+
+        let key = (lights, buttons);
+
+        if let Some(cached) = cache.get(&key) {
+            return cached.map(|n| n + count);
+        }
+
+        let res = recurse_outer(lights, *button, rest, cache);
+        cache.insert(key, res);
+
+        res.map(|n| n + count)
+    }
+
+    let (button, rest) = buttons.split_first()?;
+
+    let mut cache = Cache::default();
+
+    recurse_outer(lights, *button, rest, &mut cache)
 }
 
 #[cfg(target_arch = "wasm32")]
