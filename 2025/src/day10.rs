@@ -33,14 +33,14 @@ fn part1(input: &str) -> usize {
     sum
 }
 
-type Cache<'a> = FxHashMap<(u16, &'a [u16]), Option<usize>>;
+type CacheP1<'a> = FxHashMap<(u16, &'a [u16]), Option<usize>>;
 
 fn solve_parity(lights: u16, buttons: &[u16]) -> Option<usize> {
     fn recurse_outer<'a>(
         lights: u16,
         button: u16,
         rest: &'a [u16],
-        cache: &mut Cache<'a>,
+        cache: &mut CacheP1<'a>,
     ) -> Option<usize> {
         let with = recurse_inner(lights ^ button, rest, 1, cache);
         let without = recurse_inner(lights, rest, 0, cache);
@@ -56,7 +56,7 @@ fn solve_parity(lights: u16, buttons: &[u16]) -> Option<usize> {
         lights: u16,
         buttons: &'a [u16],
         count: usize,
-        cache: &mut Cache<'a>,
+        cache: &mut CacheP1<'a>,
     ) -> Option<usize> {
         let Some((button, rest)) = buttons.split_first() else {
             return (lights == 0x00_00).then_some(count);
@@ -76,7 +76,7 @@ fn solve_parity(lights: u16, buttons: &[u16]) -> Option<usize> {
 
     let (button, rest) = buttons.split_first()?;
 
-    let mut cache = Cache::default();
+    let mut cache = CacheP1::default();
 
     recurse_outer(lights, *button, rest, &mut cache)
 }
@@ -95,37 +95,46 @@ fn part2(input: &str) -> usize {
             .map(|button| button.iter().fold(0, |button, &i| button | (1 << i)))
             .collect();
 
-        sum += f(&joltage, &buttons).unwrap();
+        let mut cache = CacheP2::default();
+
+        sum += f(joltage, &buttons, &mut cache).unwrap();
     }
 
     sum
 }
 
+type CacheP2<'a> = FxHashMap<Box<[u16]>, Option<usize>>;
+
 // https://www.reddit.com/r/adventofcode/comments/1pk87hl/2025_day_10_part_2_bifurcate_your_way_to_victory/
-fn f(joltage: &[u16], buttons: &[u16]) -> Option<usize> {
+fn f(joltage: Box<[u16]>, buttons: &[u16], cache: &mut CacheP2) -> Option<usize> {
     /// Passes each combination of buttons in `rest` to `f` together with the
     /// current `best`.
-    fn recurse_button_combis<F>(
+    fn recurse_button_combis<'a, F>(
         rest: &[u16],
         buttons: &mut Vec<u16>,
         best: &mut Option<usize>,
+        cache: &mut CacheP2<'a>,
         f: F,
     ) where
-        F: Fn(&[u16], &mut Option<usize>) + Copy,
+        F: Fn(&[u16], &mut Option<usize>, &mut CacheP2<'a>) + Copy,
     {
         let Some((button, rest)) = rest.split_first() else {
-            return f(buttons, best);
+            return f(buttons, best, cache);
         };
 
-        recurse_button_combis(rest, buttons, best, f);
+        recurse_button_combis(rest, buttons, best, cache, f);
 
         buttons.push(*button);
-        recurse_button_combis(rest, buttons, best, f);
+        recurse_button_combis(rest, buttons, best, cache, f);
         buttons.pop();
     }
 
     if joltage.iter().all(|&n| n == 0) {
         return Some(0);
+    }
+
+    if let Some(cached) = cache.get(&joltage) {
+        return *cached;
     }
 
     // Converting joltage to binary representation, i.e. "lights" of part 1
@@ -141,7 +150,8 @@ fn f(joltage: &[u16], buttons: &[u16]) -> Option<usize> {
         &buttons,
         &mut Vec::with_capacity(buttons.len()),
         &mut best,
-        |pressed, best| {
+        cache,
+        |pressed, best, cache| {
             let xor = pressed.iter().copied().reduce(u16::bitxor).unwrap_or(0);
 
             if xor != lights {
@@ -149,7 +159,7 @@ fn f(joltage: &[u16], buttons: &[u16]) -> Option<usize> {
             }
 
             // Subtracting the `pressed` buttons from `joltage`
-            let mut next_joltage = Box::<[_]>::from(joltage);
+            let mut next_joltage = joltage.clone();
 
             for button in pressed {
                 let mut button = *button;
@@ -169,10 +179,10 @@ fn f(joltage: &[u16], buttons: &[u16]) -> Option<usize> {
                 }
             }
 
-            // Halving the next joltage
+            // Halving the next joltage before we recurse
             next_joltage.iter_mut().for_each(|j| *j /= 2);
 
-            let Some(res) = f(&next_joltage, buttons) else {
+            let Some(res) = f(next_joltage, buttons, cache) else {
                 return;
             };
 
@@ -184,6 +194,8 @@ fn f(joltage: &[u16], buttons: &[u16]) -> Option<usize> {
             }
         },
     );
+
+    cache.insert(joltage, best);
 
     best
 }
