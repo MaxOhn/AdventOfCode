@@ -16,3 +16,4 @@ Web-app solver: <https://maxohn.github.io/AdventOfCode/>
 | 2022 | Rust     |
 | 2023 | Rust     |
 | 2024 | Rust     |
+| 2025 | Rust     |
