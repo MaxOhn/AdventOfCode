@@ -1,4 +1,4 @@
-use std::cmp;
+use std::{cmp, ops::BitXor};
 
 use aoc_rust::Solution;
 use eyre::Result;
@@ -81,64 +81,111 @@ fn solve_parity(lights: u16, buttons: &[u16]) -> Option<usize> {
     recurse_outer(lights, *button, rest, &mut cache)
 }
 
-#[cfg(target_arch = "wasm32")]
-fn part2(input: &str) -> String {
-    "Cannot use z3 on WASM :(".to_owned()
-}
-
-#[cfg(not(target_arch = "wasm32"))]
-fn part2(input: &str) -> u64 {
-    use z3::{Optimize, SatResult, ast::Int};
-
+fn part2(input: &str) -> usize {
     let mut sum = 0;
-
-    let mut vars = Vec::new();
 
     for line in input.lines() {
         let mut iter = line.split_ascii_whitespace();
 
         let _lights = iter.next();
         let joltage = parse_joltage(iter.next_back().unwrap());
-        let buttons: Vec<_> = iter.map(parse_button).collect();
 
-        let opt = Optimize::new();
-
-        let button_ints: Vec<_> = (0..buttons.len() as u32)
-            .map(Int::new_const)
-            .inspect(|int| opt.assert(&int.ge(0)))
+        let buttons: Vec<u16> = iter
+            .map(parse_button)
+            .map(|button| button.iter().fold(0, |button, &i| button | (1 << i)))
             .collect();
 
-        for (i, &j) in joltage.iter().enumerate() {
-            let goal = Int::from_u64(j as u64);
-            vars.clear();
-
-            for (k, button) in buttons.iter().enumerate() {
-                if button.contains(&i) {
-                    vars.push(button_ints[k].clone());
-                }
-            }
-
-            let sum = Int::add(&vars);
-            opt.assert(&sum.eq(goal));
-        }
-
-        let presses = Int::fresh_const("presses");
-        opt.assert(&presses.eq(&Int::add(&button_ints)));
-        opt.minimize(&presses);
-
-        let SatResult::Sat = opt.check(&[]) else {
-            unreachable!()
-        };
-
-        sum += opt
-            .get_model()
-            .and_then(|model| model.eval(&presses, true))
-            .as_ref()
-            .and_then(Int::as_u64)
-            .unwrap();
+        sum += f(&joltage, &buttons).unwrap();
     }
 
     sum
+}
+
+// https://www.reddit.com/r/adventofcode/comments/1pk87hl/2025_day_10_part_2_bifurcate_your_way_to_victory/
+fn f(joltage: &[u16], buttons: &[u16]) -> Option<usize> {
+    /// Passes each combination of buttons in `rest` to `f` together with the
+    /// current `best`.
+    fn recurse_button_combis<F>(
+        rest: &[u16],
+        buttons: &mut Vec<u16>,
+        best: &mut Option<usize>,
+        f: F,
+    ) where
+        F: Fn(&[u16], &mut Option<usize>) + Copy,
+    {
+        let Some((button, rest)) = rest.split_first() else {
+            return f(buttons, best);
+        };
+
+        recurse_button_combis(rest, buttons, best, f);
+
+        buttons.push(*button);
+        recurse_button_combis(rest, buttons, best, f);
+        buttons.pop();
+    }
+
+    if joltage.iter().all(|&n| n == 0) {
+        return Some(0);
+    }
+
+    // Converting joltage to binary representation, i.e. "lights" of part 1
+    let lights = joltage
+        .iter()
+        .copied()
+        .rev()
+        .fold(0, |lights, next| (lights << 1) | (next % 2));
+
+    let mut best = None;
+
+    recurse_button_combis(
+        &buttons,
+        &mut Vec::with_capacity(buttons.len()),
+        &mut best,
+        |pressed, best| {
+            let xor = pressed.iter().copied().reduce(u16::bitxor).unwrap_or(0);
+
+            if xor != lights {
+                return;
+            }
+
+            // Subtracting the `pressed` buttons from `joltage`
+            let mut next_joltage = Box::<[_]>::from(joltage);
+
+            for button in pressed {
+                let mut button = *button;
+                let mut i = 0;
+
+                while button > 0 {
+                    if button & 1 == 1 {
+                        if next_joltage[i] == 0 {
+                            return;
+                        }
+
+                        next_joltage[i] -= 1;
+                    }
+
+                    i += 1;
+                    button >>= 1;
+                }
+            }
+
+            // Halving the next joltage
+            next_joltage.iter_mut().for_each(|j| *j /= 2);
+
+            let Some(res) = f(&next_joltage, buttons) else {
+                return;
+            };
+
+            let curr = pressed.len() + 2 * res;
+            let best = best.get_or_insert(usize::MAX);
+
+            if curr < *best {
+                *best = curr;
+            }
+        },
+    );
+
+    best
 }
 
 fn parse_lights(s: &str) -> u16 {
